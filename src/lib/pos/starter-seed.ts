@@ -14,6 +14,7 @@ import { DEFAULT_FLOOR_STATUS_CONFIG } from "./floor-status";
 import { DEFAULT_CASH_DISCOUNT } from "./cash-discount";
 import { DEFAULT_PAYMENT_METHODS } from "./payment-methods";
 import type { VenueEntityId } from "./types";
+import { syncOpenCatalog } from "./open-items";
 
 export type TenantMenuMode = "empty" | "categories" | "csv_later" | "starter";
 
@@ -306,6 +307,7 @@ export function starterPosSlice(opts: {
       : hall
         ? []
         : [{ ...starterVendor(), locationId: opts.locationId, name: opts.venueName, shortName: opts.venueName.slice(0, 12) }];
+  const opened = syncOpenCatalog({ items: menuItems, categories, vendors });
   const tables = opts.tables ?? (menuMode === "starter" ? starterTables() : []);
   const floorSections =
     opts.floorSections ??
@@ -334,8 +336,8 @@ export function starterPosSlice(opts: {
     settings,
     employees: [owner],
     currentEmployeeId: owner.id,
-    categories,
-    menuItems,
+    categories: opened.categories,
+    menuItems: opened.items,
     modifierGroups:
       menuMode === "starter"
         ? STARTER_MODIFIERS.map((g) => ({

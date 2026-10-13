@@ -29,6 +29,7 @@ import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { isActiveOrderPrinter } from "@/lib/pos/fire-routing";
 import { destinationForGroup, mergeOrderDestinations } from "@/lib/pos/order-destinations";
 import { isDrinkEntity, omitWellBuildFromList } from "@/lib/pos/well-book";
+import { isOpenMenuItem } from "@/lib/pos/open-items";
 import { WellBookCard } from "@/components/pos/WellBookCard";
 import { NaDrinkAdd } from "@/components/pos/NaDrinkAdd";
 
@@ -71,6 +72,7 @@ export function MenuAdminView() {
   );
   const menuScope = checklistEntity || demoScope;
   const menuItems = menuItemsAll.filter((m) => {
+    if (isOpenMenuItem(m)) return true;
     if (menuScope && m.vendorId !== menuScope) return false;
     return canViewMenu(emp, grants, m.vendorId);
   });
@@ -393,7 +395,8 @@ export function MenuAdminView() {
               )}
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {items.map((item) => {
-                  const editable = canEditMenu(emp, grants, item.vendorId);
+                  const openEntry = isOpenMenuItem(item);
+                  const editable = !openEntry && canEditMenu(emp, grants, item.vendorId);
                   const dual = printedItemPriceCents(item.priceCents, settings);
                   const editDual = printedItemPriceCents(
                     Math.round(Number(editPrice) * 100) || item.priceCents,
@@ -460,7 +463,9 @@ export function MenuAdminView() {
                               </p>
                             ) : null}
                             <p className="text-xs tabular text-muted-foreground">
-                              {dual.showBoth
+                              {openEntry
+                                ? "Amount on the check"
+                                : dual.showBoth
                                 ? `${formatCurrency(dual.cash)} cash · ${formatCurrency(dual.card)} card`
                                 : formatCurrency(dual.cash)}
                               {item.happyHourPriceCents != null && (
@@ -572,7 +577,8 @@ export function MenuAdminView() {
           {(() => {
             const sheet = menuItemsAll.find((m) => m.id === sheetId);
             if (!sheet) return null;
-            const sheetEditable = canEditMenu(emp, grants, sheet.vendorId);
+            const sheetOpen = isOpenMenuItem(sheet);
+            const sheetEditable = !sheetOpen && canEditMenu(emp, grants, sheet.vendorId);
             return (
               <>
                 <DialogHeader>
@@ -635,7 +641,11 @@ export function MenuAdminView() {
                     </DialogFooter>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">View only.</p>
+                  <p className="text-sm text-muted-foreground">
+                    {sheetOpen
+                      ? "The server enters the amount on the check. This item stays on every menu."
+                      : "View only."}
+                  </p>
                 )}
               </>
             );

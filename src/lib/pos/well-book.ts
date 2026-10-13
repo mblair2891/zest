@@ -1,3 +1,5 @@
+import { isOpenMenuItem, openKindOf } from "./open-items.ts";
+
 /** Optional well catalog for a drink entity. Food entities never receive these rows. */
 
 export const WELL_GROUP = "Wells";
@@ -492,6 +494,7 @@ export function orderPadTiles<
     wellKey?: string;
     wellHidden?: boolean;
     archived?: boolean;
+    openKind?: string | null;
     priceCents: number;
   },
 >(opts: {
@@ -506,8 +509,9 @@ export function orderPadTiles<
   for (const item of opts.items) {
     if (item.archived || item.wellHidden) continue;
     if (omitWellBuildFromList(item)) continue;
-    if (opts.vendorFilter && item.vendorId !== opts.vendorFilter) continue;
-    if (opts.categoryId && item.categoryId !== opts.categoryId) continue;
+    const open = isOpenMenuItem(item);
+    if (opts.vendorFilter && item.vendorId !== opts.vendorFilter && !open) continue;
+    if (opts.categoryId && item.categoryId !== opts.categoryId && !open) continue;
     if (q && !item.name.toLowerCase().includes(q)) continue;
     out.push({ kind: "item", item });
   }
@@ -534,6 +538,13 @@ export function orderPadTiles<
     }
   }
   out.sort((a, b) => {
+    const rank = (tile: WellPadTile<T>) => {
+      if (tile.kind !== "item" || !isOpenMenuItem(tile.item)) return 2;
+      return openKindOf(tile.item) === "liquor" ? 1 : 0;
+    };
+    const ar = rank(a);
+    const br = rank(b);
+    if (ar !== br) return ar - br;
     const an = a.kind === "item" ? a.item.name : a.name;
     const bn = b.kind === "item" ? b.item.name : b.name;
     return an.localeCompare(bn);
@@ -673,18 +684,40 @@ export function dropWellItems<TItem extends { vendorId?: string; wellKey?: strin
   return items.filter((item) => !(item.vendorId === entityId && item.wellKey));
 }
 
-export function orderPadCategories<T extends { id: string; name: string; sort: number; wellBook?: boolean; vendorId?: string }>(
+export function orderPadCategories<
+  T extends {
+    id: string;
+    name: string;
+    sort: number;
+    wellBook?: boolean;
+    openBook?: boolean;
+    vendorId?: string;
+  },
+>(
   categories: readonly T[],
-  items: readonly { categoryId: string; vendorId?: string; wellHidden?: boolean; archived?: boolean; wellKey?: string }[],
+  items: readonly {
+    id?: string;
+    categoryId: string;
+    vendorId?: string;
+    wellHidden?: boolean;
+    archived?: boolean;
+    wellKey?: string;
+    openKind?: string | null;
+  }[],
   vendorId: string | null,
 ): T[] {
   const visible = new Set<string>();
   for (const item of items) {
     if (item.wellHidden || item.archived || isWellBuildKey(item.wellKey)) continue;
-    if (vendorId && item.vendorId !== vendorId) continue;
+    const open = isOpenMenuItem(item);
+    if (vendorId && item.vendorId !== vendorId && !open) continue;
     visible.add(item.categoryId);
   }
   for (const cat of categories) {
+    if (cat.openBook) {
+      visible.add(cat.id);
+      continue;
+    }
     if (!cat.wellBook) continue;
     if (vendorId && cat.vendorId !== vendorId) continue;
     visible.add(cat.id);
@@ -693,8 +726,9 @@ export function orderPadCategories<T extends { id: string; name: string; sort: n
     .filter((cat) => visible.has(cat.id))
     .slice()
     .sort((a, b) => {
-      const aw = a.wellBook || a.name === WELL_GROUP ? 0 : 1;
-      const bw = b.wellBook || b.name === WELL_GROUP ? 0 : 1;
+      const rank = (cat: T) => (cat.wellBook || cat.name === WELL_GROUP ? 0 : cat.openBook ? 2 : 1);
+      const aw = rank(a);
+      const bw = rank(b);
       if (aw !== bw) return aw - bw;
       return a.sort - b.sort || a.name.localeCompare(b.name);
     });

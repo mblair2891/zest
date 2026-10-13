@@ -523,6 +523,7 @@ export function PlatformTenantVenue({
               })
             : cur.vendors,
         });
+        usePosStore.getState().ensureOpenMenu();
       }
       if (setup.recipes?.length || setup.costPack) {
         const pack = setup.costPack;

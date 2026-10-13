@@ -90,6 +90,7 @@ import { resolveReceiptDrawer } from "../print/receipt-drawer";
 import { readPairedDeviceId } from "./location-devices";
 import { destinationForGroup, ticketStationForDestination } from "./order-destinations";
 import { groupFireSlips } from "./fire-routing";
+import { isOpenMenuItem, syncOpenCatalog } from "./open-items";
 import {
 	applyHouse86,
 	normalizeDeliveryChannels,
@@ -377,12 +378,18 @@ function emptyShift() {
 	};
 }
 function initialState() {
+	const vendors = VENDORS.map((v: any) => ({ ...v }));
+	const opened = syncOpenCatalog({
+		items: MENU_ITEMS.map((m: any) => ({ ...m })),
+		categories: CATEGORIES.map((c: any) => ({ ...c })),
+		vendors,
+	});
 	return {
 		settings: { ...SETTINGS },
 		employees: employeesForVenue("restaurant"),
 		currentEmployeeId: null,
-		categories: CATEGORIES.map((c: any) => ({ ...c })),
-		menuItems: MENU_ITEMS.map((m: any) => ({ ...m })),
+		categories: opened.categories,
+		menuItems: opened.items,
 		modifierGroups: MODIFIER_GROUPS.map((g: any) => ({
 			...g,
 			options: g.options.map((o: any) => ({ ...o }))
@@ -396,7 +403,7 @@ function initialState() {
 		giftCards: GIFT_CARDS.map((g: any) => ({ ...g })),
 		giftTransfers: [],
 		inventory: INVENTORY.map((i: any) => ({ ...i })),
-		vendors: VENDORS.map((v: any) => ({ ...v })),
+		vendors,
 		settlementConfig: { ...SETTLEMENT_CONFIG },
 		settlementPeriods: [],
 		chargebacks: [],
@@ -2453,7 +2460,16 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			}
 		}
 		const settings = get().settings;
-		const unit = isHappyHour(settings, /* @__PURE__ */ new Date()) && item.happyHourPriceCents != null ? item.happyHourPriceCents : item.priceCents;
+		const openLine = isOpenMenuItem(item);
+		const entered = Math.round(Number(opts.unitPriceCents));
+		if (openLine && (!Number.isFinite(entered) || entered <= 0)) {
+			return { ok: false, error: "Enter an amount" };
+		}
+		const unit = openLine
+			? entered
+			: isHappyHour(settings, /* @__PURE__ */ new Date()) && item.happyHourPriceCents != null
+				? item.happyHourPriceCents
+				: item.priceCents;
 		const vendor = item.vendorId ? get().vendors.find((v: any) => v.id === item.vendorId) : void 0;
 		if ((settings.peerVenue || settings.operatingModel === "peer_venue") && !item.vendorId) {
 			return { ok: false, error: "Each line needs a selling entity. This building is not a merchant." };
@@ -3976,10 +3992,18 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			marketingOptIn: optIn
 		} : c) });
 	},
+	ensureOpenMenu: () => {
+		const opened = syncOpenCatalog({
+			items: get().menuItems,
+			categories: get().categories,
+			vendors: get().vendors,
+		});
+		set({ menuItems: opened.items, categories: opened.categories });
+	},
 	toggleItemAvailable: (id) => {
 		const emp = get().getCurrentEmployee();
 		const item = get().menuItems.find((m: any) => m.id === id);
-		if (!item) return;
+		if (!item || isOpenMenuItem(item)) return;
 		if (!can86Item(emp, item, get().entityPermissions)) return;
 		const available = !item.available;
 		const menuItems = get().menuItems.map((m: any) => m.id === id ? {
@@ -3988,7 +4012,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		} : m);
 		set({ menuItems });
 		const channels = normalizeDeliveryChannels(get().settings.deliveryChannels);
-		const house: HouseItem[] = menuItems.map((m: any) => ({
+		const house: HouseItem[] = menuItems.filter((m: any) => !isOpenMenuItem(m)).map((m: any) => ({
 			id: m.id,
 			name: m.name,
 			priceCents: m.priceCents,
@@ -4095,7 +4119,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	updateMenuItem: (id, patch) => {
 		const emp = get().getCurrentEmployee();
 		const item = get().menuItems.find((m: any) => m.id === id);
-		if (!item) return;
+		if (!item || isOpenMenuItem(item)) return;
 		const target = patch.vendorId ?? item.vendorId;
 		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return;
 		if (patch.vendorId && !canEditMenu(emp, get().entityPermissions, target)) return;
@@ -4110,6 +4134,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const emp = get().getCurrentEmployee();
 		const item = get().menuItems.find((m: any) => m.id === id);
 		if (!item) return { ok: false as const, error: "Missing item" };
+		if (isOpenMenuItem(item)) return { ok: false as const, error: "Open Food and Open Liquor stay on every menu" };
 		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return { ok: false as const, error: "Not allowed" };
 		const sold = get().orders.some((order: any) =>
 			(order.lines ?? []).some((line: any) => line.menuItemId === id),
@@ -4125,6 +4150,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const emp = get().getCurrentEmployee();
 		const item = get().menuItems.find((m: any) => m.id === id);
 		if (!item) return { ok: false as const };
+		if (isOpenMenuItem(item)) return { ok: false as const };
 		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return { ok: false as const };
 		set({ menuItems: get().menuItems.map((m: any) => (m.id === id ? { ...m, archived: true } : m)) });
 		get().audit("menu", `Archived ${item.name}`);
@@ -4717,7 +4743,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const food = vendors.find((v: { stationType?: string; drinks?: boolean }) => v.stationType !== "bar" && !v.drinks);
 		const result = handleDeliveryWebhook(body, {
 			channels,
-			menu: get().menuItems.map((m: any) => ({
+			menu: get().menuItems.filter((m: any) => !isOpenMenuItem(m)).map((m: any) => ({
 				id: m.id,
 				name: m.name,
 				priceCents: m.priceCents,
@@ -5492,6 +5518,15 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	name: "summex-pos-v7",
 	storage: createJSONStorage(() => demoPersistStorage()),
 	skipHydration: true,
+	onRehydrateStorage: () => () => {
+		queueMicrotask(() => {
+			try {
+				usePosStoreRaw.getState().ensureOpenMenu();
+			} catch {
+				/* catalog is optional until the location loads */
+			}
+		});
+	},
 	partialize: (s: any) => ({
 		tenantLocationId: s.tenantLocationId,
 		settings: s.settings,

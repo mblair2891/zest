@@ -43,6 +43,7 @@ import {
   type WellLevelRow,
   type WellPour,
 } from "@/lib/pos/well-book";
+import { isOpenMenuItem, parseOpenAmountCents } from "@/lib/pos/open-items";
 import { WellSpiritDialog } from "./WellSpiritDialog";
 import { formatGuestCardRate } from "@/lib/pos/card-service";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -126,6 +127,9 @@ export function OrderView({
 
   const [modItem, setModItem] = useState<MenuItem | null>(null);
   const [modOpen, setModOpen] = useState(false);
+  const [openPriceItem, setOpenPriceItem] = useState<MenuItem | null>(null);
+  const [openAmount, setOpenAmount] = useState("");
+  const [openPriceError, setOpenPriceError] = useState<string | null>(null);
   const [wellSpirit, setWellSpirit] = useState<{ spiritId: string; entityId: string; name: string } | null>(null);
   const [wellBottle, setWellBottle] = useState<WellLevelRow | null>(null);
   const [wellPour, setWellPour] = useState<WellPour | null>(null);
@@ -421,10 +425,33 @@ export function OrderView({
   const guestSeats = Math.max(order.guestCount, 1);
   const unsent = order.lines.some((l) => !l.sent && !l.voided);
 
+  const submitOpenAmount = () => {
+    if (!openPriceItem) return;
+    const cents = parseOpenAmountCents(openAmount);
+    if (cents == null) {
+      setOpenPriceError("Enter an amount");
+      return;
+    }
+    const res = addItem(openPriceItem.id, { unitPriceCents: cents });
+    if (!res.ok) {
+      setOpenPriceError(res.error ?? "Could not add");
+      return;
+    }
+    setOpenPriceItem(null);
+    setOpenAmount("");
+    setOpenPriceError(null);
+  };
+
   const onMenuClick = (item: MenuItem) => {
     if (!item.available) return;
     if (orderLocked) return;
     if (order.status !== "open") return;
+    if (isOpenMenuItem(item)) {
+      setOpenPriceItem(item);
+      setOpenAmount("");
+      setOpenPriceError(null);
+      return;
+    }
     const groups = usePosStore
       .getState()
       .modifierGroups.filter((g) => item.modifierGroupIds.includes(g.id));
@@ -1253,6 +1280,7 @@ export function OrderView({
                 );
               }
               const item = tile.item;
+              const openEntry = isOpenMenuItem(item);
               const vendor = vendors.find((v) => v.id === item.vendorId);
               const printed =
                 happy && item.happyHourPriceCents != null
@@ -1264,6 +1292,7 @@ export function OrderView({
                   <button
                     type="button"
                     disabled={!item.available}
+                    data-open-item={openEntry ? item.openKind ?? "food" : undefined}
                     onClick={() => onMenuClick(item)}
                     className={cn(
                       "flex min-h-[5.5rem] w-full flex-col rounded-2xl border border-border bg-surface p-3 text-left transition hover:border-border-strong active:scale-[0.98]",
@@ -1279,7 +1308,9 @@ export function OrderView({
                         {!item.available ? " · 86" : ""}
                       </span>
                       <span className="text-right tabular text-sm font-semibold">
-                        {dualPrice.showBoth ? (
+                        {openEntry ? (
+                          <span className="block text-xs font-medium">Enter amount</span>
+                        ) : dualPrice.showBoth ? (
                           <span className="block text-xs font-medium">
                             {formatCurrency(dualPrice.cash)} cash
                             <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
@@ -1292,9 +1323,11 @@ export function OrderView({
                       </span>
                     </span>
                   </button>
-                  <div className="absolute right-1 top-1">
-                    <RecipeLookupButton menuItemId={item.id} icon />
-                  </div>
+                  {openEntry ? null : (
+                    <div className="absolute right-1 top-1">
+                      <RecipeLookupButton menuItemId={item.id} icon />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1447,6 +1480,58 @@ export function OrderView({
                     : undefined
         }
       />
+      <Dialog
+        open={openPriceItem != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOpenPriceItem(null);
+            setOpenPriceError(null);
+          }
+        }}
+      >
+        <DialogContent data-open-price="">
+          <DialogHeader>
+            <DialogTitle>{openPriceItem?.name}</DialogTitle>
+          </DialogHeader>
+          <label className="block text-xs text-muted-foreground">
+            Amount
+            <Input
+              className="mt-1"
+              data-open-amount=""
+              inputMode="decimal"
+              value={openAmount}
+              placeholder="0.00"
+              autoFocus
+              onChange={(e) => {
+                setOpenAmount(e.target.value);
+                setOpenPriceError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitOpenAmount();
+              }}
+            />
+          </label>
+          {openPriceError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {openPriceError}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {openPriceItem?.openKind === "liquor"
+                ? "Prints on the bar order printer."
+                : "Prints on the food order printer."}
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenPriceItem(null)}>
+              Cancel
+            </Button>
+            <Button data-open-add="" onClick={submitOpenAmount}>
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={discountOpen} onOpenChange={setDiscountOpen}>
         <DialogContent>
           <DialogHeader>

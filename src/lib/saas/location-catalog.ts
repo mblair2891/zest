@@ -284,6 +284,7 @@ export function parseMenuCatalog(raw: unknown): LocationMenuCatalog | undefined 
       printerId: str(r.printerId).slice(0, 80) || undefined,
       vendorId: str(r.vendorId).slice(0, 80) || undefined,
       wellBook: r.wellBook === true ? true : undefined,
+      openBook: r.openBook === true ? true : undefined,
     });
   }
   const items: MenuItem[] = [];
@@ -318,6 +319,7 @@ export function parseMenuCatalog(raw: unknown): LocationMenuCatalog | undefined 
       wellKey: str(r.wellKey).slice(0, 80) || undefined,
       wellHidden: r.wellHidden === true ? true : undefined,
       archived: r.archived === true ? true : undefined,
+      openKind: r.openKind === "food" || r.openKind === "liquor" ? r.openKind : undefined,
     });
   }
   const modifiers: ModifierGroup[] = [];

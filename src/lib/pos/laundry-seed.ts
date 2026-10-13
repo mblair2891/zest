@@ -20,6 +20,7 @@ import {
   PARTNER_DEMO_LOCATION_ID,
   PARTNER_DEMO_LOCATION_NAME,
 } from "@/lib/demo/partner-demo";
+import { syncOpenCatalog } from "./open-items";
 
 export const LAUNDRY_ORG_NAME = "The Laundry Group";
 /** Matches demo SaaS location id (`loc_hall`) so POS + control plane stay aligned. */
@@ -593,8 +594,14 @@ export function laundryPosSliceFor(locationId: string, opts?: { partner?: boolea
       return withHashedPin(copy, copy.pin, locationId);
     }),
     currentEmployeeId: null as string | null,
-    categories: LAUNDRY_CATEGORIES.map((c) => ({ ...c })),
-    menuItems: LAUNDRY_MENU.map((m) => ({ ...m })),
+    ...(() => {
+      const opened = syncOpenCatalog({
+        items: LAUNDRY_MENU.map((m) => ({ ...m })),
+        categories: LAUNDRY_CATEGORIES.map((c) => ({ ...c })),
+        vendors: LAUNDRY_VENDORS,
+      });
+      return { categories: opened.categories, menuItems: opened.items };
+    })(),
     modifierGroups: [],
     tables: LAUNDRY_TABLES.map((t) => ({ ...t, locationId })),
     orders: [],

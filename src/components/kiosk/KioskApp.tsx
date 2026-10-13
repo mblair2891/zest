@@ -29,6 +29,7 @@ import { useDemoLiveSync } from "@/lib/demo/live-sync";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { guestMayAddItem, isServerlessFood } from "@/lib/pos/serverless-food";
 import { omitWellBuildFromList } from "@/lib/pos/well-book";
+import { isOpenMenuItem } from "@/lib/pos/open-items";
 import type { MenuItem, SelectedModifier } from "@/lib/pos/types";
 
 type Pane = "home" | "order" | "waitlist" | "checkin" | "book";
@@ -395,7 +396,7 @@ function OrderPane() {
     });
   };
   const items = menuItems.filter((e) => {
-    if (!e.available || e.archived || omitWellBuildFromList(e)) return false;
+    if (isOpenMenuItem(e) || !e.available || e.archived || omitWellBuildFromList(e)) return false;
     if (!serverless) return true;
     const vendor = e.vendorId ? vendors.find((v) => v.id === e.vendorId) : undefined;
     return guestMayAddItem(

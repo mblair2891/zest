@@ -279,6 +279,7 @@ export function applyStationPublish(
     patch.settings = settings;
     if (locationId) patch.tenantLocationId = locationId;
     usePosStore.setState(patch as never);
+    usePosStore.getState().ensureOpenMenu();
     if (setup.laborByEntity) {
       try {
         const map = parseLaborMap(setup.laborByEntity);

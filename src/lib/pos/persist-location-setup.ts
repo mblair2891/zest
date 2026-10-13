@@ -442,6 +442,7 @@ export async function flushLocationCatalog(
 ): Promise<void> {
   const ctx = ids();
   if (!ctx) return;
+  usePosStore.getState().ensureOpenMenu();
   const pos = usePosStore.getState();
   const plan = floorPlanFromPos(pos.tables, pos.floorSections, pos.floorRoom);
   const editorId = entityEditorId();

@@ -3,6 +3,8 @@
  * Other entities’ items and every non-menu setup key stay untouched.
  */
 
+import { OPEN_FOOD_ID, OPEN_FOOD_NAME, OPEN_LIQUOR_ID, OPEN_LIQUOR_NAME, isOpenMenuId } from "./open-items.ts";
+
 export type MenuCatalogItem = Record<string, unknown> & { id: string; vendorId?: string };
 
 export type MenuCatalogWrite = {
@@ -60,6 +62,26 @@ export function applyEntityMenuWrite(
   }
   const index = catalog.items.findIndex((row) => row.id === id);
   const existing = index >= 0 ? catalog.items[index] : undefined;
+  if (isOpenMenuId(id) || (existing && isOpenMenuId(existing.id))) {
+    if (action === "delete") {
+      return { ok: false, error: "Open Food and Open Liquor stay on every menu" };
+    }
+    const liquor = id === OPEN_LIQUOR_ID;
+    const next: MenuCatalogItem = {
+      ...(existing ?? {}),
+      ...(itemRaw ?? {}),
+      id: liquor ? OPEN_LIQUOR_ID : OPEN_FOOD_ID,
+      name: liquor ? OPEN_LIQUOR_NAME : OPEN_FOOD_NAME,
+      priceCents: 0,
+      available: true,
+      openKind: liquor ? "liquor" : "food",
+      vendorId: operator,
+    };
+    delete next.archived;
+    if (index >= 0) catalog.items[index] = next;
+    else catalog.items.push(next);
+    return { ok: true, catalog };
+  }
   if (existing && !ownedBy(existing, operator)) {
     return { ok: false, error: "Not permitted for this operator" };
   }

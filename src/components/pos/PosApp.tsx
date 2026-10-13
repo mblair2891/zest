@@ -651,6 +651,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                   })
                 : cur.vendors,
             });
+            usePosStore.getState().ensureOpenMenu();
           }
           if (setup.financeBooks) {
             useFinanceStore.getState().hydrate(setup.financeBooks, setup.lifecycleStatus === "live");

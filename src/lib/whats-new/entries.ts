@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_267_open_food_liquor",
+    date: "2026-10-13",
+    title: "Open Food and Open Liquor",
+    summary:
+      "Every entity menu includes Open Food and Open Liquor. The server enters the amount.",
+    body: "Open Food and Open Liquor stay on every order-taking menu. Tap one and enter the amount. Open Food prints on the food order printer and belongs to the food entity. Open Liquor prints on the bar order printer and belongs to the bar entity. Either can be added to any check.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu", "orders"],
+  },
+  {
     id: "upd_2026_10_266_card_read_closes",
     date: "2026-10-13",
     title: "Card read closes the check",

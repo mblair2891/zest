@@ -414,6 +414,8 @@ export interface MenuCategory {
   vendorId?: string;
   /** Well book group for a drink entity. The order pad lists it before specialty groups. */
   wellBook?: boolean;
+  /** Permanent Open Food or Open Liquor group. Shown on every entity menu. */
+  openBook?: boolean;
 }
 
 export interface ModifierOption {
@@ -461,6 +463,8 @@ export interface MenuItem {
   wellHidden?: boolean;
   /** Hidden from the pad. Stays on past tickets and costing. */
   archived?: boolean;
+  /** Price is typed on the check. food → food entity and kitchen. liquor → bar entity and bar. */
+  openKind?: "food" | "liquor";
 }
 
 export interface SelectedModifier {
