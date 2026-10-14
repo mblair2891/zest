@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_269_floor_section",
+    date: "2026-10-13",
+    title: "Section filter on the floor",
+    summary:
+      "Staff can pick a section. Bar shows only the bar, with large stools in the status colors.",
+    body: "On the staff floor, each person picks a section. Bar shows only the bar, and those seats fill the screen so the stools are easy to tap. Stools use the same status colors as tables: empty, sat, drinks, food, delivered, dining unpaid, and closed · needs bus. The choice stays with that person and does not change the published floor.",
+    roles: ["owner_manager", "server", "host_operator", "kitchen_bar"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_268_manual_card",
     date: "2026-10-13",
     title: "Manual card entry",

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Table } from "@/lib/pos/types";
 import { floorMapNumber } from "@/lib/pos/floor-fit";
-import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomToView, fixturePixelBox } from "@/lib/pos/floor-dimensions";
+import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomFocus, fitRoomToView, fixturePixelBox } from "@/lib/pos/floor-dimensions";
 import { usePosStore } from "@/lib/pos/store";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
@@ -66,6 +66,8 @@ export type FloorMapItem = {
   table: Table;
   fill: string;
   ink: string;
+  /** Pipeline status. Stools use the same colors as tables. */
+  status?: string;
   /** Empty tables draw a hairline ring and a clear center. */
   hollow?: boolean;
   flashing: boolean;
@@ -82,11 +84,14 @@ export function FloorMapCanvas({
   items,
   onTableClick,
   onCombine,
+  focusSection = false,
 }: {
   items: FloorMapItem[];
   onTableClick: (table: Table) => void;
   /** Drag table A onto table B. A joins B. */
   onCombine?: (draggedId: string, ontoId: string) => void;
+  /** One section: fit those seats into the pane. The published floor is unchanged. */
+  focusSection?: boolean;
 }) {
   const viewRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ w: 800, h: 600 });
@@ -120,16 +125,25 @@ export function FloorMapCanvas({
   }, []);
 
   const room = usePosStore((s) => s.floorRoom) ?? DEFAULT_ROOM;
-  const fit = useMemo(
-    () =>
-      fitRoomToView({
+  const fit = useMemo(() => {
+    const seats = items.filter((item) => !isArchitectureKind(item.table.kind));
+    if (focusSection && (seats.length > 0 || items.length > 0)) {
+      return fitRoomFocus({
         room,
+        fixtures: (seats.length ? seats : items).map((item) => item.table),
         viewW: view.w,
         viewH: view.h,
         marginPx: ROOM_FIT_MARGIN_PX,
-      }),
-    [room, view.w, view.h],
-  );
+        minTapPx: 72,
+      });
+    }
+    return fitRoomToView({
+      room,
+      viewW: view.w,
+      viewH: view.h,
+      marginPx: ROOM_FIT_MARGIN_PX,
+    });
+  }, [focusSection, items, room, view.w, view.h]);
 
   useEffect(() => {
     setCam({ s: 1, x: fit.originX, y: fit.originY });
@@ -222,6 +236,7 @@ export function FloorMapCanvas({
       data-floor-map="status"
       data-floor-canvas="white"
       data-floor-nubs="0"
+      data-floor-focus={focusSection ? "section" : "room"}
       data-floor-table-count={items.length}
       style={{ touchAction: "none" }}
       onPointerDown={onPointerDown}
@@ -244,7 +259,7 @@ export function FloorMapCanvas({
           const stool = !arch && (item.table.kind === "barstool" || item.table.shape === "bar");
           const box = fixturePixelBox(item.table, room, fit.pxPerIn);
           const num = floorMapNumber(item.table.label);
-          const fill = item.fill && item.fill !== "transparent" ? item.fill : "#f4efe6";
+          const fill = item.fill && item.fill !== "transparent" ? item.fill : "#ffffff";
           return (
             <button
               key={item.table.id}
@@ -252,6 +267,7 @@ export function FloorMapCanvas({
               data-table-id={item.table.id}
               data-floor-label={num}
               data-floor-seat={stool ? "tile" : "table"}
+              data-floor-pipeline={item.status ?? ""}
               aria-label={stool ? `Seat ${num}` : `Table ${num}`}
               onClick={() => {
                 if (suppress.current) {
@@ -298,27 +314,18 @@ export function FloorMapCanvas({
                   }
                   gaps={openingGaps(item.table, items.map((i) => i.table), room)}
                 />
-              ) : stool ? (
-                <FloorFixtureArt
-                  table={item.table}
-                  tableFill={item.hollow ? "#f4efe6" : fill}
-                  outline="#1c1917"
-                  label={num}
-                  rotation={0}
-                  className="h-full w-full"
-                  hairline
-                />
               ) : (
                 <FloorFixtureArt
                   table={item.table}
                   tableFill={fill}
-                  outline={fill}
+                  outline={item.hollow ? "#1c1917" : fill}
                   label={num}
                   joined={item.joined}
-                  rotation={item.table.rotation ?? 0}
+                  rotation={stool ? 0 : (item.table.rotation ?? 0)}
                   mode="status"
-                  hollow={item.hollow}
+                  hollow={Boolean(item.hollow)}
                   ink={item.ink}
+                  className="h-full w-full"
                 />
               )}
             </button>

@@ -163,6 +163,58 @@ export function fitRoomToView(opts: {
   };
 }
 
+/**
+ * Fit one section's seats into the pane. The published room stays put.
+ * Seats grow until they are easy to tap, and stay within 1.6× the fit
+ * so a long bar can still be panned across the screen.
+ */
+export function fitRoomFocus(opts: {
+  room: FloorRoom;
+  fixtures: Array<{ x: number; y: number; w: number; h: number; rotation?: number | null }>;
+  viewW: number;
+  viewH: number;
+  marginPx?: number;
+  minTapPx?: number;
+}): { pxPerIn: number; worldW: number; worldH: number; originX: number; originY: number } {
+  if (!opts.fixtures.length) return fitRoomToView(opts);
+  const boxes = opts.fixtures.map((item) => fixtureEdgeBox(item, opts.room));
+  let left = Math.min(...boxes.map((box) => box.left));
+  let top = Math.min(...boxes.map((box) => box.top));
+  let right = Math.max(...boxes.map((box) => box.right));
+  let bottom = Math.max(...boxes.map((box) => box.bottom));
+  const span = Math.max(12, Math.min(right - left, bottom - top));
+  const pad = Math.max(8, span * 0.08);
+  left = Math.max(0, left - pad);
+  top = Math.max(0, top - pad);
+  right = Math.min(opts.room.widthIn, right + pad);
+  bottom = Math.min(opts.room.depthIn, bottom + pad);
+  const boxW = Math.max(12, right - left);
+  const boxH = Math.max(12, bottom - top);
+  const fullW = Math.max(1, opts.viewW);
+  const fullH = Math.max(1, opts.viewH);
+  const margin = Math.max(0, opts.marginPx ?? 0);
+  const viewW = Math.max(1, fullW - margin * 2);
+  const viewH = Math.max(1, fullH - margin * 2);
+  const fitPx = Math.min(viewW / boxW, viewH / boxH);
+  const minSeat = Math.min(
+    ...boxes.map((box) => Math.max(1, Math.min(box.right - box.left, box.bottom - box.top))),
+  );
+  const minTap = opts.minTapPx ?? 0;
+  const seatNeed = minTap > 0 ? minTap / minSeat : fitPx;
+  const pxPerIn = Math.min(Math.max(fitPx, seatNeed), fitPx * 1.6);
+  const worldW = opts.room.widthIn * pxPerIn;
+  const worldH = opts.room.depthIn * pxPerIn;
+  const boxWpx = boxW * pxPerIn;
+  const boxHpx = boxH * pxPerIn;
+  return {
+    pxPerIn,
+    worldW,
+    worldH,
+    originX: (fullW - boxWpx) / 2 - left * pxPerIn,
+    originY: (fullH - boxHpx) / 2 - top * pxPerIn,
+  };
+}
+
 export type FloorCamera = { s: number; x: number; y: number };
 
 /** A click, drag, resize, or properties-pane reflow must not move the editor camera. */

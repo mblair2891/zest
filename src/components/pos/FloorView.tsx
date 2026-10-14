@@ -70,7 +70,13 @@ import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import { FloorMapCanvas, type FloorMapItem } from "@/components/pos/FloorMapCanvas";
-import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomToView } from "@/lib/pos/floor-dimensions";
+import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomFocus, fitRoomToView } from "@/lib/pos/floor-dimensions";
+import {
+  initialStaffFloorSection,
+  readStaffFloorSection,
+  tablesForStaffSection,
+  writeStaffFloorSection,
+} from "@/lib/pos/floor-section-view";
 import { isArchitectureKind, wallEndExtensions } from "@/lib/pos/floor-architecture";
 import { openingGaps } from "@/lib/pos/floor-room";
 import { floorDraftBannerOn, FLOOR_DRAFT_BANNER, readFloorDraft, setFloorDraftBanner } from "@/lib/pos/live-floor";
@@ -268,6 +274,26 @@ export function FloorView({
         ? "Mine"
         : "All";
   const effectiveSection = section === "__init" ? defaultSection : section;
+  const namedSection = effectiveSection !== "All" && effectiveSection !== "Mine";
+  const homeKey = (emp?.homeSectionIds ?? []).join("|");
+  const rememberSection = (name: string) => {
+    setSection(name);
+    setFloorScope(name === "All" || name === "Mine" ? "entire" : "section");
+    if (!emp?.id || name === "Mine" || typeof window === "undefined") return;
+    writeStaffFloorSection(window.localStorage, locId || "", emp.id, name);
+  };
+  useEffect(() => {
+    if (!emp?.id || typeof window === "undefined") return;
+    const names = sectionTabs.map((tab) => tab.name);
+    const saved = readStaffFloorSection(window.localStorage, locId || "", emp.id, names);
+    const next = initialStaffFloorSection({
+      saved,
+      sections: sectionTabs.map((tab) => ({ id: tab.id, name: tab.name })),
+      homeSectionIds: homeKey ? homeKey.split("|") : [],
+    });
+    setSection(next);
+    setFloorScope(next === "All" ? "entire" : "section");
+  }, [emp?.id, homeKey, locId, sectionTabs]);
   const floorServers = employees.filter(
     (e) => e.active && (e.role === "server" || e.role === "bartender"),
   );
@@ -291,6 +317,8 @@ export function FloorView({
   const barPick = floorIntent === "bar_tab";
   const visible = barPick
     ? barTabVisibleTables({ tables, emp, sections: floorSections })
+    : namedSection
+      ? tablesForStaffSection(tables, effectiveSection)
     : tables.filter((t) => {
         if (t.mergedIntoId) return false;
         if (effectiveSection !== "All" && effectiveSection !== "Mine") {
@@ -316,9 +344,9 @@ export function FloorView({
         );
       })
     : visible;
-  /** House floor stays on the map. A section filter or Operating as that matches nothing still draws the venue tables. */
+  /** A named section shows only those seats. All still falls back to the house floor. */
   const houseTables = tables.filter((t) => !t.mergedIntoId);
-  const painted = shown.length > 0 ? shown : houseTables;
+  const painted = namedSection ? shown : shown.length > 0 ? shown : houseTables;
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { check_open: 0 };
@@ -431,15 +459,30 @@ export function FloorView({
     ro.observe(el);
     return () => ro.disconnect();
   }, [mapOnly, tables.length]);
+  const focusFixtures = useMemo(() => {
+    if (!namedSection) return [];
+    return tablesForStaffSection(tables, effectiveSection).filter(
+      (table) => !isArchitectureKind(table.kind),
+    );
+  }, [namedSection, tables, effectiveSection]);
   const liveFit = useMemo(
     () =>
-      fitRoomToView({
-        room: floorRoom ?? DEFAULT_ROOM,
-        viewW: Math.max(1, liveView.w),
-        viewH: Math.max(1, liveView.h),
-        marginPx: ROOM_FIT_MARGIN_PX,
-      }),
-    [floorRoom, liveView.w, liveView.h],
+      focusFixtures.length
+        ? fitRoomFocus({
+            room: floorRoom ?? DEFAULT_ROOM,
+            fixtures: focusFixtures,
+            viewW: Math.max(1, liveView.w),
+            viewH: Math.max(1, liveView.h),
+            marginPx: ROOM_FIT_MARGIN_PX,
+            minTapPx: 72,
+          })
+        : fitRoomToView({
+            room: floorRoom ?? DEFAULT_ROOM,
+            viewW: Math.max(1, liveView.w),
+            viewH: Math.max(1, liveView.h),
+            marginPx: ROOM_FIT_MARGIN_PX,
+          }),
+    [focusFixtures, floorRoom, liveView.w, liveView.h],
   );
 
   if (tables.length === 0) {
@@ -482,6 +525,7 @@ export function FloorView({
           table: t,
           fill,
           ink: contrastInk(fill),
+          status: st,
           hollow: st === "empty",
           flashing: tableFlash(t, floorCfg, clock || Date.now()),
           dim,
@@ -510,10 +554,7 @@ export function FloorView({
             size={mapOnly ? "lg" : "sm"}
             className={mapOnly ? "station-touch h-12" : undefined}
             variant={floorScope === "entire" ? "default" : "outline"}
-            onClick={() => {
-              setFloorScope("entire");
-              setSection("All");
-            }}
+            onClick={() => rememberSection("All")}
           >
             Entire location
           </Button>
@@ -521,22 +562,20 @@ export function FloorView({
             size={mapOnly ? "lg" : "sm"}
             className={mapOnly ? "station-touch h-12" : undefined}
             variant={floorScope === "section" ? "default" : "outline"}
-            onClick={() => {
-              setFloorScope("section");
-              setSection(sectionTabs[0]?.name ?? "All");
-            }}
+            onClick={() => rememberSection(sectionTabs[0]?.name ?? "All")}
           >
             By section
           </Button>
         </div>
         )}
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1" data-floor-sections="">
           {floorScope === "entire" && (
             <Button
               size={mapOnly ? "lg" : "sm"}
               className={mapOnly ? "station-touch h-12" : undefined}
               variant={effectiveSection === "All" ? "default" : "outline"}
-              onClick={() => setSection("All")}
+              data-floor-section="All"
+              onClick={() => rememberSection("All")}
             >
               All
             </Button>
@@ -546,7 +585,8 @@ export function FloorView({
               size={mapOnly ? "lg" : "sm"}
               className={mapOnly ? "station-touch h-12" : undefined}
               variant={effectiveSection === "Mine" ? "default" : "outline"}
-              onClick={() => setSection("Mine")}
+              data-floor-section="Mine"
+              onClick={() => rememberSection("Mine")}
             >
               Mine
             </Button>
@@ -556,7 +596,8 @@ export function FloorView({
               key={s.id}
               size={mapOnly ? "lg" : "sm"}
               variant={effectiveSection === s.name ? "default" : "outline"}
-              onClick={() => setSection(s.name)}
+              data-floor-section={s.name}
+              onClick={() => rememberSection(s.name)}
               className={mapOnly ? "station-touch h-12 gap-1.5" : "gap-1.5"}
             >
               <span
@@ -669,14 +710,45 @@ export function FloorView({
             </div>
             {draftBanner && (
               <p
-                className="pointer-events-none absolute left-1/2 top-16 z-20 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white"
+                className="pointer-events-none absolute left-1/2 top-28 z-20 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white"
                 data-floor-draft-banner
               >
                 {FLOOR_DRAFT_BANNER}
               </p>
             )}
+            <div
+              className="pointer-events-auto absolute inset-x-2 top-20 z-30 flex gap-1 overflow-x-auto"
+              data-floor-sections=""
+            >
+              <button
+                type="button"
+                data-floor-section="All"
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold",
+                  effectiveSection === "All" ? "bg-white text-black" : "bg-black/45 text-white",
+                )}
+                onClick={() => rememberSection("All")}
+              >
+                All
+              </button>
+              {sectionTabs.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  data-floor-section={s.name}
+                  className={cn(
+                    "shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold",
+                    effectiveSection === s.name ? "bg-white text-black" : "bg-black/45 text-white",
+                  )}
+                  onClick={() => rememberSection(s.name)}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
             <FloorMapCanvas
               items={mapItems}
+              focusSection={namedSection}
               onTableClick={onTableClick}
               onCombine={(draggedId, ontoId) => {
                 withManager((pin) => joinParty(draggedId, ontoId, pin));
