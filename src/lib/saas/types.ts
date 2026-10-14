@@ -69,6 +69,8 @@ export type LocationSetup = {
   printAgentToken?: string;
   /** Epoch ms when the house print agent last polled the venue queue. */
   printAgentSeenAt?: number;
+  /** One in-flight staff Wi-Fi printer scan. Not a saved printer. */
+  printerScan?: import("@/lib/print/printer-discover").PrinterScanTicket;
   voiceControlEnabledByRole?: Partial<Record<string, boolean>>;
   networkReadyStatus?: import("./network-readiness").NetworkReadyStatus;
   networkCheckedAt?: string;

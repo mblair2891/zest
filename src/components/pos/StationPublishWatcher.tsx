@@ -14,7 +14,9 @@ import {
 } from "@/lib/pos/station-role-sync";
 import { usePosStore } from "@/lib/pos/store";
 import { deliverRawPrint } from "@/lib/print/dispatch";
-import { claimStationPrintFn, completeStationPrintFn } from "@/lib/print/api";
+import { claimStationPrintFn, completeStationPrintFn, finishPrinterScanFn, pullPrinterScanFn } from "@/lib/print/api";
+import { scanNativePrinters } from "@/lib/print/discover-printers";
+import { isNativeApp } from "@/lib/native-shell";
 import { heartbeatLocationDeviceFn } from "@/lib/access/api";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import {
@@ -24,6 +26,42 @@ import {
 } from "@/lib/pos/station-refresh";
 
 const STATE_POLL_MS = 5_000;
+let printerScanBusy = false;
+
+function pollPrinterScan(locationId: string, deviceId: string): void {
+  if (printerScanBusy || !isNativeApp()) return;
+  void pullPrinterScanFn({ data: { locationId, deviceId } })
+    .then(async (res) => {
+      const ticket = res.ticket;
+      if (!ticket || ticket.status !== "pending" || printerScanBusy) return;
+      printerScanBusy = true;
+      try {
+        const printers = await scanNativePrinters();
+        await finishPrinterScanFn({
+          data: {
+            locationId,
+            deviceId,
+            id: ticket.id,
+            printers: printers ?? [],
+            error: printers ? "" : "This station cannot scan.",
+          },
+        });
+      } catch {
+        await finishPrinterScanFn({
+          data: {
+            locationId,
+            deviceId,
+            id: ticket.id,
+            printers: [],
+            error: "Printer scan failed.",
+          },
+        }).catch(() => undefined);
+      } finally {
+        printerScanBusy = false;
+      }
+    })
+    .catch(() => undefined);
+}
 const PUBLISH_POLL_MS = 20_000;
 const IDLE_TICK_MS = 1_000;
 
@@ -43,6 +81,7 @@ function pollStationState(): void {
     .then((res) => ingestHeartbeat(res))
     .catch(() => undefined);
   const role = readStationDeviceRole() ?? pair?.station ?? "order";
+  pollPrinterScan(locationId, deviceId);
   void claimStationPrintFn({ data: { locationId, deviceId, role } })
     .then(async (res) => {
       const job = res.job;

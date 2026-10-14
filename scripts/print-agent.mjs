@@ -87,6 +87,20 @@ const server = http.createServer(async (req, res) => {
     send(res, 200, { ok: true, service: "summex-print-agent" });
     return;
   }
+  if (req.method === "GET" && url.pathname === "/scan") {
+    try {
+      const { scanLocalPrinters } = await import("../src/lib/print/lan-scan.ts");
+      const found = await scanLocalPrinters();
+      send(res, 200, { ok: true, printers: found.printers, error: found.error });
+    } catch (err) {
+      send(res, 200, {
+        ok: false,
+        printers: [],
+        error: err instanceof Error ? err.message : "Scan failed",
+      });
+    }
+    return;
+  }
   if (req.method === "POST" && url.pathname === "/print") {
     const chunks = [];
     for await (const c of req) chunks.push(c);

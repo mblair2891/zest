@@ -35,6 +35,7 @@ const TOPIC_SCREEN: Record<string, UpdateScreen> = {
   "receipts-by-vendor": PAYMENTS,
   chargebacks: PAYMENTS,
   "pax-card-reader": PAYMENTS,
+  "printers-kds": { view: "settings", tab: "settings", label: "Devices" },
 };
 
 export function screenForUpdate(update: GuideUpdate): UpdateScreen | null {

@@ -16,7 +16,7 @@ import {
   unpairLocationDeviceFn,
 } from "@/lib/access/api";
 import { hashPin, isFourDigitPin } from "@/lib/pos/pin";
-import { flushLocationCatalog } from "@/lib/pos/persist-location-setup";
+import { flushLocationCatalog, persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { publishOwnerBlock } from "@/lib/pos/room-owner";
 import { noteChecklistSave, useChecklistLink } from "@/lib/saas/checklist-link";
 import { getSessionContextFn } from "@/lib/saas/api";
@@ -74,7 +74,12 @@ import {
 import {
   enqueueStationPrintFn,
   getStationPrintJobFn,
+  readPrinterScanFn,
+  requestPrinterScanFn,
 } from "@/lib/print/api";
+import { discoverPrinters } from "@/lib/print/discover-printers";
+import type { DiscoveredPrinter } from "@/lib/print/printer-discover";
+import { destinationForGroup } from "@/lib/pos/order-destinations";
 import { parseQrPolicy, qrPrintOnTicket } from "@/lib/pos/qr-policy";
 import { usePosStore } from "@/lib/pos/store";
 import { formatTime } from "@/lib/utils";
@@ -264,7 +269,13 @@ export function LocationDeviceRegistry({
   const [sectionIds, setSectionIds] = useState<string[]>([]);
   const [serveNoSection, setServeNoSection] = useState(false);
   const [venueDefault, setVenueDefault] = useState(false);
+  const [foodGroupIds, setFoodGroupIds] = useState<string[]>([]);
+  const [scanBusy, setScanBusy] = useState(false);
+  const [foundPrinters, setFoundPrinters] = useState<DiscoveredPrinter[]>([]);
+  const [scanNote, setScanNote] = useState<string | null>(null);
   const floorSections = usePosStore((s) => s.floorSections);
+  const categories = usePosStore((s) => s.categories);
+  const updateCategory = usePosStore((s) => s.updateCategory);
   const [stationClass, setStationClass] = useState<"handheld" | "terminal">("handheld");
   const [cardReaderKind, setCardReaderKind] = useState<"mobile" | "counter">("mobile");
   const [cardReaderId, setCardReaderId] = useState("");
@@ -581,18 +592,99 @@ export function LocationDeviceRegistry({
     );
     setCardReaderId(preset?.cardReaderId ?? "");
     setReceiptPrinterId(preset?.receiptPrinterId ?? "");
+    const cats = usePosStore.getState().categories;
+    setFoodGroupIds(
+      preset?.id ? cats.filter((c) => c.printerId === preset.id).map((c) => c.id) : [],
+    );
     setFormOpen(true);
+  };
+
+  const openScannedPrinter = (found: DiscoveredPrinter) => {
+    const ip = found.ip;
+    const existing = devices.find(
+      (d) =>
+        isPrinterDevice(d) &&
+        (d.print?.ip === ip || (d.print?.target ?? "").startsWith(`${ip}:`)),
+    );
+    if (existing) {
+      resetForm(existing);
+      return;
+    }
+    resetForm();
+    setEditingId(null);
+    setLabel(found.name);
+    setType("receipt_printer");
+    setPrintLink("wifi");
+    setPrintIp(ip);
+    setPrintPort(String(found.port > 0 ? found.port : 9100));
+    setPrintModel(defaultPrinterModel("receipt"));
+    setDrawerKick("attached");
+    setFormOpen(true);
+  };
+
+  const scanForPrinters = async () => {
+    setScanBusy(true);
+    setScanNote(null);
+    setError(null);
+    setFoundPrinters([]);
+    try {
+      const found = await discoverPrinters();
+      if (found.printers.length) {
+        setFoundPrinters(found.printers);
+        setScanNote(
+          found.printers.length === 1
+            ? "1 printer on this Wi-Fi. Name it and save."
+            : `${found.printers.length} printers on this Wi-Fi. Name one and save.`,
+        );
+        return;
+      }
+      const stationOnline = devices.some((d) => isVenueStationOnline(d));
+      if (found.source !== "station" && stationOnline && resolvedLocId) {
+        setScanNote("Scanning from a station on this Wi-Fi…");
+        const req = await requestPrinterScanFn({ data: { locationId: resolvedLocId } });
+        const id = req.ticket?.id;
+        if (id) {
+          const deadline = Date.now() + 18_000;
+          while (Date.now() < deadline) {
+            await new Promise((r) => window.setTimeout(r, 700));
+            const st = await readPrinterScanFn({ data: { locationId: resolvedLocId } });
+            const ticket = st.ticket;
+            if (!ticket || ticket.id !== id || ticket.status === "pending") continue;
+            if (ticket.printers.length) {
+              setFoundPrinters(ticket.printers);
+              setScanNote(
+                ticket.printers.length === 1
+                  ? "1 printer on this Wi-Fi. Name it and save."
+                  : `${ticket.printers.length} printers on this Wi-Fi. Name one and save.`,
+              );
+              return;
+            }
+            setScanNote(ticket.error || "No printers found on this Wi-Fi.");
+            return;
+          }
+        }
+      }
+      setScanNote(found.error || "No printers found on this Wi-Fi.");
+    } catch (e) {
+      setScanNote(e instanceof Error ? e.message : "Printer scan failed.");
+    } finally {
+      setScanBusy(false);
+    }
   };
 
   const save = async (opts?: { id?: string; asBrowser?: boolean }) => {
     setBusy(true);
     setError(null);
     try {
+      const printerGate = isPrinterType(type);
       const id =
         opts?.id ||
         editingId ||
-        (opts?.asBrowser ? readOrCreateBrowserDeviceId(resolvedLocId) : "");
-      const printerGate = isPrinterType(type);
+        (opts?.asBrowser
+          ? readOrCreateBrowserDeviceId(resolvedLocId)
+          : printerGate
+            ? `dev_${Math.random().toString(36).slice(2, 10)}`
+            : "");
       if (!printerGate && cardReaderId) {
         const blocked = readerAssignmentBlock({
           readers: cardReaders,
@@ -690,6 +782,22 @@ export function LocationDeviceRegistry({
         const dest = normalizeDestinationName(destinationName) || DEFAULT_ORDER_DESTINATION;
         if (!isPresetDestination(dest)) {
           await persistOrderDestinations([...orderDestinations, dest]);
+        }
+        const barDest = dest.toLowerCase() === "bar";
+        if (!barDest) {
+          let menuChanged = false;
+          for (const cat of usePosStore.getState().categories) {
+            const want = foodGroupIds.includes(cat.id);
+            const has = cat.printerId === id;
+            if (want && !has) {
+              updateCategory(cat.id, { printerId: id, destinationName: dest });
+              menuChanged = true;
+            } else if (!want && has) {
+              updateCategory(cat.id, { printerId: "" });
+              menuChanged = true;
+            }
+          }
+          if (menuChanged) persistLocationCatalog("menu");
         }
       }
       noteChecklistSave({
@@ -1021,6 +1129,15 @@ export function LocationDeviceRegistry({
                 Publish changes
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || scanBusy}
+              data-scan-printers
+              onClick={() => void scanForPrinters()}
+            >
+              {scanBusy ? "Scanning…" : "Scan for printers"}
+            </Button>
             <Button size="sm" onClick={() => resetForm()}>
               {addLabel}
             </Button>
@@ -1030,6 +1147,40 @@ export function LocationDeviceRegistry({
           {resolvedName || locationName} · persist on this location
         </p>
         {publishMsg && <p className="mt-1 text-xs text-primary">{publishMsg}</p>}
+        {scanNote && (
+          <p className="mt-2 text-sm" data-printer-scan-status role="status">
+            {scanNote}
+          </p>
+        )}
+        {foundPrinters.length > 0 && (
+          <ul className="mt-2 space-y-1" data-printer-scan-results>
+            {foundPrinters.map((p) => {
+              const saved = devices.some(
+                (d) =>
+                  isPrinterDevice(d) &&
+                  (d.print?.ip === p.ip || (d.print?.target ?? "").startsWith(`${p.ip}:`)),
+              );
+              return (
+                <li key={p.ip}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-xl border border-border bg-surface px-3 py-2 text-left text-sm"
+                    data-printer-scan-ip={p.ip}
+                    onClick={() => openScannedPrinter(p)}
+                  >
+                    <span>
+                      <span className="font-medium">{p.name || "Printer"}</span>
+                      <span className="ml-2 text-muted-foreground">{p.ip}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {saved ? "Already saved" : "Name and save"}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
         <div className="mt-4">
           <SquareTerminalPanel
             locationId={resolvedLocId}
@@ -1918,11 +2069,44 @@ export function LocationDeviceRegistry({
               )}
               {isOrderPrinterType(type) &&
                 normalizeDestinationName(destinationName).toLowerCase() !== "bar" && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Food order printers are assigned on Menu groups (destination + printer). Same
-                    destination + same printer on one Send is one slip. Table section does not route
-                    food.
-                  </p>
+                  <fieldset className="space-y-1" data-printer-food-groups>
+                    <legend className="text-xs text-muted-foreground">Food groups</legend>
+                    <p className="text-[11px] text-muted-foreground">
+                      Menu groups checked here print on this printer. Same destination and printer
+                      on one Send is one slip. Drinks still use the bar printer for the table’s
+                      section.
+                    </p>
+                    <div className="flex flex-col gap-1">
+                      {categories
+                        .filter((cat) => destinationForGroup(cat).toLowerCase() !== "bar")
+                        .slice()
+                        .sort((a, b) => a.sort - b.sort)
+                        .map((cat) => (
+                          <label key={cat.id} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-border"
+                              data-printer-food-group={cat.id}
+                              checked={foodGroupIds.includes(cat.id)}
+                              onChange={(e) =>
+                                setFoodGroupIds((prev) =>
+                                  e.target.checked
+                                    ? [...prev, cat.id]
+                                    : prev.filter((x) => x !== cat.id),
+                                )
+                              }
+                            />
+                            {cat.name}
+                          </label>
+                        ))}
+                      {categories.filter((cat) => destinationForGroup(cat).toLowerCase() !== "bar")
+                        .length === 0 && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Add menu groups first, then assign them here.
+                        </p>
+                      )}
+                    </div>
+                  </fieldset>
                 )}
               {isOrderPrinterType(type) && (
               <fieldset className="space-y-1">

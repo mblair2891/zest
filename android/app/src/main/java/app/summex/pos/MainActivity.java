@@ -34,6 +34,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(RawPrintPlugin.class);
+        registerPlugin(PrinterScanPlugin.class);
         registerPlugin(StationKioskPlugin.class);
         registerPlugin(StripeTerminalPlugin.class);
         registerPlugin(PaxD135Plugin.class);

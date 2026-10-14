@@ -329,3 +329,85 @@ export const completePrintAgentFn = createServerFn({ method: "POST" })
     });
     return { ok: true as const };
   });
+
+/** This host's staff subnet. A cloud host returns no printers. */
+export const scanLanPrintersFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator(() => ({}))
+  .handler(async () => {
+    const { scanLocalPrinters } = await import("./lan-scan.ts");
+    return scanLocalPrinters();
+  });
+
+/** Ask an online station on the staff Wi-Fi to scan. Does not save a printer. */
+export const requestPrinterScanFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId?: string }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    if (!data.locationId) return { ticket: null };
+    const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
+    await assertLocationAccess(context.userId, data.locationId);
+    const { requestPrinterScan } = await import("./printer-scan.server.ts");
+    return { ticket: await requestPrinterScan(data.locationId) };
+  });
+
+export const readPrinterScanFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId?: string }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    if (!data.locationId) return { ticket: null };
+    const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
+    await assertLocationAccess(context.userId, data.locationId);
+    const { readPrinterScan } = await import("./printer-scan.server.ts");
+    return { ticket: await readPrinterScan(data.locationId) };
+  });
+
+/** Paired station pulls a pending scan. Old station apps ignore this. */
+export const pullPrinterScanFn = createServerFn({ method: "POST" })
+  .validator((d: { locationId?: string; deviceId?: string }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ data }) => {
+    if (!data.locationId || !data.deviceId) return { ticket: null };
+    const { readStationPairState } = await import("@/lib/pos/station-state.server");
+    const live = await readStationPairState(data);
+    if (!live.ok) return { ticket: null };
+    const { pullPrinterScan } = await import("./printer-scan.server.ts");
+    return { ticket: await pullPrinterScan(data.locationId) };
+  });
+
+export const finishPrinterScanFn = createServerFn({ method: "POST" })
+  .validator((d: {
+    locationId?: string;
+    deviceId?: string;
+    id?: string;
+    printers?: unknown;
+    error?: string;
+  }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+    id: String(d.id ?? "").trim().slice(0, 40),
+    printers: d.printers,
+    error: String(d.error ?? "").slice(0, 180),
+  }))
+  .handler(async ({ data }) => {
+    if (!data.locationId || !data.deviceId || !data.id) return { ticket: null };
+    const { readStationPairState } = await import("@/lib/pos/station-state.server");
+    const live = await readStationPairState(data);
+    if (!live.ok) return { ticket: null };
+    const { parseDiscoveredPrinters } = await import("./printer-discover.ts");
+    const { finishPrinterScan } = await import("./printer-scan.server.ts");
+    return {
+      ticket: await finishPrinterScan({
+        locationId: data.locationId,
+        id: data.id,
+        printers: parseDiscoveredPrinters(data.printers),
+        error: data.error,
+      }),
+    };
+  });

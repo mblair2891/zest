@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_270_printer_scan",
+    date: "2026-10-13",
+    title: "Scan for printers",
+    summary:
+      "Devices can scan the staff Wi-Fi. Name the printer, choose Order or Receipt, assign a section or food group, and save.",
+    body: "Scan for printers looks on this Wi-Fi for devices that answer on port 9100 or advertise as a printer. Each row shows the IP and any name the printer reports. Name it, choose Order or Receipt, assign the floor section or the food groups, and save. The saved printer prints the same way as one typed in.",
+    roles: ["owner_manager", "kitchen_bar"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["printers"],
+  },
+  {
     id: "upd_2026_10_269_floor_section",
     date: "2026-10-13",
     title: "Section filter on the floor",
