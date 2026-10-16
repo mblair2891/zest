@@ -84,13 +84,15 @@ test("tip slip has suggested tips, a signature line, and no pay QR", () => {
   assert.match(txt, /CARD AUTHORIZED/);
   assert.match(txt, /GUEST COPY/);
   assert.match(txt, /Card authorized - tip not yet applied/);
-  assert.match(txt, /Tip 18%/);
-  assert.match(txt, /Tip 20%/);
-  assert.match(txt, /Tip 25%/);
+  assert.match(txt, /\[ \] 18%/);
+  assert.match(txt, /\[ \] 20%/);
+  assert.match(txt, /\[ \] 25%/);
+  assert.match(txt, /Tip \$1\.96/);
+  assert.match(txt, /Total \$12\.84/);
   assert.match(txt, /Signature/);
   assert.match(txt, /_{42}/);
   assert.ok(txt.includes("\x1d\x21\x10"));
-  const suggestions = txt.slice(txt.indexOf("Tip 18%"), txt.indexOf("Tip 20%"));
+  const suggestions = txt.slice(txt.indexOf("[ ] 18%"), txt.indexOf("[ ] 20%"));
   assert.ok((suggestions.match(/\n/g) ?? []).length >= 2);
   assert.doesNotMatch(txt, /Scan to pay/);
   assert.equal(escposHasNativeQr(bytes), false);
@@ -114,15 +116,37 @@ test("merchant tip slip prints tall tips and a full-width signature", () => {
   const txt = asText(bytes);
   assert.match(txt, /CARD AUTHORIZED/);
   assert.match(txt, /MERCHANT COPY/);
-  assert.match(txt, /Tip 18%/);
-  assert.match(txt, /Tip 25%/);
+  assert.match(txt, /\[ \] 18% {2}Tip \$1\.96 + Total \$12\.84/);
+  assert.match(txt, /\[ \] 20% {2}Tip \$2\.18 + Total \$13\.06/);
+  assert.match(txt, /\[ \] 25% {2}Tip \$2\.72 + Total \$13\.60/);
   assert.match(txt, /Tip +_{20,}/);
   assert.match(txt, /Total +_{20,}/);
   assert.match(txt, /_{42}/);
-  const beforeTips = txt.slice(txt.indexOf("Amount authorized"), txt.indexOf("Tip 18%"));
+  const beforeTips = txt.slice(txt.indexOf("Amount authorized"), txt.indexOf("[ ] 18%"));
   assert.ok((beforeTips.match(/\n/g) ?? []).length >= 4);
   const beforeSign = txt.slice(txt.indexOf("Total"), txt.indexOf("Signature"));
   assert.ok((beforeSign.match(/\n/g) ?? []).length >= 2);
+});
+
+test("a $45 check prints the sample checkbox tip totals", () => {
+  const bytes = buildEscPos(
+    job({
+      kind: "tip_slip",
+      copy: "merchant",
+      items: [],
+      totals: {
+        subtotalCents: 4500,
+        taxCents: 0,
+        totalCents: 4500,
+        cardTotalCents: 4500,
+      },
+    }),
+    { modelPreset: "epson_tm_t20" },
+  );
+  const txt = asText(bytes);
+  assert.match(txt, /\[ \] 18% {2}Tip \$8\.10 + Total \$53\.10/);
+  assert.match(txt, /\[ \] 20% {2}Tip \$9\.00 + Total \$54\.00/);
+  assert.match(txt, /\[ \] 25% {2}Tip \$11\.25 + Total \$56\.25/);
 });
 
 test("thermal text folds smart punctuation to ASCII and never prints question marks", () => {

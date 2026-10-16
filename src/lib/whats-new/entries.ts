@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_275_tip_checkboxes",
+    date: "2026-10-16",
+    title: "Tip checkboxes on the merchant slip",
+    summary:
+      "Each suggested tip on the merchant copy has a checkbox, the tip amount, and the grand total with that tip.",
+    body: "After the card is authorized, the merchant copy and the guest copy print each suggested tip in tall type. Each line has a checkbox, the tip amount, and the grand total with that tip. A blank tip line and a blank total line follow, then a signature line across the paper.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "receipts"],
+  },
+  {
     id: "upd_2026_10_274_tip_slip",
     date: "2026-10-16",
     title: "Larger merchant tip slip",

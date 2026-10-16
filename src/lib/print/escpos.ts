@@ -1,5 +1,5 @@
 import { formatCurrency } from "@/lib/utils";
-import { CARD_TIP_PERCENTS, tipCentsForPercent } from "@/lib/pos/card-tip";
+import { CARD_TIP_PERCENTS, cardChargeCents, tipCentsForPercent } from "@/lib/pos/card-tip";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import { receiptItemLine } from "@/lib/payments/finix-events";
@@ -135,6 +135,25 @@ function tallLine(left: string, right: string, width: number): Uint8Array {
 
 function writeInMarks(label: string, width: number): string {
   return "_".repeat(Math.max(12, width - label.length - 1));
+}
+
+/** One tall row: checkbox, percent, tip dollars, and the grand total with that tip. */
+export function tipChoiceLine(percent: number, authorizedCents: number, width: number): string {
+  const base = Math.max(0, Math.round(authorizedCents));
+  const tip = tipCentsForPercent(base, percent);
+  const grand = cardChargeCents(base, tip);
+  const tipText = money(tip);
+  const totalText = money(grand);
+  const paddedTip = tipText.padEnd(Math.max(6, tipText.length), " ");
+  const spaced = `[ ] ${percent}%  Tip ${paddedTip}  Total ${totalText}`;
+  if (spaced.length <= width) return spaced;
+  const tight = `[ ] ${percent}% Tip ${tipText} Total ${totalText}`;
+  if (tight.length <= width) return tight;
+  return `[ ] ${percent}% ${tipText} ${totalText}`.slice(0, width);
+}
+
+function tallText(value: string): Uint8Array {
+  return concat([TALL_ON, BOLD_ON, text(value), FEED, BOLD_OFF, DBL_OFF]);
 }
 
 export type DrawerKickPin = 2 | 5;
@@ -377,7 +396,7 @@ function buildTipSlipEscPos(
     feeds(2),
   ];
   for (const pct of CARD_TIP_PERCENTS) {
-    parts.push(tallLine(`Tip ${pct}%`, money(tipCentsForPercent(authorized, pct)), width));
+    parts.push(tallText(tipChoiceLine(pct, authorized, width)));
     parts.push(FEED);
   }
   parts.push(FEED);

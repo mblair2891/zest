@@ -1,6 +1,6 @@
 import { formatCurrency } from "@/lib/utils";
-import { CARD_TIP_PERCENTS, tipCentsForPercent } from "@/lib/pos/card-tip";
-import { printedReceiptTotalCents, toEscPosAscii } from "./escpos";
+import { CARD_TIP_PERCENTS } from "@/lib/pos/card-tip";
+import { printedReceiptTotalCents, tipChoiceLine, toEscPosAscii } from "./escpos";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import { receiptItemLine } from "@/lib/payments/finix-events";
@@ -118,8 +118,7 @@ export function ticketHtml(job: PrintJob): string {
           <div class="row"><span>Amount authorized</span><span>${formatCurrency(authorized)}</span></div>
           <p class="muted">${esc(toEscPosAscii("Card authorized - tip not yet applied."))}</p>
           ${CARD_TIP_PERCENTS.map(
-            (pct) =>
-              `<div class="row tip-row"><span>Tip ${pct}%</span><span>${formatCurrency(tipCentsForPercent(authorized, pct))}</span></div>`,
+            (pct) => `<div class="tip-row">${esc(tipChoiceLine(pct, authorized, 42))}</div>`,
           ).join("")}
           <div class="row tip-row"><span>Tip</span><span>________________</span></div>
           <div class="row tip-row"><span>Total</span><span>________________</span></div>
