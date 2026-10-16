@@ -121,6 +121,7 @@ test("thermal text folds smart punctuation to ASCII and never prints question ma
 test("card closeout source authorizes before the tip and gates the guest-check QR", () => {
   const pay = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
   assert.match(pay, /printCardTipSlips/);
+  assert.match(pay, /Enter card manually/);
   assert.match(pay, /Apply tip and close/);
   assert.match(pay, /data-receipt-print/);
   assert.match(pay, /data-receipt-text/);

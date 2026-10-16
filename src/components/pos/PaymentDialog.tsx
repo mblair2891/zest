@@ -672,8 +672,6 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       .catch(() => setPayStatus(null));
   }, [open, wanOnline]);
 
-  const readerOptionsOpen =
-    usePax || scanStandIn || Boolean(payEntityBanner) || pax.phase !== "idle" || pax.rows.length > 0;
   const showManual =
     (settings.cardProcessor ?? "finix") === "finix" &&
     manualCardEntryVisible({
@@ -1953,60 +1951,12 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 ) : null}
 
                 <TabsContent value="card" className="mt-0 space-y-2">
-                  {!wanOnline && (
-                    <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium">
-                      Card requires connection. Take cash or keep the check open. Card is
-                      not queued.
-                    </p>
-                  )}
-                  {(usePax || scanStandIn || payEntityBanner || pax.phase !== "idle" || pax.rows.length > 0) && (
-                    <div className="space-y-2 rounded-lg border border-border p-3" data-pax-reader="">
-                      <p
-                        className="text-sm font-medium"
-                        data-pax-status=""
-                        data-pax-connected={pax.phase === "connected" ? pax.reader?.serial ?? "" : ""}
-                      >
-                        {payEntityStatusText(pax, payEntityBanner)}
-                        {pax.phase === "connected" && pax.battery != null ? ` · Battery ${pax.battery}%` : ""}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={scanPax}>
-                          Scan for reader
-                        </Button>
-                        {showManual ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={busy}
-                            data-manual-entry=""
-                            onClick={() => {
-                              setManualOpen(true);
-                              setManualError(null);
-                            }}
-                          >
-                            Manual entry
-                          </Button>
-                        ) : null}
-                      </div>
-                      {pax.rows.map((row) => (
-                        <button
-                          key={row.serial}
-                          type="button"
-                          data-pax-serial={row.serial}
-                          className="block w-full rounded-lg border border-border px-3 py-2 text-left text-sm"
-                          onClick={() => pickPax(row)}
-                        >
-                          {paxScanRowLabel(row, pax.readers)}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {showManual && !readerOptionsOpen ? (
+                  {showManual && !cardHoldAuth ? (
                     <Button
                       type="button"
-                      size="sm"
+                      size="lg"
                       variant="outline"
+                      className="station-touch min-h-12 w-full"
                       disabled={busy}
                       data-manual-entry=""
                       onClick={() => {
@@ -2014,13 +1964,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                         setManualError(null);
                       }}
                     >
-                      Manual entry
+                      Enter card manually
                     </Button>
                   ) : null}
-                  {showManual && manualOpen ? (
+                  {showManual && manualOpen && !cardHoldAuth ? (
                     <div className="space-y-2 rounded-lg border border-border p-3" data-manual-form="">
                       <p className="text-xs text-muted-foreground">
-                        Training and sandbox only. Enter the card. A successful charge authorizes the check. Enter the tip to close.
+                        {stationClass === "handheld"
+                          ? "Training and sandbox. Enter the card number, expiration, CVV, and ZIP. A successful charge authorizes the check, then this tablet asks for the tip and a signature."
+                          : "Training and sandbox. Enter the card number, expiration, CVV, and ZIP. A successful charge authorizes the check and prints the tip slip. Enter the tip to close."}
                       </p>
                       <Input
                         data-manual-number=""
@@ -2070,6 +2022,40 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       </div>
                     </div>
                   ) : null}
+                  {!wanOnline && (
+                    <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium">
+                      Card requires connection. Take cash or keep the check open. Card is
+                      not queued.
+                    </p>
+                  )}
+                  {(usePax || scanStandIn || payEntityBanner || pax.phase !== "idle" || pax.rows.length > 0) && (
+                    <div className="space-y-2 rounded-lg border border-border p-3" data-pax-reader="">
+                      <p
+                        className="text-sm font-medium"
+                        data-pax-status=""
+                        data-pax-connected={pax.phase === "connected" ? pax.reader?.serial ?? "" : ""}
+                      >
+                        {payEntityStatusText(pax, payEntityBanner)}
+                        {pax.phase === "connected" && pax.battery != null ? ` · Battery ${pax.battery}%` : ""}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={scanPax}>
+                          Scan for reader
+                        </Button>
+                      </div>
+                      {pax.rows.map((row) => (
+                        <button
+                          key={row.serial}
+                          type="button"
+                          data-pax-serial={row.serial}
+                          className="block w-full rounded-lg border border-border px-3 py-2 text-left text-sm"
+                          onClick={() => pickPax(row)}
+                        >
+                          {paxScanRowLabel(row, pax.readers)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {(payStatus?.mode === "sandbox" || sandbox) && !usePax && pax.phase !== "connected" && (
                     <Input
                       placeholder="Last 4 (sandbox receipt only)"

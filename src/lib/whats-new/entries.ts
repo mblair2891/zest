@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_273_manual_card",
+    date: "2026-10-16",
+    title: "Enter card manually",
+    summary:
+      "A handheld can key the card, then the guest signs and picks Print, Text, or Email.",
+    body: "On Pay, Enter card manually takes the card number, expiration, CVV, and ZIP. That authorizes the check amount and prints the tip slips. A handheld then shows tip and signature. The guest chooses Print, Text, or Email. A fixed station enters the tip from the slip. Enter card manually is available in training and sandbox. It is hidden when the location is live.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "receipts"],
+  },
+  {
     id: "upd_2026_10_272_card_closeout",
     date: "2026-10-16",
     title: "Card closeout and guest-check QR",

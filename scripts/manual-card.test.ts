@@ -79,6 +79,8 @@ test("a typed card becomes a sandbox sale and a failed transfer does not close t
 
   const dialog = readFileSync(new URL("../src/components/pos/PaymentDialog.tsx", import.meta.url), "utf8");
   assert.match(dialog, /data-manual-entry/);
+  assert.match(dialog, /Enter card manually/);
+  assert.match(dialog, /asks for the tip and a signature/);
   assert.match(dialog, /data-manual-number/);
   assert.match(dialog, /data-manual-submit/);
   assert.match(dialog, /chargeManualCardFn/);
