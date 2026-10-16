@@ -8,6 +8,9 @@ export type ChannelMode = "sandbox" | "live";
 export type DeliveryStatus = "received" | "accepted" | "prep" | "ready" | "picked_up" | "cancelled" | "rejected";
 
 export const WAITING_FOR_PARTNER_KEYS = "Waiting for partner keys.";
+/** Shown only after go-live, and only when a live delivery channel has no live key. */
+export const LIVE_PARTNER_KEYS_NOTICE =
+  "Live partner keys are missing. Orders and pay still work. Add them under Integrations, Delivery.";
 
 export type DeliveryChannel = {
   id: string;
@@ -208,6 +211,26 @@ export function channelHasKeys(channel: DeliveryChannel): boolean {
 
 export function waitingForPartnerKeys(channels: DeliveryChannel[]): boolean {
   return !channels.some((channel) => channel.vendor !== "webhook" && channelHasKeys(channel));
+}
+
+function channelHasLiveCredentials(channel: DeliveryChannel): boolean {
+  if ((channel.liveKey ?? "").trim()) return true;
+  return channel.mode === "live" && partnerConfigured(channel);
+}
+
+/**
+ * Floor and order screens stay clear in training and sandbox.
+ * A live location sees a status only when a delivery channel is set to live and has no live key.
+ */
+export function shellPartnerKeysNotice(
+  channels: DeliveryChannel[],
+  lifecycle: string | null | undefined,
+): string | null {
+  if (lifecycle !== "live") return null;
+  const missing = channels.some(
+    (channel) => channel.vendor !== "webhook" && channel.mode === "live" && !channelHasLiveCredentials(channel),
+  );
+  return missing ? LIVE_PARTNER_KEYS_NOTICE : null;
 }
 
 export function nativeChannelsLive(channels: DeliveryChannel[]): boolean {

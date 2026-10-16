@@ -40,7 +40,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import { useDeliverySession } from "@/lib/delivery/session";
-import { normalizeDeliveryChannels, waitingForPartnerKeys, WAITING_FOR_PARTNER_KEYS } from "@/lib/delivery/marketplace";
+import { normalizeDeliveryChannels, shellPartnerKeysNotice, WAITING_FOR_PARTNER_KEYS } from "@/lib/delivery/marketplace";
+import { useLifecycleStore } from "@/lib/lifecycle/store";
 import { claimDeliveryInboxFn } from "@/lib/delivery/api";
 import { usePlatformStore } from "@/lib/pos/platform-store";
 import type { EmployeeRole, PosView } from "@/lib/pos/types";
@@ -218,8 +219,9 @@ const BACK_OFFICE_VIEWS: PosView[] = [
 function DeliveryDownBanner() {
   const banner = useDeliverySession((s) => s.banner);
   const channels = usePosStore((s) => s.settings.deliveryChannels);
-  const waiting = waitingForPartnerKeys(normalizeDeliveryChannels(channels));
-  const text = banner && banner !== WAITING_FOR_PARTNER_KEYS ? banner : waiting ? WAITING_FOR_PARTNER_KEYS : null;
+  const lifecycle = useLifecycleStore((s) => s.status);
+  const down = banner && banner !== WAITING_FOR_PARTNER_KEYS ? banner : null;
+  const text = down ?? shellPartnerKeysNotice(normalizeDeliveryChannels(channels), lifecycle);
   if (!text) return null;
   return (
     <div

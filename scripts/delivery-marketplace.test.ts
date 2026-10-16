@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { buildOwnerHome, type OwnerInput } from "../src/lib/owner-ops/home.ts";
 import { pickupReadyText } from "../src/lib/pos/serverless-food.ts";
@@ -6,8 +7,10 @@ import {
   applyHouse86,
   defaultDeliveryChannels,
   handleDeliveryWebhook,
+  LIVE_PARTNER_KEYS_NOTICE,
   planStatusPush,
   publishDeliveryMenu,
+  shellPartnerKeysNotice,
   WAITING_FOR_PARTNER_KEYS,
   type HouseItem,
 } from "../src/lib/delivery/marketplace.ts";
@@ -177,6 +180,35 @@ test("DoorDash and Uber fixtures open two marketplace checks and do not charge a
   assert.equal(bare.banner, WAITING_FOR_PARTNER_KEYS);
   assert.equal(bare.check?.tender.method, "marketplace");
   assert.equal(bare.finixCalled, false);
+});
+
+test("partner keys banner stays off the floor in training and sandbox", () => {
+  const channels = defaultDeliveryChannels();
+  assert.equal(shellPartnerKeysNotice(channels, "training"), null);
+  assert.equal(shellPartnerKeysNotice(channels, "onboarding"), null);
+  assert.equal(shellPartnerKeysNotice(channels, "scheduled_live"), null);
+  assert.equal(shellPartnerKeysNotice(channels, undefined), null);
+  assert.equal(shellPartnerKeysNotice(channels, "live"), null);
+
+  const liveDoor = channels.map((channel) =>
+    channel.id === "doordash" ? { ...channel, mode: "live" as const } : channel,
+  );
+  assert.equal(shellPartnerKeysNotice(liveDoor, "training"), null);
+  assert.equal(shellPartnerKeysNotice(liveDoor, "live"), LIVE_PARTNER_KEYS_NOTICE);
+  assert.match(LIVE_PARTNER_KEYS_NOTICE, /Orders and pay still work/);
+  assert.doesNotMatch(LIVE_PARTNER_KEYS_NOTICE, /Waiting for partner keys/);
+
+  const withLiveKey = liveDoor.map((channel) =>
+    channel.id === "doordash" ? { ...channel, liveKey: "live-key" } : channel,
+  );
+  assert.equal(shellPartnerKeysNotice(withLiveKey, "live"), null);
+
+  const shell = readFileSync("src/components/pos/AppShell.tsx", "utf8");
+  assert.match(shell, /shellPartnerKeysNotice/);
+  assert.doesNotMatch(shell, /waiting \? WAITING_FOR_PARTNER_KEYS/);
+  const card = readFileSync("src/components/pos/DeliveryChannelsCard.tsx", "utf8");
+  assert.match(card, /shellPartnerKeysNotice/);
+  assert.doesNotMatch(card, /WAITING_FOR_PARTNER_KEYS/);
 });
 
 test("86 marks the channel payload unavailable and keeps the house item", () => {

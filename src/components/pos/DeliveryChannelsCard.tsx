@@ -1,11 +1,11 @@
 import { usePosStore } from "@/lib/pos/store";
+import { useLifecycleStore } from "@/lib/lifecycle/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   normalizeDeliveryChannels,
   publishDeliveryMenu,
-  waitingForPartnerKeys,
-  WAITING_FOR_PARTNER_KEYS,
+  shellPartnerKeysNotice,
   type DeliveryChannel,
   type HouseItem,
 } from "@/lib/delivery/marketplace";
@@ -20,7 +20,9 @@ export function DeliveryChannelsCard({ write }: { write: boolean }) {
   const settings = usePosStore((s) => s.settings);
   const menuItems = usePosStore((s) => s.menuItems);
   const updateSettings = usePosStore((s) => s.updateSettings);
+  const lifecycle = useLifecycleStore((s) => s.status);
   const channels = channelsOf(settings.deliveryChannels);
+  const keysNotice = shellPartnerKeysNotice(channels, lifecycle);
 
   const save = (next: DeliveryChannel[]) => updateSettings({ deliveryChannels: next });
   const patch = (id: string, partial: Partial<DeliveryChannel>) =>
@@ -54,9 +56,9 @@ export function DeliveryChannelsCard({ write }: { write: boolean }) {
         DoorDash Marketplace and Uber Eats. Commission is display only. Publish the delivery menu when the
         markup is ready. Empty partner keys leave the signed webhook live.
       </p>
-      {waitingForPartnerKeys(channels) ? (
+      {keysNotice ? (
         <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-950" data-delivery-keys-banner>
-          {WAITING_FOR_PARTNER_KEYS}
+          {keysNotice}
         </p>
       ) : null}
       <label className="mb-3 flex items-center gap-2 text-sm">

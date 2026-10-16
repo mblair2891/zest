@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_277_partner_keys_banner",
+    date: "2026-10-16",
+    title: "Partner keys banner stays off in training",
+    summary:
+      "Waiting for partner keys does not show on the floor or the order pad while the location is in training or sandbox.",
+    body: "The floor and the order pad stay clear of Waiting for partner keys while the location is in training or sandbox. After the location is live, a short status shows only when a live delivery channel has no live key. Orders and pay still work.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "delivery-channels",
+    tags: ["delivery"],
+  },
+  {
     id: "upd_2026_10_276_open_amounts",
     date: "2026-10-16",
     title: "Open Food and Open Liquor amounts",
