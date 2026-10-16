@@ -11,6 +11,7 @@ import {
 import type { LocationPaymentsMode, PaymentsStatus } from "@/lib/payments/types";
 import { isProspectDemo } from "@/lib/demo/session";
 import { usePosStore } from "@/lib/pos/store";
+import { persistPrintPayQr } from "@/lib/pos/persist-location-setup";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
 import {
@@ -48,6 +49,8 @@ export function QuantumPaymentsSettings({
   );
   const vendors = usePosStore((s) => s.vendors);
   const entityKyc = usePosStore((s) => s.settings.entityKyc);
+  const printPayQrOnGuestCheck = usePosStore((s) => s.settings.printPayQrOnGuestCheck === true);
+  const updateSettings = usePosStore((s) => s.updateSettings);
   const paymentMethods = usePosStore((s) => s.settings.paymentMethods);
   const giftSettings = usePosStore((s) => s.settings);
   const giftCards = usePosStore((s) => s.giftCards);
@@ -163,6 +166,26 @@ export function QuantumPaymentsSettings({
         Guests see Quantum Payments and one check. This venue uses one card processor.
         Cash and gift do not use that processor.
       </p>
+      <div className="rounded-lg border border-border p-3" data-payments-receipts="">
+        <p className="text-sm font-medium">Payments / Receipts</p>
+        <label className="mt-2 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            data-print-pay-qr-on-guest-check=""
+            className="h-4 w-4 rounded border-border"
+            checked={printPayQrOnGuestCheck}
+            disabled={!write}
+            onChange={(e) => {
+              updateSettings({ printPayQrOnGuestCheck: e.target.checked });
+              persistPrintPayQr();
+            }}
+          />
+          Print pay QR on guest check
+        </label>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Off by default. When on, the QR and Scan to pay print only on the guest check before payment. Paid receipts never include them.
+        </p>
+      </div>
       <label className="block text-sm">
         <span className="mb-1 block text-xs text-muted-foreground">Card present rail</span>
         <select

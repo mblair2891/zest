@@ -270,6 +270,7 @@ function parseSetup(raw: unknown): LocationSetup {
     squareLiveCards: o.squareLiveCards === true,
     qrMode: typeof o.qrMode === "string" ? o.qrMode : undefined,
     qrPolicy: o.qrPolicy != null ? parseQrPolicy(o.qrPolicy, o.qrMode) : undefined,
+    printPayQrOnGuestCheck: o.printPayQrOnGuestCheck === true,
     skipTrainingRoster: "skipTrainingRoster" in o ? Boolean(o.skipTrainingRoster) : undefined,
     operatingModel: o.operatingModel != null ? parseLocationOperatingModel(o.operatingModel) : undefined,
     peerVenue: "peerVenue" in o ? Boolean(o.peerVenue) : undefined,

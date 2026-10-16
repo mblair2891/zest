@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_272_card_closeout",
+    date: "2026-10-16",
+    title: "Card closeout and guest-check QR",
+    summary:
+      "Print pay QR on the guest check stays off until Payments / Receipts turns it on. Card closeout authorizes the card, then the tip is entered.",
+    body: "Payments / Receipts has Print pay QR on guest check. It is off until you turn it on. When it is off, guest checks and receipts have no QR and no Scan to pay line. When it is on, the QR prints only on the guest check before payment. Run card authorizes the check amount and prints a merchant copy and a guest copy with tip lines, a signature line, and Card authorized - tip not yet applied. Enter the tip to close. A handheld shows tip and signature, then Print, Text, or Email. The paid receipt shows subtotal, tip, and a total that includes the tip, plus Paid, the card last 4, and Quantum Payments. It has no pay QR.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "receipts"],
+  },
+  {
     id: "upd_2026_10_271_station_order_printers",
     date: "2026-10-16",
     title: "Order printers from the station",
@@ -418,7 +431,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     date: "2026-10-10",
     title: "Card tip buttons",
     summary: "Card pay shows 18%, 20%, 25%, and Custom on one row.",
-    body: "On card pay, four tip buttons sit on one row: 18%, 20%, 25%, and Custom. A percent adds that tip to the total before the card is presented. Custom opens a keypad for a dollar amount or a percent. No tip stays available.",
+    body: "On card pay, four tip buttons sit on one row: 18%, 20%, 25%, and Custom. The tip is entered after the card is authorized. The paid receipt total includes that tip. It is not a second charge. Custom opens a keypad for a dollar amount or a percent. No tip stays available.",
     roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
     surfaces: ["settings"],
     audience: "all",

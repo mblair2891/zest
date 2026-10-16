@@ -16,7 +16,7 @@ import { CardTipRow } from "@/components/pos/CardTipRow";
 import { computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { tipCentsForChoice, type CardTipChoice } from "@/lib/pos/card-tip";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { PaymentMethod } from "@/lib/pos/types";
+import type { CardAuthHold, PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import {
@@ -81,7 +81,7 @@ import {
 } from "@/lib/payments/check-by-vendor";
 import { GuestCheckByVendor } from "./GuestCheckByVendor";
 import { toast } from "sonner";
-import { NO_SECTION_RECEIPT, printGuestCheck, printGuestReceipt } from "@/lib/print/from-store";
+import { NO_SECTION_RECEIPT, printCardTipSlips, printGuestCheck, printGuestReceipt } from "@/lib/print/from-store";
 import {
   ADD_RECEIPT_PRINTER,
   currentStationDeviceId,
@@ -124,6 +124,37 @@ interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initialMethod?: PaymentMethod;
+}
+
+const CARD_AUTH_PREFIX = "summex-card-auth:";
+
+function readSessionCardAuth(orderId: string | undefined): CardAuthHold | null {
+  if (!orderId || typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(CARD_AUTH_PREFIX + orderId);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CardAuthHold;
+    if (!parsed || typeof parsed.amountCents !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionCardAuth(orderId: string, auth: CardAuthHold) {
+  try {
+    sessionStorage.setItem(CARD_AUTH_PREFIX + orderId, JSON.stringify(auth));
+  } catch {
+    /* private mode */
+  }
+}
+
+function clearSessionCardAuth(orderId: string) {
+  try {
+    sessionStorage.removeItem(CARD_AUTH_PREFIX + orderId);
+  } catch {
+    /* private mode */
+  }
 }
 
 export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
@@ -225,7 +256,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const [payStatus, setPayStatus] = useState<PaymentsStatus | null>(null);
   const [receiptEmail, setReceiptEmail] = useState("");
   const [receiptMsg, setReceiptMsg] = useState<string | null>(null);
-  const [receiptChoice, setReceiptChoice] = useState<"choose" | "email" | "sms">("choose");
+  const [receiptChoice, setReceiptChoice] = useState<"choose" | "email" | "sms" | "print">("choose");
   const [receiptSms, setReceiptSms] = useState("");
   const [receiptBusy, setReceiptBusy] = useState(false);
   const [checkPrintMsg, setCheckPrintMsg] = useState<string | null>(null);
@@ -248,8 +279,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const tenderBase = Number.isFinite(amountCents)
     ? Math.min(Math.max(0, amountCents), Math.max(0, balance))
     : Math.max(0, balance);
-  const payTip = method === "card" ? tipCentsForChoice(cardTip, tenderBase) : tip;
-  const cardTotal = tenderBase + (method === "comp" ? 0 : payTip);
+  const cardHoldAuth = order?.cardAuth ?? null;
+  const tipBase = cardHoldAuth ? cardHoldAuth.amountCents : tenderBase;
+  const payTip = method === "card" ? tipCentsForChoice(cardTip, tipBase) : tip;
+  const cardDue = cardHoldAuth ? cardHoldAuth.amountCents : tenderBase;
+  const cardTotal = cardDue + (method === "comp" ? 0 : method === "card" && !cardHoldAuth ? 0 : payTip);
   const vendors = usePosStore((s) => s.vendors);
   const guestSlip = useMemo(() => {
     if (!order) return null;
@@ -319,9 +353,26 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     };
   }, [open, usePax]);
 
+  const openOrderId = order?.id;
+  const cardAuthOn = Boolean(order?.cardAuth);
   useEffect(() => {
-    if (!open) setPayEntityBanner(null);
-  }, [open]);
+    if (!open) {
+      setPayEntityBanner(null);
+      setGuestFace(false);
+      setSigned(false);
+      return;
+    }
+    const current = openOrderId
+      ? usePosStore.getState().orders.find((row) => row.id === openOrderId)
+      : undefined;
+    if (!current?.cardAuth) {
+      const saved = readSessionCardAuth(openOrderId);
+      if (saved && openOrderId) usePosStore.getState().setCardAuth(openOrderId, saved);
+    }
+    if ((current?.cardAuth || readSessionCardAuth(openOrderId)) && stationClass === "handheld") {
+      setGuestFace(true);
+    }
+  }, [open, openOrderId, cardAuthOn, stationClass]);
 
   const scanStandIn =
     typeof window !== "undefined" &&
@@ -809,8 +860,21 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     let cardLast4 = method === "card" ? last4 || undefined : undefined;
     let squarePaymentId: string | undefined;
     let finixTransferId: string | undefined;
+    let quantumPaymentId: string | undefined;
     let paxJournal: { readerId: string; merchantId: string; locationId: string; orgId: string } | null = null;
-    if (method === "card" && manualCard) {
+    const held =
+      method === "card" ? (order?.cardAuth ?? readSessionCardAuth(order?.id) ?? null) : null;
+    if (method === "card" && held && stationClass === "handheld" && !signed) {
+      setGuestFace(true);
+      setError("Sign for the tip.");
+      return;
+    }
+    if (method === "card" && held) {
+      cardLast4 = held.last4 || cardLast4;
+      squarePaymentId = held.squarePaymentId;
+      finixTransferId = held.finixTransferId;
+      quantumPaymentId = held.paymentId;
+    } else if (method === "card" && manualCard) {
       const ctx = readTenantPosContext();
       const locationId = usePosStore.getState().tenantLocationId || ctx?.locationId || "";
       const orgId = ctx?.orgId || "";
@@ -834,7 +898,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             order,
             settings,
             amountCents: tend,
-            tipCents: payTip,
+            tipCents: 0,
             hostName: settings.name,
             operatorName: (id) =>
               usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
@@ -846,7 +910,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           data: {
             orgId,
             locationId,
-            amountCents: tend + payTip,
+            amountCents: tend,
             checkId: order?.id,
             number: manualCard.number,
             expirationMonth: manualCard.expirationMonth,
@@ -908,7 +972,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             order,
             settings,
             amountCents: tend,
-            tipCents: payTip,
+            tipCents: 0,
             hostName: settings.name,
             operatorName: (id) =>
               usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
@@ -927,10 +991,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           const started = await startSquareCheckoutFn({
             data: {
               locationId,
-              amountCents: tend + payTip,
+              amountCents: tend,
               checkId: order?.id,
               referenceId: order?.id,
-              note: `Check ${order?.number ?? ""} · ${tableLabel}`,
+              note: `Check ${order?.number ?? ""} | ${tableLabel}`,
               deviceId: paired || undefined,
               clientMutationId: uid("mut"),
             },
@@ -990,7 +1054,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           const locationLive = Boolean(payStatus && payStatus.mode === "live" && !payStatus.lifecycleForcesSandbox);
           const sale = await runAndroidPaxSale({
             checkId: order.id,
-            amountCents: tend + payTip,
+            amountCents: tend,
             tipCents: 0,
             locationLive,
             reader: linkNow.reader,
@@ -1000,6 +1064,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               checkId: order.id,
               status: order.status,
               payments: order.payments,
+              cardAuth: Boolean(order.cardAuth),
             }),
             settingUp: linkNow.phase === "setting_up",
             connected: linkNow.phase === "connected",
@@ -1049,7 +1114,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           data: {
             orgId,
             locationId,
-            amountCents: tend + payTip,
+            amountCents: tend,
             checkId: order?.id,
             hostBrand: settings.name,
             readerId: stationRow?.cardReaderId || settings.quantumReaderId || undefined,
@@ -1065,14 +1130,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           setBusy(false);
           return;
         }
-        if (cap.status === "authorized") {
-          setCardHold(
-            "Card authorized. The check stays open until Quantum Payments confirms the transfer.",
-          );
-          setBusy(false);
-          return;
-        }
         cardLast4 = cap.last4 || cardLast4;
+        if (cap.paymentId) quantumPaymentId = cap.paymentId;
       } catch {
         setError("Card requires connection. Take cash or keep the check open.");
         setBusy(false);
@@ -1080,6 +1139,47 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       }
       setBusy(false);
       }
+    }
+    if (method === "card" && !held) {
+      const authAmount = Math.min(amountCents, balance);
+      const auth: CardAuthHold = {
+        last4: cardLast4,
+        finixTransferId,
+        squarePaymentId,
+        paymentId: quantumPaymentId,
+        amountCents: authAmount,
+        at: Date.now(),
+      };
+      if (order) {
+        usePosStore.getState().setCardAuth(order.id, auth);
+        writeSessionCardAuth(order.id, auth);
+        void printCardTipSlips(order.id, { amountCents: authAmount, last4: cardLast4 });
+      }
+      if (finixTransferId && paxJournal && order) {
+        try {
+          await recordPaxSaleFn({
+            data: {
+              locationId: paxJournal.locationId,
+              orgId: paxJournal.orgId,
+              checkId: order.id,
+              transferId: finixTransferId,
+              last4: cardLast4 ?? null,
+              amountCents: authAmount,
+              readerId: paxJournal.readerId,
+              merchantId: paxJournal.merchantId,
+            },
+          });
+        } catch {
+          /* The authorization is stored on the check. Do not send another sale. */
+        }
+      }
+      setCardTip({ kind: "none" });
+      setSigned(false);
+      setBusy(false);
+      setError(null);
+      setCardHold("Card authorized - tip not yet applied.");
+      if (stationClass === "handheld") setGuestFace(true);
+      return;
     }
     let serverGift = false;
     if (method === "gift_card") {
@@ -1118,9 +1218,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         setBusy(false);
       }
     }
+    const closeCents = method === "card" && held ? held.amountCents : Math.min(amountCents, balance);
     const res = takePayment({
       method,
-      amountCents: Math.min(amountCents, balance),
+      amountCents: closeCents,
       tipCents: payTip,
       tenderedCents:
         method === "cash"
@@ -1136,6 +1237,19 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     if (!res.ok) {
       setError(res.error ?? "Payment failed");
       return;
+    }
+    if (method === "card" && order) {
+      clearSessionCardAuth(order.id);
+      const paidId = order.id;
+      const handheld = stationClass === "handheld";
+      if (handheld && receiptChoice === "print") setReceiptChoice("choose");
+      void (async () => {
+        const merchant = await printGuestReceipt(paidId, "merchant");
+        if (!handheld || receiptChoice === "print") await printGuestReceipt(paidId, "guest");
+        if (!merchant.ok && merchant.error && merchant.error !== ADD_RECEIPT_PRINTER) {
+          toast.error(merchant.error);
+        }
+      })();
     }
     if (finixTransferId && paxJournal && order) {
       try {
@@ -1423,6 +1537,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 <Button
                   size="lg"
                   className="station-touch min-h-12 w-full"
+                  data-receipt-email=""
                   onClick={() => {
                     setReceiptChoice("email");
                     setReceiptMsg(null);
@@ -1435,12 +1550,13 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   size="lg"
                   className="station-touch min-h-12 w-full"
                   variant="outline"
+                  data-receipt-text=""
                   onClick={() => {
                     setReceiptChoice("sms");
                     setReceiptMsg(null);
                   }}
                 >
-                  SMS
+                  Text
                 </Button>
                 {mayPrintReceipt && (
                 <Button
@@ -1448,10 +1564,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   className="station-touch min-h-12 w-full"
                   variant="outline"
                   disabled={receiptBusy}
+                  data-receipt-print=""
                   onClick={() => void runPrintReceipt()}
                 >
                   <Printer className="h-5 w-5" />
-                  Printed receipt
+                  Print
                 </Button>
                 )}
                 {stationClass === "handheld" && (
@@ -1493,7 +1610,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   disabled={!receiptSms.trim() || receiptBusy}
                   onClick={() => void runSmsReceipt()}
                 >
-                  Send SMS
+                  Send text
                 </Button>
                 <Button
                   className="w-full"
@@ -1575,8 +1692,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               {formatCurrency(cardTotal)}
             </p>
             <p className="text-center text-sm text-muted-foreground">Amount + tip</p>
+            <p className="text-center text-sm" data-card-auth-note="">
+              Card authorized - tip not yet applied.
+            </p>
             <CardTipRow
-              baseCents={tenderBase}
+              baseCents={tipBase}
               tipCents={payTip}
               choice={cardTip}
               onChoice={setCardTip}
@@ -1585,6 +1705,33 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               onSigned={() => setSigned(true)}
               onCleared={() => setSigned(false)}
             />
+            <p className="text-center text-sm font-medium">Customer copy</p>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant={receiptChoice === "print" ? "default" : "outline"}
+                data-receipt-print=""
+                onClick={() => setReceiptChoice("print")}
+              >
+                Print
+              </Button>
+              <Button
+                type="button"
+                variant={receiptChoice === "sms" ? "default" : "outline"}
+                data-receipt-text=""
+                onClick={() => setReceiptChoice("sms")}
+              >
+                Text
+              </Button>
+              <Button
+                type="button"
+                variant={receiptChoice === "email" ? "default" : "outline"}
+                data-receipt-email=""
+                onClick={() => setReceiptChoice("email")}
+              >
+                Email
+              </Button>
+            </div>
             {cardHold && (
               <p className="text-center text-sm text-ivory" data-quantum-hold>
                 {cardHold}
@@ -1601,7 +1748,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               disabled={busy || !signed}
               onClick={() => pay()}
             >
-              {busy ? "Present card on Quantum reader…" : "Pay"}
+              {busy ? "Present card on Quantum reader…" : "Apply tip and close"}
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => setGuestFace(false)}>
               Back to staff
@@ -1646,7 +1793,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               }}
             >
               <Printer className="h-5 w-5" />
-              Print check
+              Print Guest Check
             </Button>
             ) : (
               <p className="text-center text-xs text-muted-foreground" data-add-receipt-printer>
@@ -1662,13 +1809,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               {method === "card" ? (
                 <>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Total · {settings.name}
+                    {cardHoldAuth ? `Tip and close | ${settings.name}` : `Authorize | ${settings.name}`}
                   </p>
                   <p className="text-3xl font-semibold tabular" data-card-charge-total="">
                     {formatCurrency(cardTotal)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Check {formatCurrency(tenderBase)} · Tip {formatCurrency(payTip)}
+                    {cardHoldAuth
+                      ? `Authorized ${formatCurrency(cardDue)} | Tip ${formatCurrency(payTip)}`
+                      : "Card authorized amount. Tip is entered after the card is read."}
                   </p>
                 </>
               ) : (
@@ -1760,12 +1909,23 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   </p>
                 )}
                 {method === "card" ? (
-                  <CardTipRow
-                    baseCents={tenderBase}
-                    tipCents={payTip}
-                    choice={cardTip}
-                    onChoice={setCardTip}
-                  />
+                  cardHoldAuth ? (
+                    <>
+                    <p className="text-xs" data-card-auth-note="">
+                      Card authorized - tip not yet applied.
+                    </p>
+                    <CardTipRow
+                      baseCents={tipBase}
+                      tipCents={payTip}
+                      choice={cardTip}
+                      onChoice={setCardTip}
+                    />
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground" data-card-auth-wait="">
+                      Run card. Tip choices print on the slip, then you enter the tip here.
+                    </p>
+                  )
                 ) : method !== "comp" ? (
                   <div>
                     <label className="mb-1.5 block text-xs text-muted-foreground">
@@ -1860,7 +2020,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   {showManual && manualOpen ? (
                     <div className="space-y-2 rounded-lg border border-border p-3" data-manual-form="">
                       <p className="text-xs text-muted-foreground">
-                        Training and sandbox only. Enter the card. A successful charge closes the check.
+                        Training and sandbox only. Enter the card. A successful charge authorizes the check. Enter the tip to close.
                       </p>
                       <Input
                         data-manual-number=""
@@ -1901,8 +2061,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                         </p>
                       ) : null}
                       <div className="flex flex-wrap gap-2">
-                        <Button type="button" size="sm" data-manual-submit="" disabled={busy} onClick={submitManual}>
-                          {busy ? "Charging…" : "Charge card"}
+                        <Button type="button" size="sm" data-manual-submit="" disabled={busy || Boolean(cardHoldAuth)} onClick={submitManual}>
+                          {busy ? "Authorizing…" : cardHoldAuth ? "Card authorized" : "Run card"}
                         </Button>
                         <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setManualOpen(false)}>
                           Cancel
@@ -2075,8 +2235,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               className="w-full"
               size="xl"
               onClick={() => {
-                if (method === "card" && stationClass === "handheld" && !guestFace) {
+                if (method === "card" && cardHoldAuth && stationClass === "handheld" && !guestFace) {
                   setSigned(false);
+                  setError(null);
                   setGuestFace(true);
                   return;
                 }
@@ -2085,8 +2246,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               disabled={busy}
             >
               {busy && "Present card on Quantum reader…"}
-              {!busy && method === "card" && stationClass === "handheld" && !guestFace && "Flip to guest"}
-              {!busy && method === "card" && !(stationClass === "handheld" && !guestFace) && "Charge card"}
+              {!busy && method === "card" && !cardHoldAuth && "Run card"}
+              {!busy && method === "card" && cardHoldAuth && stationClass === "handheld" && !guestFace && "Tip and signature"}
+              {!busy && method === "card" && cardHoldAuth && !(stationClass === "handheld" && !guestFace) && "Apply tip and close"}
               {!busy && method === "cash" && "Take cash"}
               {!busy && method === "gift_card" && "Redeem gift card"}
               {!busy && method === "comp" && "Apply comp"}

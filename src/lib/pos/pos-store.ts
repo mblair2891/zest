@@ -14,6 +14,7 @@ import type {
   MenuCategory,
   MenuItem,
   ModifierGroup,
+  CardAuthHold,
   Order,
   PaymentMethod,
   PosView,
@@ -389,6 +390,7 @@ export interface PosStore {
   }) => ActionResult;
   setOrderNote: (note: string) => void;
   printCheck: () => void;
+  setCardAuth: (orderId: string, auth: CardAuthHold | null) => void;
   takePayment: (opts: {
     method: PaymentMethod;
     amountCents: number;

@@ -463,7 +463,10 @@ export function checkAlreadyCaptured(input: {
   checkId?: string;
   status?: string;
   payments?: { method?: string; finixTransferId?: string }[];
+  /** An open check already has a card authorization waiting for the tip. */
+  cardAuth?: boolean;
 }): boolean {
+  if (input.cardAuth) return true;
   if (input.checkId && checkCapturedLocally(input.checkId)) return true;
   if (input.status === "closed" || input.status === "voided" || input.status === "cancelled") {
     return true;

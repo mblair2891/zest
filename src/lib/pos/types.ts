@@ -226,6 +226,11 @@ export interface RestaurantSettings {
   happyHourDays: number[];
   currency: string;
   receiptFooter: string;
+  /**
+   * Print a pay QR on the pre-payment guest check. Default off.
+   * Paid receipts never print it, even when this is on.
+   */
+  printPayQrOnGuestCheck?: boolean;
   managerPin: string;
   /** When on, host / server / bartender need a manager PIN to combine or separate. Default off. */
   combineRequiresManager?: boolean;
@@ -566,6 +571,16 @@ export interface OrderLine {
   firedAt?: number;
 }
 
+/** Card is authorized. The check stays open until the tip is entered. */
+export interface CardAuthHold {
+  last4?: string;
+  finixTransferId?: string;
+  squarePaymentId?: string;
+  paymentId?: string;
+  amountCents: number;
+  at: number;
+}
+
 export interface Payment {
   id: string;
   method: PaymentMethod;
@@ -643,6 +658,8 @@ export interface Order {
   holdOwner?: "user" | "house";
   pendingAcceptId?: string;
   pendingAcceptName?: string;
+  /** Authorized card, before the tip is entered and the check closes. */
+  cardAuth?: CardAuthHold;
   /** Handheld asked a terminal to print the paid receipt. */
   receiptPendingAt?: number;
   receiptPendingBy?: string;

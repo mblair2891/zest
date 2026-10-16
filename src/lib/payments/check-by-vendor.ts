@@ -41,7 +41,7 @@ export type GuestCheckView = {
 };
 
 const GUEST_SPLIT_NOTE =
-  "Card: one authorization, split to the vendors above. Quantum Payments · Summex.";
+  "Card: one authorization, split to the vendors above. Quantum Payments | Summex.";
 
 export function buildGuestCheckView(opts: {
   order: Order;
@@ -87,7 +87,9 @@ export function buildGuestCheckView(opts: {
   const last = opts.order.payments[opts.order.payments.length - 1];
   const tenderLabel = last
     ? last.method === "card"
-      ? `Card${last.last4 ? ` ·${last.last4}` : ""} · Quantum Payments`
+      ? last.last4
+        ? `Paid | Card ${String(last.last4).replace(/\D/g, "").slice(-4)} | Quantum Payments`
+        : "Paid | Quantum Payments"
       : last.method === "cash"
         ? "Cash"
         : last.method === "gift_card"
@@ -112,11 +114,11 @@ export function buildGuestCheckView(opts: {
     tipCents: totals.tipCents,
     serviceCents: totals.serviceChargeCents,
     giftCents,
-    totalCents: totals.totalCents,
+    totalCents: totals.totalCents + totals.tipCents,
     tenderLabel,
     splitNote: multi
       ? GUEST_SPLIT_NOTE
-      : "Quantum Payments · Summex. One guest check.",
+      : "Quantum Payments | Summex. One guest check.",
     allocations,
   };
 }

@@ -50,7 +50,7 @@ test("table sheet Print check is on each row and never kitchen queue", () => {
 
 test("pay screen prints guest check before tender", () => {
   const pay = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
-  assert.match(pay, /Print check/);
+  assert.match(pay, /Print Guest Check/);
   assert.match(pay, /printGuestCheck/);
   const from = readFileSync("src/lib/print/from-store.ts", "utf8");
   assert.match(from, /kind: "guest_check"/);
@@ -84,7 +84,7 @@ test("guide covers pay QR, venue timezone, named taxes", () => {
   assert.match(roles, /named tax rates/);
   assert.match(roles, /IANA timezone/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.139/);
+  assert.match(types, /2026\.10\.272/);
 });
 
 test("guide covers live pad, print check, impact, receipt path", () => {
@@ -100,5 +100,5 @@ test("guide covers live pad, print check, impact, receipt path", () => {
   assert.match(devices, /table.s section/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
   assert.match(types, /GUIDE_VERSION/);
-  assert.match(types, /2026\.10\.139/);
+  assert.match(types, /2026\.10\.272/);
 });

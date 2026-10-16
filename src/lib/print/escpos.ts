@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/utils";
+import { CARD_TIP_PERCENTS, tipCentsForPercent } from "@/lib/pos/card-tip";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import { receiptItemLine } from "@/lib/payments/finix-events";
@@ -33,10 +34,43 @@ function concat(parts: Uint8Array[]): Uint8Array {
   return out;
 }
 
+/**
+ * Thermal text is 7-bit ESC/POS. Fold punctuation to ASCII.
+ * Never substitute "?" — that is what showed up for middle dots and dashes.
+ */
+export function toEscPosAscii(input: string): string {
+  let s = input.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  s = s
+    .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-")
+    .replace(/[\u00B7\u2022\u2027\u2219\u30FB\uFF65]/g, "|")
+    .replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')
+    .replace(/\u2026/g, "...")
+    .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ")
+    .replace(/\u00D7/g, "x");
+  // eslint-disable-next-line no-control-regex -- ESC/POS printable set
+  return s.replace(/[^\x09\x0a\x0d\x20-\x7e]/g, "-");
+}
+
+export function cardPaidTenderLine(last4?: string | null): string {
+  const digits = String(last4 ?? "").replace(/\D/g, "").slice(-4);
+  return digits ? `Paid | Card ${digits} | Quantum Payments` : "Paid | Quantum Payments";
+}
+
+/** Pre-tip check total plus tip. computeTotals leaves the tip off totalCents. */
+export function printedReceiptTotalCents(totals: {
+  subtotalCents: number;
+  taxCents?: number;
+  tipCents?: number;
+  totalCents: number;
+}): number {
+  const tip = Math.max(0, Math.round(Number(totals.tipCents) || 0));
+  const pre = Math.max(0, Math.round(Number(totals.totalCents) || 0));
+  return pre + tip;
+}
+
 function text(s: string): Uint8Array {
-  // ESC/POS is 7-bit; keep tab/LF/CR and printable ASCII.
-  // eslint-disable-next-line no-control-regex -- strip non-printable bytes for thermal printers
-  return ENC.encode(s.replace(/[^\x09\x0a\x0d\x20-\x7e]/g, "?"));
+  return ENC.encode(toEscPosAscii(s));
 }
 
 const INIT = u8(0x1b, 0x40);
@@ -247,7 +281,7 @@ function buildGuestCheckEscPos(
       const card = it.cardCents ?? it.amountCents ?? cash;
       cashSub += cash;
       cardSub += card;
-      const item = receiptItemLine(it.qty, it.name, g.displayName);
+      const item = `${it.qty} ${it.name}`;
       if (dual) {
         parts.push(line(item, `${money(cash)} / ${money(card)}`, width));
       } else {
@@ -289,13 +323,60 @@ function buildGuestCheckEscPos(
   return concat(parts);
 }
 
+const TIP_AUTH_NOTE = "Card authorized - tip not yet applied.";
+
+/** Merchant and guest copies after the card is authorized and before the tip is applied. */
+function buildTipSlipEscPos(
+  job: PrintJob,
+  width: number,
+  emulation: PrinterEmulation,
+  cutter: PrinterCutter,
+): Uint8Array {
+  const authorized =
+    job.totals?.cardTotalCents ?? job.totals?.totalCents ?? job.totals?.subtotalCents ?? 0;
+  const copy = job.copy === "merchant" ? "MERCHANT COPY" : "GUEST COPY";
+  const parts: Uint8Array[] = [
+    INIT,
+    ALIGN_CT,
+    BOLD_ON,
+    text("CARD AUTHORIZED"),
+    FEED,
+    text(copy),
+    FEED,
+    BOLD_OFF,
+    text(job.locationName.slice(0, width)),
+    FEED,
+    ALIGN_LT,
+    line(String(job.checkNumber), job.tableLabel, width),
+    line(job.serverName, formatVenueTime(job.at, job.timezone || "America/Los_Angeles"), width),
+    text("-".repeat(width)),
+    FEED,
+    line("Amount authorized", money(authorized), width),
+    FEED,
+    ALIGN_CT,
+    text(TIP_AUTH_NOTE),
+    FEED,
+    ALIGN_LT,
+    text("-".repeat(width)),
+    FEED,
+  ];
+  for (const pct of CARD_TIP_PERCENTS) {
+    parts.push(line(`Tip ${pct}%`, money(tipCentsForPercent(authorized, pct)), width));
+  }
+  parts.push(line("Tip", "________", width));
+  parts.push(line("Total", "________", width));
+  parts.push(FEED, line("Signature", "________________", width));
+  parts.push(FEED, ALIGN_CT, text("Quantum Payments | Summex"), FEED, cutBytes(emulation, cutter));
+  return concat(parts);
+}
+
 /** ESC/POS or Star Line bytes for a hospitality printer (LAN 9100). */
 export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
   if (job.kind === "drawer_kick") return buildDrawerKickBytes({ pin: job.drawerKickPin });
   if (job.kind === "no_sale") return buildNoSaleSlip(job, opts);
   if (job.kind === "till_turn_in") return buildTillTurnInEscPos(job);
   const { emulation, width, cutter, impact } = resolveOpts(opts);
-  if (impact && job.kind !== "guest_check" && job.kind !== "receipt") {
+  if (impact && job.kind !== "guest_check" && job.kind !== "receipt" && job.kind !== "tip_slip") {
     return buildStarSp700Bytes({
       locationName: job.locationName,
       kind: job.kind,
@@ -319,6 +400,9 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
   }
   if (job.kind === "guest_check") {
     return buildGuestCheckEscPos(job, width, emulation, cutter);
+  }
+  if (job.kind === "tip_slip") {
+    return buildTipSlipEscPos(job, width, emulation, cutter);
   }
   const title =
     job.kind === "receipt"
@@ -387,9 +471,14 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
     } else if (job.totals.taxCents > 0) {
       parts.push(line("Tax", formatCurrency(job.totals.taxCents), width));
     }
-    if (job.totals.tipCents) parts.push(line("Tip", formatCurrency(job.totals.tipCents), width));
+    const tipCents = job.totals.tipCents ?? 0;
+    if (job.kind === "receipt" || tipCents) {
+      parts.push(line("Tip", formatCurrency(tipCents), width));
+    }
     if (job.totals.giftCents) parts.push(line("Gift", formatCurrency(job.totals.giftCents), width));
-    parts.push(BOLD_ON, line("Total", formatCurrency(job.totals.totalCents), width), BOLD_OFF);
+    const grand =
+      job.kind === "receipt" ? printedReceiptTotalCents(job.totals) : job.totals.totalCents;
+    parts.push(BOLD_ON, line("Total", formatCurrency(grand), width), BOLD_OFF);
     if (job.totals.tender) parts.push(line(job.totals.tender, "", width));
     if (job.copy === "guest" && groups.length > 1) {
       parts.push(line("Card: one authorization, split to the vendors above", "", width));
@@ -405,16 +494,15 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
       parts.push(line("Guest still paid once", "", width));
     }
   }
-  if (job.kind !== "ticket") parts.push(...payQrBlock(job));
   if (job.kind === "test") {
     parts.push(
       FEED,
       ALIGN_CT,
-      text(`${emulation.toUpperCase()} · ${width} col`),
+      text(`${emulation.toUpperCase()} | ${width} col`),
       FEED,
     );
   }
-  parts.push(FEED, ALIGN_CT, text("Quantum Payments · Summex"), FEED, cutBytes(emulation, cutter));
+  parts.push(FEED, ALIGN_CT, text("Quantum Payments | Summex"), FEED, cutBytes(emulation, cutter));
   if (job.kickDrawer) parts.push(buildDrawerKickBytes({ pin: job.drawerKickPin }));
   return concat(parts);
 }

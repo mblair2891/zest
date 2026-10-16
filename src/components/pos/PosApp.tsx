@@ -319,6 +319,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                 ...st.settings,
                 qrMode: parseQrMode(setup.qrMode ?? st.settings.qrMode),
                 qrPolicy: parseQrPolicy(setup.qrPolicy, setup.qrMode ?? st.settings.qrMode),
+                printPayQrOnGuestCheck: setup.printPayQrOnGuestCheck === true,
                 cashDiscountEnabled:
                   setup.cashDiscountEnabled ?? st.settings.cashDiscountEnabled,
                 cashDiscountPercent:

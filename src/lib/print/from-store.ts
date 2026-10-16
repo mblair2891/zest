@@ -17,7 +17,7 @@ import { parseQrPolicy, shouldPrintPayQr } from "@/lib/pos/qr-policy";
 import { checkGuestUrl, tableGuestUrl } from "@/lib/pos/qr-table";
 import { parseVenueTimezone, venueNowMs } from "@/lib/pos/venue-time";
 import { parseLanTarget } from "./printer-models";
-import { escposBase64, parseDrawerKickPin } from "./escpos";
+import { cardPaidTenderLine, escposBase64, parseDrawerKickPin } from "./escpos";
 import { enqueueStationPrintFn, enqueueVenuePrintFn } from "./api";
 import { readStationPair } from "@/lib/pos/station-pair";
 import { setStationPrintInFlight } from "@/lib/pos/station-busy";
@@ -128,7 +128,7 @@ function payQrForCheck(
   printPayQr?: boolean | null,
 ): { qrUrl?: string; qrCaption?: string } {
   const policy = parseQrPolicy(settings.qrPolicy, settings.qrMode);
-  if (!shouldPrintPayQr(policy, printPayQr)) return {};
+  if (!shouldPrintPayQr(policy, printPayQr, settings.printPayQrOnGuestCheck === true)) return {};
   const loc = locationId.trim() || "loc";
   if (table) {
     const guest = checkGuestUrl(table, order.number, loc);
@@ -320,13 +320,6 @@ export async function printFromPos(
         sections: s.floorSections,
         orderType: order.type,
       });
-      const ticketQr = payQrForCheck(
-        order,
-        table,
-        locationIdForQr(s, locationId),
-        s.settings,
-        receiptPrn?.print?.printPayQr,
-      );
       const guestJob: PrintJob = {
         id: uid("prn"),
         kind: "receipt",
@@ -344,8 +337,6 @@ export async function printFromPos(
         items: receiptLines(order, s.settings),
         entityMarks: entityMarksForPrint(s.settings.brandLogos),
         allocations,
-        qrUrl: marketplace ? undefined : ticketQr.qrUrl,
-        qrCaption: marketplace ? undefined : ticketQr.qrCaption,
         timezone: parseVenueTimezone(s.settings.timezone),
         totals: {
           subtotalCents: totals.subtotalCents,
@@ -360,7 +351,7 @@ export async function printFromPos(
             ? "Marketplace payable"
             : tender
             ? tender.method === "card"
-              ? `Card${tender.last4 ? ` ·${tender.last4}` : ""} · Quantum Payments`
+              ? cardPaidTenderLine(tender.last4)
               : tender.method === "gift_card"
                 ? "Gift"
                 : tender.method === "cash"
@@ -487,8 +478,51 @@ export async function printFromPos(
   }
 }
 
-/** Guest copy only — one document, lines grouped by vendor. ESC-POS on the station printer. */
-export async function printGuestReceipt(orderId: string): Promise<{
+async function deliverReceiptJob(job: PrintJob): Promise<{
+  ok: boolean;
+  error?: string;
+  printerLabel?: string;
+}> {
+  const s = usePosStore.getState();
+  const devices = s.locationDevices;
+  const order = s.orders.find((o) => o.id === job.checkId) ?? s.getActiveOrder?.();
+  const table = order?.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
+  const printer = resolveReceiptPrinter(devices, currentStationDeviceId(), {
+    table,
+    tables: s.tables,
+    tableId: order?.tableId,
+    sections: s.floorSections,
+    orderType: order?.type,
+  });
+  if (!printer) return { ok: false, error: ADD_RECEIPT_PRINTER };
+  const res = await dispatchPrintJob(job, devices, { printerId: printer.id });
+  if (res.printed > 0) return { ok: true, printerLabel: printer.label };
+  const cfg = printer.print;
+  const lan = cfg ? parseLanTarget(cfg.ip, cfg.port, cfg.target) : null;
+  if (!lan || !cfg) return { ok: false, error: res.error || "Receipt printer needs a static IP." };
+  const queued = await enqueueKitchenJob(
+    job,
+    printer.id,
+    lan.host,
+    lan.port,
+    escposBase64(job, {
+      modelPreset: cfg.modelPreset,
+      emulation: cfg.emulation,
+      paperWidthMm: cfg.paperWidthMm,
+      cutter: cfg.cutter,
+    }),
+    "station",
+    "receipt",
+  );
+  if (queued) return { ok: true, printerLabel: printer.label };
+  return { ok: false, error: res.error || "Use a paired station or print agent." };
+}
+
+/** One paid receipt. No pay QR. Copy is guest or merchant. */
+export async function printGuestReceipt(
+  orderId: string,
+  copy: "guest" | "merchant" = "guest",
+): Promise<{
   ok: boolean;
   error?: string;
   printerLabel?: string;
@@ -496,15 +530,7 @@ export async function printGuestReceipt(orderId: string): Promise<{
   const s = usePosStore.getState();
   const order = s.orders.find((o) => o.id === orderId) ?? s.getActiveOrder?.();
   if (!order) return { ok: false, error: "No check to print." };
-  const devices = s.locationDevices;
   const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
-  const printer = resolveReceiptPrinter(devices, currentStationDeviceId(), {
-    table,
-    tables: s.tables,
-    tableId: order.tableId,
-    sections: s.floorSections,
-    orderType: order.type,
-  });
   const locationId = s.tenantLocationId || "";
   const locationName = s.settings.name || "Summex";
   const tender = order.payments[order.payments.length - 1];
@@ -532,7 +558,7 @@ export async function printGuestReceipt(orderId: string): Promise<{
       ? partyHeader(s.tables, order.tableId)
       : (table?.label ?? order.tabName ?? order.type.replace("_", " ")),
     serverName: order.serverName,
-    copy: "guest",
+    copy,
     marketplaceTender: marketplace,
     items: receiptLines(order, s.settings),
     entityMarks: entityMarksForPrint(s.settings.brandLogos),
@@ -543,9 +569,6 @@ export async function printGuestReceipt(orderId: string): Promise<{
       totalCents: sh.totalCents,
     })),
     timezone: parseVenueTimezone(s.settings.timezone),
-    ...(marketplace
-      ? {}
-      : payQrForCheck(order, table, locationIdForQr(s, locationId), s.settings, printer?.print?.printPayQr)),
     totals: {
       subtotalCents: totals.subtotalCents,
       taxCents: totals.taxCents,
@@ -559,7 +582,7 @@ export async function printGuestReceipt(orderId: string): Promise<{
         ? "Marketplace payable"
         : tender
         ? tender.method === "card"
-          ? `Card${tender.last4 ? ` ·${tender.last4}` : ""} · Quantum Payments`
+          ? cardPaidTenderLine(tender.last4)
           : tender.method === "gift_card"
             ? "Gift"
             : tender.method === "cash"
@@ -569,41 +592,56 @@ export async function printGuestReceipt(orderId: string): Promise<{
     },
     at: venueNowMs(),
   };
-  if (!printer) {
-    return { ok: false, error: ADD_RECEIPT_PRINTER };
-  }
-  const res = await dispatchPrintJob(job, devices, {
-    printerId: printer.id,
-  });
-  if (res.printed > 0) {
-    return { ok: true, printerLabel: printer.label };
-  }
-  const cfg = printer.print;
-  const lan = cfg ? parseLanTarget(cfg.ip, cfg.port, cfg.target) : null;
-  if (!lan || !cfg) {
-    return { ok: false, error: res.error || "Receipt printer needs a static IP." };
-  }
-  const queued = await enqueueKitchenJob(
-    job,
-    printer.id,
-    lan.host,
-    lan.port,
-    escposBase64(job, {
-      modelPreset: cfg.modelPreset,
-      emulation: cfg.emulation,
-      paperWidthMm: cfg.paperWidthMm,
-      cutter: cfg.cutter,
-    }),
-    "station",
-    "receipt",
-  );
-  if (queued) {
-    return { ok: true, printerLabel: printer.label };
-  }
-  return {
-    ok: false,
-    error: res.error || "Use a paired station or print agent.",
+  // enqueueKitchenJob is the station fallback when the receipt printer is offline.
+  return deliverReceiptJob(job);
+}
+
+/** Tip-option slips after card auth, before the tip is entered. No pay QR. */
+export async function printCardTipSlips(
+  orderId: string,
+  auth: { amountCents: number; last4?: string },
+): Promise<{ ok: boolean; error?: string; printerLabel?: string }> {
+  const s = usePosStore.getState();
+  const order = s.orders.find((o) => o.id === orderId) ?? s.getActiveOrder?.();
+  if (!order) return { ok: false, error: "No check to print." };
+  const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
+  const locationId = s.tenantLocationId || "";
+  const locationName = s.settings.name || "Summex";
+  const base = {
+    station: "receipt" as const,
+    locationId,
+    locationName,
+    checkId: order.id,
+    checkNumber: order.number,
+    tableLabel: order.tableId
+      ? partyHeader(s.tables, order.tableId)
+      : (table?.label ?? order.tabName ?? order.type.replace("_", " ")),
+    serverName: order.serverName,
+    items: [] as PrintLine[],
+    timezone: parseVenueTimezone(s.settings.timezone),
+    totals: {
+      subtotalCents: auth.amountCents,
+      taxCents: 0,
+      totalCents: auth.amountCents,
+      cardTotalCents: auth.amountCents,
+      tender: cardPaidTenderLine(auth.last4),
+    },
+    at: venueNowMs(),
   };
+  let last: { ok: boolean; error?: string; printerLabel?: string } = {
+    ok: false,
+    error: ADD_RECEIPT_PRINTER,
+  };
+  for (const copy of ["merchant", "guest"] as const) {
+    last = await deliverReceiptJob({
+      ...base,
+      id: uid("tip"),
+      kind: "tip_slip",
+      copy,
+    });
+    if (!last.ok) return last;
+  }
+  return last;
 }
 
 /** Pre-pay guest check on the section receipt printer. Never kitchen. Never a Star. */

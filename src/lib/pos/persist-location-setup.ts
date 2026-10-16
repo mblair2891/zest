@@ -182,6 +182,27 @@ export function persistEntityKyc(): void {
   );
 }
 
+export function persistPrintPayQr(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("print-pay-qr");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "print-pay-qr",
+    setTimeout(() => {
+      timers.delete("print-pay-qr");
+      const on = usePosStore.getState().settings.printPayQrOnGuestCheck === true;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: { printPayQrOnGuestCheck: on, configVersion: bumpConfigVersion() },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
 export function persistPaymentMethods(): void {
   const ctx = ids();
   if (!ctx) return;

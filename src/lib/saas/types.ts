@@ -101,6 +101,8 @@ export type LocationSetup = {
   goLiveChoices?: Record<string, "keep" | "erase">;
   qrMode?: string;
   qrPolicy?: import("@/lib/pos/qr-policy").QrPolicy;
+  /** Guest-check pay QR. Default off. Paid receipts never print it. */
+  printPayQrOnGuestCheck?: boolean;
   /** When true, Open POS does not hash in the training PIN roster. Add staff in the UI. */
   skipTrainingRoster?: boolean;
   /** inherit = platform default (sandbox unless Platform → Payments is live). */

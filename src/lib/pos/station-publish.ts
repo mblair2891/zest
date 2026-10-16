@@ -28,6 +28,7 @@ export type StationPublishSetup = {
   locationDevices?: object[];
   qrMode?: string;
   qrPolicy?: object;
+  printPayQrOnGuestCheck?: boolean;
   cashHandling?: object;
   paymentMethods?: object;
   cardProcessor?: "finix" | "stripe" | "square" | "none";
@@ -199,6 +200,9 @@ export function applyStationPublish(
     if (typeof setup.qrMode === "string") settings.qrMode = parseQrMode(setup.qrMode);
     if (setup.qrPolicy != null) {
       settings.qrPolicy = parseQrPolicy(setup.qrPolicy, setup.qrMode ?? settings.qrMode);
+    }
+    if ("printPayQrOnGuestCheck" in setup) {
+      settings.printPayQrOnGuestCheck = setup.printPayQrOnGuestCheck === true;
     }
     if (setup.cashHandling && typeof setup.cashHandling === "object") {
       settings.cashHandling = setup.cashHandling as typeof settings.cashHandling;

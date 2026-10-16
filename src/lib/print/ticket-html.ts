@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/utils";
+import { printedReceiptTotalCents, toEscPosAscii } from "./escpos";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import { receiptItemLine } from "@/lib/payments/finix-events";
@@ -50,6 +51,8 @@ export function ticketHtml(job: PrintJob): string {
   const title =
     job.kind === "guest_check"
       ? "Guest check"
+      : job.kind === "tip_slip"
+        ? "Card authorized"
       : job.kind === "receipt"
       ? "Receipt"
       : job.kind === "drawer_kick"
@@ -101,7 +104,7 @@ export function ticketHtml(job: PrintJob): string {
            .map(
              (a) =>
                `<div class="row"><span>${esc(a.name)}</span><span>${formatCurrency(a.totalCents)}</span></div>
-                <div class="mod">${formatCurrency(a.merchandiseCents)} merch · ${formatCurrency(a.feesCents)} tax/tip/svc</div>`,
+                <div class="mod">${formatCurrency(a.merchandiseCents)} merch | ${formatCurrency(a.feesCents)} tax/tip/svc</div>`,
            )
            .join("")}
          <div class="muted">Guest still paid once</div>`
@@ -132,7 +135,7 @@ export function ticketHtml(job: PrintJob): string {
            ? `<div class="row"><span>Gift</span><span>${formatCurrency(job.totals.giftCents)}</span></div>`
            : ""
        }
-       <div class="row total"><span>Total</span><span>${formatCurrency(job.totals.totalCents)}</span></div>
+       <div class="row total"><span>Total</span><span>${formatCurrency(job.kind === "receipt" ? printedReceiptTotalCents(job.totals) : job.totals.totalCents)}</span></div>
        ${job.totals.tender ? `<div class="muted">${esc(job.totals.tender)}</div>` : ""}
        ${splitNote}
        ${alloc}`
@@ -158,7 +161,7 @@ export function ticketHtml(job: PrintJob): string {
 </head>
 <body>
   <h1>${esc(job.locationName)}</h1>
-  <h2>${esc(title)}${job.copy === "merchant" ? " · merchant" : ""}</h2>
+  <h2>${esc(title)}${job.copy === "merchant" ? " | merchant" : ""}</h2>
   <div class="row"><span>#${esc(String(job.checkNumber))}</span><span>${esc(job.tableLabel)}</span></div>
   <div class="row"><span>${esc(job.serverName)}</span><span>${esc(formatVenueTime(job.at, job.timezone))}</span></div>
   ${job.diningOption ? `<div>${esc(job.diningOption)}</div>` : ""}
@@ -172,14 +175,14 @@ export function ticketHtml(job: PrintJob): string {
   ${items}
   ${totals}
   ${
-    job.qrUrl
+    job.kind === "guest_check" && job.qrUrl
       ? `<div class="muted" style="margin-top:12px">
            <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=4&data=${encodeURIComponent(job.qrUrl)}" width="140" height="140" alt="Pay QR"/>
            <div>${esc(job.qrCaption || "Scan to pay this check")}</div>
          </div>`
       : ""
   }
-  ${job.marketplaceTender ? "" : `<p class="muted">Quantum Payments · Summex</p>`}
+  ${job.marketplaceTender ? "" : `<p class="muted">${esc(toEscPosAscii("Quantum Payments | Summex"))}</p>`}
 </body>
 </html>`;
 }

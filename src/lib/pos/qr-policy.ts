@@ -154,13 +154,16 @@ export function qrPayOrReorderOn(policy: QrPolicy): boolean {
 }
 
 /**
- * Print the check-scoped pay QR on an Epson guest check / paid receipt.
- * Printer “Print pay QR” is the gate (default on). Checkbox on + no QR is a bug.
+ * Pay QR on the pre-payment guest check only.
+ * The location toggle is the gate and defaults off.
+ * A receipt printer can still suppress it. Paid receipts never call this.
  */
 export function shouldPrintPayQr(
   _policy: QrPolicy | null | undefined,
   printPayQr?: boolean | null,
+  venuePrintOnGuestCheck?: boolean | null,
 ): boolean {
+  if (venuePrintOnGuestCheck !== true) return false;
   return printPayQr !== false;
 }
 

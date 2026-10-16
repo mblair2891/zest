@@ -2995,6 +2995,13 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			note
 		} : o) });
 	},
+	setCardAuth: (orderId, auth) => {
+		set({
+			orders: get().orders.map((o: any) =>
+				o.id === orderId ? { ...o, cardAuth: auth ?? undefined } : o,
+			),
+		});
+	},
 	printCheck: () => {
 		const order = get().getActiveOrder();
 		if (!order) return;
@@ -3205,7 +3212,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const payments = [...order.payments, payment];
 		let updated = {
 			...order,
-			payments
+			payments,
+			cardAuth: method === "card" ? undefined : order.cardAuth,
 		};
 		const totals = computeTotals(updated, get().settings, {
 			tender: method === "cash" ? "cash" : "card",

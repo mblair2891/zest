@@ -32,6 +32,7 @@ import { saveLocationSettingsFn } from "@/lib/access/api";
 import {
   confirmCashDiscountRecalc,
   persistCashDiscount,
+  persistPrintPayQr,
   persistTaxRates,
   persistStationUpdates,
   persistJurisdiction,
@@ -857,6 +858,23 @@ export function SettingsView() {
             onChange={(e) => updateSettings({ receiptFooter: e.target.value })}
           />
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            data-print-pay-qr-on-guest-check=""
+            checked={settings.printPayQrOnGuestCheck === true}
+            disabled={!write}
+            onChange={(e) => {
+              updateSettings({ printPayQrOnGuestCheck: e.target.checked });
+              persistPrintPayQr();
+            }}
+            className="h-4 w-4 rounded border-border"
+          />
+          Print pay QR on guest check
+        </label>
+        <p className="text-xs text-muted-foreground">
+          Payments / Receipts. Off by default. The QR prints only on the guest check before payment.
+        </p>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

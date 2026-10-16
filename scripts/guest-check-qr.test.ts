@@ -146,11 +146,13 @@ test("Star kitchen ticket never gets a pay QR", () => {
   assert.equal(escposHasNativeQr(star), false);
 });
 
-test("printer Print pay QR on emits QR even if venue flags are thin", () => {
+test("pay QR prints on the guest check only when the venue setting is on", () => {
   const thin = parseQrPolicy({ flags: ["table_tents"] });
-  assert.equal(shouldPrintPayQr(thin, true), true);
-  assert.equal(shouldPrintPayQr(thin, undefined), true);
-  assert.equal(shouldPrintPayQr(thin, false), false);
+  assert.equal(shouldPrintPayQr(thin, true, false), false);
+  assert.equal(shouldPrintPayQr(thin, true, undefined), false);
+  assert.equal(shouldPrintPayQr(thin, undefined, true), true);
+  assert.equal(shouldPrintPayQr(thin, true, true), true);
+  assert.equal(shouldPrintPayQr(thin, false, true), false);
 });
 
 test("guest check source includes native QR and venue timezone", () => {

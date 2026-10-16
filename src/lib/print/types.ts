@@ -6,6 +6,7 @@ export type PrintJobKind =
   | "ticket"
   | "receipt"
   | "guest_check"
+  | "tip_slip"
   | "test"
   | "drawer_kick"
   | "no_sale"
