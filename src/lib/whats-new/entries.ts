@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_274_tip_slip",
+    date: "2026-10-16",
+    title: "Larger merchant tip slip",
+    summary: "The card-authorized merchant copy prints taller tip lines and a signature line across the paper.",
+    body: "After the card is authorized, the merchant copy and the guest copy print 18%, 20%, and 25% in tall type. Blank lines sit between the amount authorized, each tip, the blank tip line, the total, and the signature. The signature line runs across the paper.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "receipts"],
+  },
+  {
     id: "upd_2026_10_273_manual_card",
     date: "2026-10-16",
     title: "Enter card manually",

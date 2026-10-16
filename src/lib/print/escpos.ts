@@ -80,6 +80,8 @@ const BOLD_ON = u8(0x1b, 0x45, 0x01);
 const BOLD_OFF = u8(0x1b, 0x45, 0x00);
 const DBL_ON = u8(0x1d, 0x21, 0x11);
 const DBL_OFF = u8(0x1d, 0x21, 0x00);
+/** Double height, normal width, so a tip line still spans the paper. */
+const TALL_ON = u8(0x1d, 0x21, 0x10);
 const CUT_FULL = u8(0x1d, 0x56, 0x41, 0x10);
 const CUT_PARTIAL = u8(0x1d, 0x56, 0x42, 0x10);
 const CUT_STAR_LINE = u8(0x1b, 0x64, 0x03);
@@ -118,6 +120,21 @@ function line(left: string, right = "", width = 42): Uint8Array {
   const r = right.slice(0, Math.max(0, width - l.length));
   const pad = Math.max(1, width - l.length - r.length);
   return concat([text(l + " ".repeat(pad) + r), FEED]);
+}
+
+function feeds(count: number): Uint8Array {
+  const parts: Uint8Array[] = [];
+  for (let i = 0; i < count; i += 1) parts.push(FEED);
+  return concat(parts);
+}
+
+/** Tall tip row. The write-in uses the rest of the paper, not a short blank. */
+function tallLine(left: string, right: string, width: number): Uint8Array {
+  return concat([TALL_ON, BOLD_ON, line(left, right, width), BOLD_OFF, DBL_OFF]);
+}
+
+function writeInMarks(label: string, width: number): string {
+  return "_".repeat(Math.max(12, width - label.length - 1));
 }
 
 export type DrawerKickPin = 2 | 5;
@@ -352,21 +369,26 @@ function buildTipSlipEscPos(
     text("-".repeat(width)),
     FEED,
     line("Amount authorized", money(authorized), width),
-    FEED,
+    feeds(2),
     ALIGN_CT,
     text(TIP_AUTH_NOTE),
     FEED,
     ALIGN_LT,
-    text("-".repeat(width)),
-    FEED,
+    feeds(2),
   ];
   for (const pct of CARD_TIP_PERCENTS) {
-    parts.push(line(`Tip ${pct}%`, money(tipCentsForPercent(authorized, pct)), width));
+    parts.push(tallLine(`Tip ${pct}%`, money(tipCentsForPercent(authorized, pct)), width));
+    parts.push(FEED);
   }
-  parts.push(line("Tip", "________", width));
-  parts.push(line("Total", "________", width));
-  parts.push(FEED, line("Signature", "________________", width));
-  parts.push(FEED, ALIGN_CT, text("Quantum Payments | Summex"), FEED, cutBytes(emulation, cutter));
+  parts.push(FEED);
+  parts.push(tallLine("Tip", writeInMarks("Tip", width), width));
+  parts.push(feeds(2));
+  parts.push(tallLine("Total", writeInMarks("Total", width), width));
+  parts.push(feeds(2));
+  parts.push(BOLD_ON, text("Signature"), FEED, BOLD_OFF);
+  parts.push(FEED);
+  parts.push(TALL_ON, text("_".repeat(width)), FEED, DBL_OFF);
+  parts.push(feeds(2), ALIGN_CT, text("Quantum Payments | Summex"), FEED, cutBytes(emulation, cutter));
   return concat(parts);
 }
 

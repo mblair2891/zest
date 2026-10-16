@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/utils";
+import { CARD_TIP_PERCENTS, tipCentsForPercent } from "@/lib/pos/card-tip";
 import { printedReceiptTotalCents, toEscPosAscii } from "./escpos";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
@@ -109,7 +110,24 @@ export function ticketHtml(job: PrintJob): string {
            .join("")}
          <div class="muted">Guest still paid once</div>`
       : "";
-  const totals = job.totals
+  const authorized =
+    job.totals?.cardTotalCents ?? job.totals?.totalCents ?? job.totals?.subtotalCents ?? 0;
+  const tipSlip =
+    job.kind === "tip_slip"
+      ? `<div class="tip-slip">
+          <div class="row"><span>Amount authorized</span><span>${formatCurrency(authorized)}</span></div>
+          <p class="muted">${esc(toEscPosAscii("Card authorized - tip not yet applied."))}</p>
+          ${CARD_TIP_PERCENTS.map(
+            (pct) =>
+              `<div class="row tip-row"><span>Tip ${pct}%</span><span>${formatCurrency(tipCentsForPercent(authorized, pct))}</span></div>`,
+          ).join("")}
+          <div class="row tip-row"><span>Tip</span><span>________________</span></div>
+          <div class="row tip-row"><span>Total</span><span>________________</span></div>
+          <div class="sign-label">Signature</div>
+          <div class="sign-line"></div>
+        </div>`
+      : "";
+  const totals = job.kind === "tip_slip" ? "" : job.totals
     ? `<div class="rule"></div>
        <div class="row"><span>Subtotal</span><span>${formatCurrency(job.totals.subtotalCents)}</span></div>
        ${
@@ -157,6 +175,9 @@ export function ticketHtml(job: PrintJob): string {
   .rule { border-top: 1px dashed #333; margin: 8px 0; }
   .total { font-weight: 700; font-size: 15px; }
   .muted { text-align: center; color: #444; margin-top: 10px; font-size: 11px; }
+  .tip-slip .tip-row { font-size: 22px; font-weight: 700; margin: 16px 0; }
+  .tip-slip .sign-label { margin-top: 28px; font-size: 16px; font-weight: 700; }
+  .tip-slip .sign-line { margin-top: 18px; border-bottom: 3px solid #111; height: 42px; }
 </style>
 </head>
 <body>
@@ -173,6 +194,7 @@ export function ticketHtml(job: PrintJob): string {
   ${job.operatorName ? `<div>${esc(job.operatorName)}</div>` : ""}
   <div class="rule"></div>
   ${items}
+  ${tipSlip}
   ${totals}
   ${
     job.kind === "guest_check" && job.qrUrl

@@ -88,8 +88,41 @@ test("tip slip has suggested tips, a signature line, and no pay QR", () => {
   assert.match(txt, /Tip 20%/);
   assert.match(txt, /Tip 25%/);
   assert.match(txt, /Signature/);
+  assert.match(txt, /_{42}/);
+  assert.ok(txt.includes("\x1d\x21\x10"));
+  const suggestions = txt.slice(txt.indexOf("Tip 18%"), txt.indexOf("Tip 20%"));
+  assert.ok((suggestions.match(/\n/g) ?? []).length >= 2);
   assert.doesNotMatch(txt, /Scan to pay/);
   assert.equal(escposHasNativeQr(bytes), false);
+});
+
+test("merchant tip slip prints tall tips and a full-width signature", () => {
+  const bytes = buildEscPos(
+    job({
+      kind: "tip_slip",
+      copy: "merchant",
+      items: [],
+      totals: {
+        subtotalCents: 1088,
+        taxCents: 0,
+        totalCents: 1088,
+        cardTotalCents: 1088,
+      },
+    }),
+    { modelPreset: "epson_tm_t20" },
+  );
+  const txt = asText(bytes);
+  assert.match(txt, /CARD AUTHORIZED/);
+  assert.match(txt, /MERCHANT COPY/);
+  assert.match(txt, /Tip 18%/);
+  assert.match(txt, /Tip 25%/);
+  assert.match(txt, /Tip +_{20,}/);
+  assert.match(txt, /Total +_{20,}/);
+  assert.match(txt, /_{42}/);
+  const beforeTips = txt.slice(txt.indexOf("Amount authorized"), txt.indexOf("Tip 18%"));
+  assert.ok((beforeTips.match(/\n/g) ?? []).length >= 4);
+  const beforeSign = txt.slice(txt.indexOf("Total"), txt.indexOf("Signature"));
+  assert.ok((beforeSign.match(/\n/g) ?? []).length >= 2);
 });
 
 test("thermal text folds smart punctuation to ASCII and never prints question marks", () => {
