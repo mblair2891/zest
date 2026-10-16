@@ -90,6 +90,9 @@ test("Devices scan fills the same printer save path", () => {
   const agent = readFileSync("scripts/print-agent.mjs", "utf8");
   assert.match(agent, /\/scan/);
   const guide = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(guide, /2026\.10\.270/);
-  assert.match(guide, /Scan for printers/);
+  assert.match(guide, /2026\.10\.271/);
+  assert.match(guide, /Order printers from the station/);
+  const devices = readFileSync("src/lib/guide/content/devices.ts", "utf8");
+  assert.match(devices, /Scan for printers/);
+  assert.match(devices, /Order printers this station sends to/);
 });

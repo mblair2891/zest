@@ -1,6 +1,7 @@
 /**
  * Venue printer map: receipts and bar tickets follow floor sections;
- * food tickets follow menu groups. Stations fire; they do not own routing.
+ * food tickets follow menu groups. An order tablet or host station
+ * chooses which order printers it sends to.
  */
 
 import type { FloorSection, OrderType } from "../pos/types";

@@ -45,6 +45,7 @@ import {
   printerModelSpec,
   functionForPrintStation,
   isOrderPrinterType,
+  orderPrinterVisibleToStation,
   isPairedActivatedStation,
   isPrinterDevice,
   isPrinterType,
@@ -280,6 +281,7 @@ export function LocationDeviceRegistry({
   const [cardReaderKind, setCardReaderKind] = useState<"mobile" | "counter">("mobile");
   const [cardReaderId, setCardReaderId] = useState("");
   const [receiptPrinterId, setReceiptPrinterId] = useState<string>("");
+  const [orderPrinterIds, setOrderPrinterIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<LocationDevice | null>(null);
   const [canDeleteDevice, setCanDeleteDevice] = useState(false);
@@ -592,6 +594,18 @@ export function LocationDeviceRegistry({
     );
     setCardReaderId(preset?.cardReaderId ?? "");
     setReceiptPrinterId(preset?.receiptPrinterId ?? "");
+    const legacyOrderPrinterIds = preset?.id
+      ? devices
+          .filter(
+            (d) =>
+              isOrderPrinterType(d.type) &&
+              (d.print?.boundStationIds ?? []).includes(preset.id as string),
+          )
+          .map((d) => d.id)
+      : [];
+    setOrderPrinterIds(
+      Array.isArray(preset?.orderPrinterIds) ? preset.orderPrinterIds : legacyOrderPrinterIds,
+    );
     const cats = usePosStore.getState().categories;
     setFoodGroupIds(
       preset?.id ? cats.filter((c) => c.printerId === preset.id).map((c) => c.id) : [],
@@ -764,6 +778,16 @@ export function LocationDeviceRegistry({
                 }
               : undefined,
             receiptPrinterId: printer ? null : receiptPrinterId || null,
+            orderPrinterIds: printer
+              ? null
+              : orderPrinterIds.filter((pid) => {
+                  const row = devices.find((d) => d.id === pid);
+                  return (
+                    !!row &&
+                    isOrderPrinterType(row.type) &&
+                    orderPrinterVisibleToStation(row.assignment.operatorId, operatorId)
+                  );
+                }),
             stationClass: printer ? null : stationClass,
             cardReaderId: printer ? null : cardReaderId || null,
             cardReaderKind: printer ? null : cardReaderKind,
@@ -2018,7 +2042,7 @@ export function LocationDeviceRegistry({
                   <legend className="text-xs text-muted-foreground">Floor sections</legend>
                   <p className="text-[11px] text-muted-foreground">
                     {isReceiptPrinterType(type)
-                      ? "Print check and paid receipt for a table go to the receipt printer for that table’s section. Order / host tablets fire; they do not own routing."
+                      ? "Print check and paid receipt for a table go to the receipt printer for that table’s section."
                       : "Drinks fire to the bar printer for that table’s section (or the well the tab belongs to). If this is the only bar printer, every section maps to it."}
                   </p>
                   <div className="flex flex-col gap-1">
@@ -2109,36 +2133,10 @@ export function LocationDeviceRegistry({
                   </fieldset>
                 )}
               {isOrderPrinterType(type) && (
-              <fieldset className="space-y-1">
-                <legend className="text-xs text-muted-foreground">
-                  Stations that send tickets here
-                </legend>
-                <div className="flex flex-col gap-1">
-                  {devices
-                    .filter((d) => !isPrinterDevice(d) && d.status !== "inactive")
-                    .map((d) => {
-                      const role = deviceRoleFromFunction(d.assignment.function);
-                      if (role === "ods" || role === "kiosk") return null;
-                      return (
-                        <label key={d.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-border"
-                            checked={boundStationIds.includes(d.id)}
-                            onChange={(e) =>
-                              setBoundStationIds((prev) =>
-                                e.target.checked
-                                  ? [...prev, d.id]
-                                  : prev.filter((x) => x !== d.id),
-                              )
-                            }
-                          />
-                          {d.label} · {DEVICE_ROLE_LABEL[role]}
-                        </label>
-                      );
-                    })}
-                </div>
-              </fieldset>
+                <p className="text-[11px] text-muted-foreground" data-order-printer-station-note>
+                  Order tablets and host stations choose which order printers they send to. This
+                  printer does not assign stations.
+                </p>
               )}
               {isReceiptPrinterType(type) && (
               <fieldset className="space-y-1">
@@ -2296,6 +2294,52 @@ export function LocationDeviceRegistry({
                 by this tablet.
               </span>
             </label>
+            <fieldset className="space-y-1" data-station-order-printers>
+              <legend className="text-xs text-muted-foreground">
+                Order printers this station sends to
+              </legend>
+              <p className="text-[11px] text-muted-foreground">
+                Send from this station uses only the order printers checked here. The list is this
+                entity’s printers and shared printers.
+              </p>
+              <div className="flex flex-col gap-1">
+                {devices
+                  .filter(
+                    (d) =>
+                      isOrderPrinterType(d.type) &&
+                      d.status !== "inactive" &&
+                      orderPrinterVisibleToStation(d.assignment.operatorId, operatorId),
+                  )
+                  .map((d) => (
+                    <label key={d.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-border"
+                        data-station-order-printer={d.id}
+                        checked={orderPrinterIds.includes(d.id)}
+                        onChange={(e) =>
+                          setOrderPrinterIds((prev) =>
+                            e.target.checked
+                              ? [...prev, d.id]
+                              : prev.filter((x) => x !== d.id),
+                          )
+                        }
+                      />
+                      {d.label}
+                    </label>
+                  ))}
+                {devices.filter(
+                  (d) =>
+                    isOrderPrinterType(d.type) &&
+                    d.status !== "inactive" &&
+                    orderPrinterVisibleToStation(d.assignment.operatorId, operatorId),
+                ).length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Add an order printer for this entity, then check it here.
+                  </p>
+                )}
+              </div>
+            </fieldset>
             </div>
           )}
           <div className="flex flex-wrap gap-2">

@@ -276,6 +276,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       assignment: { operatorId: string; function: DeviceFunction };
       print?: unknown;
       receiptPrinterId?: string | null;
+      orderPrinterIds?: string[] | null;
       stationClass?: "handheld" | "terminal" | null;
       cardReaderId?: string | null;
       cardReaderKind?: "mobile" | "counter" | null;
@@ -308,6 +309,11 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
             : d.device?.receiptPrinterId
               ? String(d.device.receiptPrinterId).trim().slice(0, 80)
               : null,
+        orderPrinterIds: isPrinterType(type)
+          ? null
+          : Array.isArray(d.device?.orderPrinterIds)
+            ? d.device.orderPrinterIds.map((x) => String(x).trim()).filter(Boolean).slice(0, 40)
+            : null,
         stationClass:
           d.device?.stationClass === "handheld" || d.device?.stationClass === "terminal"
             ? d.device.stationClass
@@ -364,6 +370,9 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
         printer
           ? existing?.receiptPrinterId ?? null
           : (data.device.receiptPrinterId ?? existing?.receiptPrinterId ?? null),
+      orderPrinterIds: printer
+        ? existing?.orderPrinterIds
+        : (data.device.orderPrinterIds ?? existing?.orderPrinterIds),
       stationClass: printer
         ? existing?.stationClass
         : (data.device.stationClass ?? existing?.stationClass),

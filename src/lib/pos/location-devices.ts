@@ -185,6 +185,17 @@ export function isPrinterType(type: string | null | undefined): boolean {
   return PRINTER_DEVICE_TYPES.includes(type as LocationDeviceType);
 }
 
+/** Shared printers, plus printers for the station’s own entity. */
+export function orderPrinterVisibleToStation(
+  printerOperatorId: string | null | undefined,
+  stationOperatorId: string | null | undefined,
+): boolean {
+  const printerOp = String(printerOperatorId || "").trim() || HOST_SCOPE;
+  const stationOp = String(stationOperatorId || "").trim() || HOST_SCOPE;
+  if (printerOp === HOST_SCOPE) return true;
+  return printerOp === stationOp;
+}
+
 export function isPrinterDevice(d: { type: string } | null | undefined): boolean {
   return Boolean(d && isPrinterType(d.type));
 }
@@ -211,6 +222,11 @@ export type LocationDevice = {
   print?: PrinterConfig;
   /** Station fallback receipt printer when the table’s section has none. */
   receiptPrinterId?: string | null;
+  /**
+   * Order tablet or host station: order printers Send may use.
+   * Missing means the station has not saved this list yet.
+   */
+  orderPrinterIds?: string[];
   /** Handheld (card, no drawer) vs terminal (cash + kick). */
   stationClass?: import("./station-class").StationClass;
   cardReaderId?: string | null;
@@ -366,6 +382,11 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
           : o.receiptPrinterId
             ? String(o.receiptPrinterId).trim().slice(0, 80)
             : null,
+      orderPrinterIds: isPrinterType(type)
+        ? undefined
+        : Array.isArray(o.orderPrinterIds)
+          ? o.orderPrinterIds.map((x) => String(x).trim()).filter(Boolean).slice(0, 40)
+          : undefined,
       stationClass:
         o.stationClass === "handheld" || o.stationClass === "terminal"
           ? o.stationClass

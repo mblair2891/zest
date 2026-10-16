@@ -1,6 +1,7 @@
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import {
   isOrderPrinterType,
+  isPrinterDevice,
   isReceiptPrinterType,
   normalizeDestinationName,
   type LocationDevice,
@@ -77,9 +78,39 @@ function matchDestination(list: LocationDevice[], destinationName: string): Loca
 }
 
 /**
+ * Saved station list, or printers that already name this station.
+ * Null means the station has not chosen, so destination routing stays.
+ */
+export function stationOrderPrinterAllowlist(
+  devices: LocationDevice[] | undefined,
+  stationDeviceId?: string | null,
+): Set<string> | null {
+  const id = String(stationDeviceId ?? "").trim();
+  if (!id) return null;
+  const list = devices ?? [];
+  const station = list.find((d) => d.id === id);
+  if (!station || isPrinterDevice(station)) return null;
+  if (Array.isArray(station.orderPrinterIds)) return new Set(station.orderPrinterIds);
+  const legacy = list.filter(
+    (d) => isActiveOrderPrinter(d) && (d.print?.boundStationIds ?? []).includes(id),
+  );
+  if (!legacy.length) return null;
+  return new Set(legacy.map((d) => d.id));
+}
+
+function keepStationPrinters(
+  list: LocationDevice[],
+  allow: Set<string> | null,
+): LocationDevice[] {
+  if (!allow) return list;
+  return list.filter((d) => allow.has(d.id));
+}
+
+/**
  * Order printers for a fire. Receipt printers never match.
  * Food: menu group destination + printer. Bar: floor section.
- * Named override wins. Bar with no bar printer → Kitchen.
+ * A station that has chosen order printers sends only to those.
+ * Named override wins when that printer is allowed. Bar with no bar printer → Kitchen.
  */
 export function resolveOrderPrinters(opts: {
   devices: LocationDevice[] | undefined;
@@ -94,9 +125,11 @@ export function resolveOrderPrinters(opts: {
   orderType?: string | null;
 }): LocationDevice[] {
   const order = (opts.devices ?? []).filter(isActiveOrderPrinter);
+  const allow = stationOrderPrinterAllowlist(opts.devices, opts.stationDeviceId);
+  const allowed = (d: LocationDevice) => !allow || allow.has(d.id);
   if (opts.printerId) {
     const named = order.find((d) => d.id === opts.printerId);
-    if (named) return [named];
+    if (named && allowed(named)) return [named];
   }
   const dest = normalizeDestinationName(opts.destinationName) || DEFAULT_ORDER_DESTINATION;
   if (destKey(dest) === "bar") {
@@ -110,13 +143,16 @@ export function resolveOrderPrinters(opts: {
     });
     if (bar) {
       const hit = order.find((d) => d.id === bar.id);
-      if (hit) return [hit];
+      if (hit && allowed(hit)) return [hit];
     }
     const kitchen = entityPool(matchDestination(order, DEFAULT_ORDER_DESTINATION), opts.operatorId);
-    return kitchen;
+    return keepStationPrinters(kitchen, allow);
   }
   const pool = order.filter((d) => !isBarOrderPrinter(d));
-  return entityPool(matchDestination(pool.length ? pool : order, dest), opts.operatorId);
+  return keepStationPrinters(
+    entityPool(matchDestination(pool.length ? pool : order, dest), opts.operatorId),
+    allow,
+  );
 }
 
 export function resolveFireTarget(

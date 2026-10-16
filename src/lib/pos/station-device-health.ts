@@ -15,6 +15,7 @@ export type StationHealthDevice = {
   type: string;
   cardReaderId?: string | null;
   receiptPrinterId?: string | null;
+  orderPrinterIds?: string[] | null;
   print?: {
     ip?: string | null;
     port?: number | null;
@@ -106,7 +107,11 @@ export function assignedStationSystems(input: {
     if (printer && isReceiptType(printer.type)) pushPrinter(printer, "receipt_printer");
   }
   for (const device of input.devices) {
-    if (!boundTo(device, stationId)) continue;
+    const chosen =
+      isOrderType(device.type) &&
+      Array.isArray(station?.orderPrinterIds) &&
+      station.orderPrinterIds.includes(device.id);
+    if (!chosen && !boundTo(device, stationId)) continue;
     if (isReceiptType(device.type)) pushPrinter(device, "receipt_printer");
     if (isOrderType(device.type)) pushPrinter(device, "order_printer");
   }

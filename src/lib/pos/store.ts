@@ -229,6 +229,22 @@ import {
   type LocationDevice,
 } from "./location-devices";
 
+function sendingStationDeviceId(state: {
+  activeDeviceId?: string | null;
+  tenantLocationId?: string | null;
+}): string | null {
+  try {
+    return (
+      state.activeDeviceId ||
+      readStationPair()?.deviceId ||
+      readPairedDeviceId(state.tenantLocationId || "") ||
+      null
+    );
+  } catch {
+    return state.activeDeviceId || null;
+  }
+}
+
 
 function mergeFloorStaff(get: any, set: any, floorStaff: any) {
 	if (!Array.isArray(floorStaff) || floorStaff.length === 0) return;
@@ -2743,6 +2759,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				tableId: order.tableId,
 				sections: get().floorSections,
 				orderType: order.type,
+				stationDeviceId: sendingStationDeviceId(get()),
 			},
 		);
 		const newTickets = slips.map((slip) => ({

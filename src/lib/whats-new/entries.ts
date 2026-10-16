@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_271_station_order_printers",
+    date: "2026-10-16",
+    title: "Order printers from the station",
+    summary:
+      "Order printers are chosen on the order tablet or host station. Send uses only those printers.",
+    body: "Edit the order tablet or host station and check Order printers this station sends to. The list is that station’s entity and shared printers. Send from that station uses only the printers checked there. The order printer form does not assign stations. Receipt printers stay on floor sections. A station may still list a fallback receipt printer.",
+    roles: ["owner_manager", "kitchen_bar"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["printers"],
+  },
+  {
     id: "upd_2026_10_270_printer_scan",
     date: "2026-10-13",
     title: "Scan for printers",
