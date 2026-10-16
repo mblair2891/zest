@@ -90,7 +90,7 @@ import { resolveReceiptDrawer } from "../print/receipt-drawer";
 import { readPairedDeviceId } from "./location-devices";
 import { destinationForGroup, ticketStationForDestination } from "./order-destinations";
 import { groupFireSlips } from "./fire-routing";
-import { isOpenMenuItem, syncOpenCatalog } from "./open-items";
+import { isOpenMenuItem, needsOpenAmount, syncOpenCatalog } from "./open-items";
 import {
 	applyHouse86,
 	normalizeDeliveryChannels,
@@ -2476,7 +2476,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			}
 		}
 		const settings = get().settings;
-		const openLine = isOpenMenuItem(item);
+		const openLine = needsOpenAmount(item);
 		const entered = Math.round(Number(opts.unitPriceCents));
 		if (openLine && (!Number.isFinite(entered) || entered <= 0)) {
 			return { ok: false, error: "Enter an amount" };
@@ -4135,6 +4135,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					available: true,
 					vendorId,
 					online: true,
+					openPrice: input.openPrice === true ? true : undefined,
 				},
 			],
 		});

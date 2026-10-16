@@ -43,7 +43,8 @@ import {
   type WellLevelRow,
   type WellPour,
 } from "@/lib/pos/well-book";
-import { isOpenMenuItem, parseOpenAmountCents } from "@/lib/pos/open-items";
+import { needsOpenAmount } from "@/lib/pos/open-items";
+import { OpenAmountDialog } from "./OpenAmountDialog";
 import { WellSpiritDialog } from "./WellSpiritDialog";
 import { formatGuestCardRate } from "@/lib/pos/card-service";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -128,8 +129,8 @@ export function OrderView({
   const [modItem, setModItem] = useState<MenuItem | null>(null);
   const [modOpen, setModOpen] = useState(false);
   const [openPriceItem, setOpenPriceItem] = useState<MenuItem | null>(null);
-  const [openAmount, setOpenAmount] = useState("");
   const [openPriceError, setOpenPriceError] = useState<string | null>(null);
+  const [modPriceCents, setModPriceCents] = useState<number | null>(null);
   const [wellSpirit, setWellSpirit] = useState<{ spiritId: string; entityId: string; name: string } | null>(null);
   const [wellBottle, setWellBottle] = useState<WellLevelRow | null>(null);
   const [wellPour, setWellPour] = useState<WellPour | null>(null);
@@ -425,11 +426,17 @@ export function OrderView({
   const guestSeats = Math.max(order.guestCount, 1);
   const unsent = order.lines.some((l) => !l.sent && !l.voided);
 
-  const submitOpenAmount = () => {
+  const submitOpenAmount = (cents: number) => {
     if (!openPriceItem) return;
-    const cents = parseOpenAmountCents(openAmount);
-    if (cents == null) {
-      setOpenPriceError("Enter an amount");
+    const groups = usePosStore
+      .getState()
+      .modifierGroups.filter((g) => openPriceItem.modifierGroupIds.includes(g.id));
+    if (groups.some((g) => g.required)) {
+      setModPriceCents(cents);
+      setModItem(openPriceItem);
+      setModOpen(true);
+      setOpenPriceItem(null);
+      setOpenPriceError(null);
       return;
     }
     const res = addItem(openPriceItem.id, { unitPriceCents: cents });
@@ -438,17 +445,27 @@ export function OrderView({
       return;
     }
     setOpenPriceItem(null);
-    setOpenAmount("");
     setOpenPriceError(null);
   };
+
+  const openAmountDialog = (
+    <OpenAmountDialog
+      item={openPriceItem}
+      error={openPriceError}
+      onClose={() => {
+        setOpenPriceItem(null);
+        setOpenPriceError(null);
+      }}
+      onAdd={submitOpenAmount}
+    />
+  );
 
   const onMenuClick = (item: MenuItem) => {
     if (!item.available) return;
     if (orderLocked) return;
     if (order.status !== "open") return;
-    if (isOpenMenuItem(item)) {
+    if (needsOpenAmount(item)) {
       setOpenPriceItem(item);
-      setOpenAmount("");
       setOpenPriceError(null);
       return;
     }
@@ -457,6 +474,7 @@ export function OrderView({
       .modifierGroups.filter((g) => item.modifierGroupIds.includes(g.id));
     const needsMods = groups.some((g) => g.required);
     if (needsMods) {
+      setModPriceCents(null);
       setModItem(item);
       setModOpen(true);
       return;
@@ -679,6 +697,7 @@ export function OrderView({
                 );
               }
               const item = tile.item;
+              const openEntry = needsOpenAmount(item);
               const printed =
                 happy && item.happyHourPriceCents != null
                   ? item.happyHourPriceCents
@@ -689,6 +708,7 @@ export function OrderView({
                   key={item.id}
                   type="button"
                   disabled={!item.available || orderLocked}
+                  data-open-item={openEntry ? item.openKind ?? "price" : undefined}
                   onClick={() => onMenuClick(item)}
                   className={cn(
                     "flex min-h-16 flex-col rounded-2xl border border-border bg-surface p-3 text-left active:scale-[0.98]",
@@ -697,9 +717,11 @@ export function OrderView({
                 >
                   <span className="text-base font-semibold leading-snug">{item.name}</span>
                   <span className="mt-auto pt-2 text-sm font-semibold tabular">
-                    {dualPrice.showBoth
-                      ? `${formatCurrency(dualPrice.cash)} / ${formatCurrency(dualPrice.card)}`
-                      : formatCurrency(dualPrice.cash)}
+                    {openEntry
+                      ? "Enter amount"
+                      : dualPrice.showBoth
+                        ? `${formatCurrency(dualPrice.cash)} / ${formatCurrency(dualPrice.card)}`
+                        : formatCurrency(dualPrice.cash)}
                   </span>
                 </button>
               );
@@ -726,7 +748,13 @@ export function OrderView({
             </Button>
           </div>
         </div>
-        <ModifierDialog open={modOpen} onOpenChange={setModOpen} item={modItem} />
+        <ModifierDialog
+          open={modOpen}
+          onOpenChange={setModOpen}
+          item={modItem}
+          unitPriceCents={modPriceCents}
+        />
+        {openAmountDialog}
         {wellPopup}
       </div>
     );
@@ -1280,7 +1308,7 @@ export function OrderView({
                 );
               }
               const item = tile.item;
-              const openEntry = isOpenMenuItem(item);
+              const openEntry = needsOpenAmount(item);
               const vendor = vendors.find((v) => v.id === item.vendorId);
               const printed =
                 happy && item.happyHourPriceCents != null
@@ -1292,7 +1320,7 @@ export function OrderView({
                   <button
                     type="button"
                     disabled={!item.available}
-                    data-open-item={openEntry ? item.openKind ?? "food" : undefined}
+                    data-open-item={openEntry ? item.openKind ?? "price" : undefined}
                     onClick={() => onMenuClick(item)}
                     className={cn(
                       "flex min-h-[5.5rem] w-full flex-col rounded-2xl border border-border bg-surface p-3 text-left transition hover:border-border-strong active:scale-[0.98]",
@@ -1425,7 +1453,9 @@ export function OrderView({
         open={modOpen}
         onOpenChange={setModOpen}
         item={modItem}
+        unitPriceCents={modPriceCents}
       />
+      {openAmountDialog}
       {wellPopup}
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} />
       <ManagerPinDialog
@@ -1480,58 +1510,6 @@ export function OrderView({
                     : undefined
         }
       />
-      <Dialog
-        open={openPriceItem != null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setOpenPriceItem(null);
-            setOpenPriceError(null);
-          }
-        }}
-      >
-        <DialogContent data-open-price="">
-          <DialogHeader>
-            <DialogTitle>{openPriceItem?.name}</DialogTitle>
-          </DialogHeader>
-          <label className="block text-xs text-muted-foreground">
-            Amount
-            <Input
-              className="mt-1"
-              data-open-amount=""
-              inputMode="decimal"
-              value={openAmount}
-              placeholder="0.00"
-              autoFocus
-              onChange={(e) => {
-                setOpenAmount(e.target.value);
-                setOpenPriceError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submitOpenAmount();
-              }}
-            />
-          </label>
-          {openPriceError ? (
-            <p className="text-sm text-destructive" role="alert">
-              {openPriceError}
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {openPriceItem?.openKind === "liquor"
-                ? "Prints on the bar order printer."
-                : "Prints on the food order printer."}
-            </p>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenPriceItem(null)}>
-              Cancel
-            </Button>
-            <Button data-open-add="" onClick={submitOpenAmount}>
-              Add
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       <Dialog open={discountOpen} onOpenChange={setDiscountOpen}>
         <DialogContent>
           <DialogHeader>

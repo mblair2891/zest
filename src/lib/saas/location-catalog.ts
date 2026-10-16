@@ -320,6 +320,7 @@ export function parseMenuCatalog(raw: unknown): LocationMenuCatalog | undefined 
       wellHidden: r.wellHidden === true ? true : undefined,
       archived: r.archived === true ? true : undefined,
       openKind: r.openKind === "food" || r.openKind === "liquor" ? r.openKind : undefined,
+      openPrice: r.openPrice === true ? true : undefined,
     });
   }
   const modifiers: ModifierGroup[] = [];

@@ -25,7 +25,7 @@ import {
 } from "@/lib/pos/qr-policy";
 import { guestContactOk, guestMayAddItem, isServerlessFood } from "@/lib/pos/serverless-food";
 import { omitWellBuildFromList } from "@/lib/pos/well-book";
-import { isOpenMenuItem } from "@/lib/pos/open-items";
+import { needsOpenAmount } from "@/lib/pos/open-items";
 
 type CartLine = { menuItemId: string; name: string; unitPriceCents: number; qty: number };
 
@@ -142,7 +142,7 @@ export function GuestTablePage({
   const serverless = isServerlessFood(settings.serviceStyle);
   const items = useMemo(() => {
     return menuItems.filter((e) => {
-      if (isOpenMenuItem(e)) return false;
+      if (needsOpenAmount(e)) return false;
       if (!e.available || e.archived || e.online === false || !qrItemAllowed(e, policy.orderAllow)) return false;
       if (omitWellBuildFromList(e)) return false;
       if (!serverless) return true;

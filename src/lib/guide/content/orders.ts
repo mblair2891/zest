@@ -8,14 +8,14 @@ export const ORDER_TOPICS: GuideTopic[] = [
     title: "Menu, categories, modifiers",
     summary: "Build the item tree the floor and ODS will use.",
     roles: ["owner_manager", "server", "kitchen_bar", "vendor_operator", "host_operator"],
-    keywords: ["menu", "category", "modifier", "86", "item", "assist", "ai", "omit", "voice", "upload", "pdf", "docx", "draft", "publish", "well book", "wells", "highball", "open food", "open liquor"],
+    keywords: ["menu", "category", "modifier", "86", "item", "assist", "ai", "omit", "voice", "upload", "pdf", "docx", "draft", "publish", "well book", "wells", "highball", "open food", "open liquor", "open price", "keypad"],
     openView: "menu",
     blocks: [
       why(
         "Routing, settlement, and allergens all hang off the menu. A missing modifier or operator tag shows up as a wrong ticket or a wrong payout.",
       ),
       steps(
-        "Every entity menu includes Open Food and Open Liquor. They stay on the order pad for every entity, including All. Tap one and enter the amount. That amount is the line price. Open Food prints on the food order printer and belongs to the food entity. Open Liquor prints on the bar order printer and belongs to the bar entity. Either can be added to any check. They are not archived, deleted, or replaced by a menu upload or a well book.",
+        "Every entity menu includes Open Food and Open Liquor. They stay on the order pad for every entity, including All. Tap one and a keypad asks for the amount, including cents. Confirm adds that exact amount as the line price. No preset price is required. Open Food prints on the food order printer and belongs to the food entity. Open Liquor prints on the bar order printer and belongs to the bar entity. Either can be added to any check. A menu item marked Open price uses the same keypad and keeps that item’s selling entity. They are not archived, deleted, or replaced by a menu upload or a well book.",
         "Each selling entity has an Inventory page. It lists that entity's menu items and ingredients with the current on-hand quantity, the unit, and the last counted or received date. Search and filter narrow the list. Entering a count updates the on-hand quantity. Items with zero stock are marked. An ingredient at or under its minimum is marked low. A menu item at 1 or 2 is marked low. The page is available to the entity's manager and to any role the location grants inventory access.",
         "Open Menu for the selling entity. Choose a PDF, JPEG, PNG, or DOCX. The file name, size, and a thumbnail for a photo show on the form. A file over 5 MB, or a file that is not a photo, PDF, or DOCX, opens a notice with the size and the 5 MB maximum. OK closes it and clears the picker so you can choose again. Upload stays off until a file that fits is chosen. Upload stores that file on this entity. Analyze stays off until Upload finishes. Paste or voice does not use Upload. Analyze with no stored file says Upload a menu first and does not start a read.",
         "Analyze says Reading menu… and sends the stored file id and the entity id. A photo (JPEG, PNG, WebP, HEIC) is read as a page. A PDF uses its text, and a scan is read as page images. A DOCX uses its text. The draft is for this entity only: group, name, description, cash price when printed, modifiers, and for a drink the ABV or size and any 86 note. One price is marked cash or card unknown until you answer. Nothing is published until Save / Publish. If menu reading is not configured, a red banner says AI is not configured. A provider error is shown on the page. An empty read says No items found — try a sharper photo.",
@@ -50,7 +50,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "A single-line kitchen should not drown in paper. Plate, sandwich, side, and dessert on one Star are one ticket — not four.",
       ),
       ul(
-        "Open Food fires to the food order printer and the line belongs to the food entity. Open Liquor fires to the bar order printer and the line belongs to the bar entity. The server enters the amount. Both stay on every entity’s order pad and can be added to any check.",
+        "Open Food fires to the food order printer and the line belongs to the food entity. Open Liquor fires to the bar order printer and the line belongs to the bar entity. Tap one and a keypad asks for the amount, including cents. That exact amount is the line price. A menu item marked Open price uses the same keypad. Both stay on every entity’s order pad and can be added to any check.",
         "Food groups (Plates, Sandwich, Sides, Dessert, Salad, Pizza, …) each have an order destination and an order printer. Table section does not route food.",
         "Default for one kitchen: every food group → Kitchen → that one Star. Same destination + same printer on one Send is one slip. Map Salad or Pizza to another printer for a second slip.",
         "Drinks / bar-entity items fire to the bar printer for that table’s section (bar-rail / well is a section). If only one bar printer exists, every section maps to it. No bar printer: kitchen printer.",

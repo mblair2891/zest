@@ -470,6 +470,8 @@ export interface MenuItem {
   archived?: boolean;
   /** Price is typed on the check. food → food entity and kitchen. liquor → bar entity and bar. */
   openKind?: "food" | "liquor";
+  /** Any item. The server types the amount. The line keeps this item’s selling entity. */
+  openPrice?: boolean;
 }
 
 export interface SelectedModifier {

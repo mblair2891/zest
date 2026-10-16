@@ -335,7 +335,7 @@ export interface PosStore {
       modifiers?: Order["lines"][number]["modifiers"];
       note?: string;
       seat?: number;
-      /** Typed amount for Open Food or Open Liquor. Ignored on priced items. */
+      /** Typed amount for Open Food, Open Liquor, or an open-price item. */
       unitPriceCents?: number;
     },
   ) => ActionResult;
@@ -468,6 +468,7 @@ export interface PosStore {
     vendorId?: string;
     course?: Course;
     modifierGroupIds?: string[];
+    openPrice?: boolean;
   }) => { id: string };
   createModifierGroup: (input: {
     name: string;
@@ -556,7 +557,7 @@ export interface PosStore {
   setActiveDeviceId: (id: string | null) => void;
   updateMenuItem: (
     id: string,
-    patch: Partial<Pick<MenuItem, "name" | "priceCents" | "description" | "available" | "vendorId" | "categoryId" | "station" | "course" | "modifierGroupIds" | "archived" | "stock" | "trackStock" | "lastCountedAt">>,
+    patch: Partial<Pick<MenuItem, "name" | "priceCents" | "description" | "available" | "vendorId" | "categoryId" | "station" | "course" | "modifierGroupIds" | "archived" | "stock" | "trackStock" | "lastCountedAt" | "openPrice">>,
   ) => void;
   /** Keep Open Food and Open Liquor on the order pad after a catalog replace. */
   ensureOpenMenu: () => void;

@@ -17,9 +17,11 @@ interface Props {
   item: MenuItem | null;
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  /** Typed amount for an open-price item. Catalog price is used when this is unset. */
+  unitPriceCents?: number | null;
 }
 
-export function ModifierDialog({ item, open, onOpenChange }: Props) {
+export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Props) {
   const groups = usePosStore((s) => s.modifierGroups);
   const settings = usePosStore((s) => s.settings);
   const addItem = usePosStore((s) => s.addItem);
@@ -46,11 +48,13 @@ export function ModifierDialog({ item, open, onOpenChange }: Props) {
 
   if (!item) return null;
 
-  const happy = isHappyHour(settings);
+  const happy = unitPriceCents == null && isHappyHour(settings);
   const base =
-    happy && item.happyHourPriceCents != null
-      ? item.happyHourPriceCents
-      : item.priceCents;
+    unitPriceCents != null
+      ? unitPriceCents
+      : happy && item.happyHourPriceCents != null
+        ? item.happyHourPriceCents
+        : item.priceCents;
 
   const toggle = (groupId: string, optionId: string, max: number) => {
     setSelected((prev) => {
@@ -94,6 +98,7 @@ export function ModifierDialog({ item, open, onOpenChange }: Props) {
       modifiers: mods,
       note: note.trim() || undefined,
       quantity: qty,
+      ...(unitPriceCents != null ? { unitPriceCents } : {}),
     });
     onOpenChange(false);
   };

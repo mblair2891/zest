@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { formatCurrency } from "../src/lib/utils.ts";
 import { destinationForGroup } from "../src/lib/pos/order-destinations.ts";
 import {
   isBarOrderPrinter,
@@ -12,6 +13,8 @@ import {
   OPEN_FOOD_NAME,
   OPEN_LIQUOR_ID,
   OPEN_LIQUOR_NAME,
+  appendOpenAmountKey,
+  needsOpenAmount,
   parseOpenAmountCents,
   resolveOpenEntities,
   syncOpenCatalog,
@@ -199,6 +202,36 @@ test("open items survive archive and a well book, and the amount is typed", () =
   assert.equal(parseOpenAmountCents(""), null);
   assert.equal(parseOpenAmountCents("0"), null);
   assert.equal(parseOpenAmountCents("1.234"), null);
+  assert.equal(parseOpenAmountCents("1.02"), 102);
+  assert.equal(formatCurrency(102), "$1.02");
+  assert.equal(parseOpenAmountCents("8888.88"), 888888);
+  assert.equal(formatCurrency(888888), "$8888.88");
+
+  let foodKeys = "";
+  for (const key of ["1", ".", "0", "2"]) foodKeys = appendOpenAmountKey(foodKeys, key);
+  assert.equal(foodKeys, "1.02");
+  assert.equal(parseOpenAmountCents(foodKeys), 102);
+  let liquorKeys = "";
+  for (const key of ["8", "8", "8", "8", ".", "8", "8"]) liquorKeys = appendOpenAmountKey(liquorKeys, key);
+  assert.equal(liquorKeys, "8888.88");
+  assert.equal(parseOpenAmountCents(liquorKeys), 888888);
+  assert.equal(needsOpenAmount({ id: OPEN_FOOD_ID }), true);
+  assert.equal(needsOpenAmount({ id: OPEN_LIQUOR_ID }), true);
+  assert.equal(needsOpenAmount({ id: "soup", openPrice: true }), true);
+  assert.equal(needsOpenAmount({ id: "soup" }), false);
+
+  const view = readFileSync(new URL("../src/components/pos/OrderView.tsx", import.meta.url), "utf8");
+  const busy = view.slice(view.indexOf("if (busyNight)"), view.indexOf("const checkPane"));
+  assert.match(busy, /OpenAmountDialog|openAmountDialog/);
+  assert.match(busy, /data-open-item/);
+  assert.match(view, /needsOpenAmount/);
+  const dialog = readFileSync(new URL("../src/components/pos/OpenAmountDialog.tsx", import.meta.url), "utf8");
+  assert.match(dialog, /data-open-keypad/);
+  assert.match(dialog, /data-open-add/);
+  const catalog = readFileSync(new URL("../src/lib/saas/location-catalog.ts", import.meta.url), "utf8");
+  assert.match(catalog, /openPrice: r\.openPrice === true/);
+  const admin = readFileSync(new URL("../src/components/pos/MenuAdminView.tsx", import.meta.url), "utf8");
+  assert.match(admin, /data-item-open-price/);
 
   const removed = applyEntityMenuWrite(
     { items: again.items, categories: [], modifiers: [] },

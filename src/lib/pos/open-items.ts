@@ -38,6 +38,37 @@ export function isOpenMenuItem(item: { id?: string; openKind?: string | null }):
   return openKindOf(item) != null;
 }
 
+/** Open Food, Open Liquor, or any menu item flagged open price. The server types the amount. */
+export function needsOpenAmount(item: {
+  id?: string;
+  openKind?: string | null;
+  openPrice?: boolean | null;
+}): boolean {
+  return isOpenMenuItem(item) || item.openPrice === true;
+}
+
+const OPEN_AMOUNT_KEYS = new Set(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "00", "back", "clear"]);
+
+/** On-screen money keypad. Two decimal places. "1" "." "0" "2" is 1.02. */
+export function appendOpenAmountKey(buffer: string, key: string): string {
+  if (!OPEN_AMOUNT_KEYS.has(key)) return buffer;
+  if (key === "clear") return "";
+  if (key === "back") return buffer.slice(0, -1);
+  if (key === "00") {
+    return appendOpenAmountKey(appendOpenAmountKey(buffer, "0"), "0");
+  }
+  if (key === ".") {
+    if (buffer.includes(".")) return buffer;
+    return buffer === "" ? "0." : `${buffer}.`;
+  }
+  const next = buffer === "0" ? key : `${buffer}${key}`;
+  const [whole, frac] = next.split(".");
+  const digits = whole.replace(/^0+/, "");
+  if (digits.length > 5) return buffer;
+  if (frac != null && frac.length > 2) return buffer;
+  return next;
+}
+
 /** Dollars the server typed. Blank, zero, and extra fraction digits are refused. */
 export function parseOpenAmountCents(raw: string): number | null {
   const cleaned = String(raw ?? "").trim().replace(/[$,\s]/g, "");

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_276_open_amounts",
+    date: "2026-10-16",
+    title: "Open Food and Open Liquor amounts",
+    summary:
+      "Tap Open Food or Open Liquor and type the amount, including cents. That amount is the line price.",
+    body: "On the order pad, tap Open Food or Open Liquor. A keypad asks for the amount, including cents. Confirm adds that exact amount. Open Food belongs to the food entity. Open Liquor belongs to the bar entity. No preset price is required. A menu item marked Open price uses the same keypad and keeps that item’s selling entity.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu", "orders"],
+  },
+  {
     id: "upd_2026_10_275_tip_checkboxes",
     date: "2026-10-16",
     title: "Tip checkboxes on the merchant slip",

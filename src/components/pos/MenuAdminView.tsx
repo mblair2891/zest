@@ -81,6 +81,7 @@ export function MenuAdminView() {
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [addOpenPrice, setAddOpenPrice] = useState(false);
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
   const [vendorId, setVendorId] = useState(checklistEntity || ownVendorId || vendors[0]?.id || "");
   useEffect(() => {
@@ -89,6 +90,7 @@ export function MenuAdminView() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editOpenPrice, setEditOpenPrice] = useState(false);
   const pendingPrice = useCostStore((s) => s.pendingPriceEdit);
   const clearPendingPrice = useCostStore((s) => s.clearPendingPriceEdit);
 
@@ -102,6 +104,7 @@ export function MenuAdminView() {
     setEditing(item.id);
     setEditName(item.name);
     setEditPrice((pendingPrice.suggestedPriceCents / 100).toFixed(2));
+    setEditOpenPrice(item.openPrice === true);
     // menuItemsAll is read from the store at effect time; pendingPrice is the trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingPrice]);
@@ -131,6 +134,7 @@ export function MenuAdminView() {
     const res = createMenuItem({
       name: name.trim(),
       priceCents: addCashCents,
+      openPrice: addOpenPrice,
       categoryId: categoryId || categories[0]?.id || "",
       vendorId: vid,
     });
@@ -140,6 +144,7 @@ export function MenuAdminView() {
     }
     setName("");
     setPrice("");
+    setAddOpenPrice(false);
   };
 
   return (
@@ -204,6 +209,15 @@ export function MenuAdminView() {
                 Card price {formatCurrency(addDual.card)}
               </span>
             ) : null}
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              data-open-price-flag=""
+              checked={addOpenPrice}
+              onChange={(e) => setAddOpenPrice(e.target.checked)}
+            />
+            Open price
           </label>
           <select
             className="h-10 rounded-xl border border-border bg-bg px-3 text-sm"
@@ -430,12 +444,22 @@ export function MenuAdminView() {
                                 </span>
                               )}
                             </label>
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                data-open-price-flag=""
+                                checked={editOpenPrice}
+                                onChange={(e) => setEditOpenPrice(e.target.checked)}
+                              />
+                              Open price
+                            </label>
                             <Button
                               size="sm"
                               onClick={() => {
                                 updateMenuItem(item.id, {
                                   name: editName.trim() || item.name,
                                   priceCents: Math.round(Number(editPrice) * 100) || item.priceCents,
+                                  openPrice: editOpenPrice,
                                 });
                                 persistWrite(item.vendorId || "", "update", item.id);
                                 if (pendingPrice?.menuItemId === item.id) clearPendingPrice();
@@ -454,6 +478,7 @@ export function MenuAdminView() {
                               setSheetId(item.id);
                               setEditName(item.name);
                               setEditPrice((item.priceCents / 100).toFixed(2));
+                              setEditOpenPrice(item.openPrice === true);
                             }}
                           >
                             <p className="truncate text-sm font-medium">{item.name}</p>
@@ -465,6 +490,8 @@ export function MenuAdminView() {
                             <p className="text-xs tabular text-muted-foreground">
                               {openEntry
                                 ? "Amount on the check"
+                                : item.openPrice
+                                ? "Open price"
                                 : dual.showBoth
                                 ? `${formatCurrency(dual.cash)} cash · ${formatCurrency(dual.card)} card`
                                 : formatCurrency(dual.cash)}
@@ -599,6 +626,15 @@ export function MenuAdminView() {
                         onChange={(e) => setEditPrice(e.target.value)}
                       />
                     </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        data-item-open-price=""
+                        checked={editOpenPrice}
+                        onChange={(e) => setEditOpenPrice(e.target.checked)}
+                      />
+                      Open price. The server types the amount on the check.
+                    </label>
                     <DialogFooter className="gap-2 sm:justify-start">
                       <Button
                         type="button"
@@ -607,6 +643,7 @@ export function MenuAdminView() {
                           updateMenuItem(sheet.id, {
                             name: editName.trim() || sheet.name,
                             priceCents: Math.round(Number(editPrice) * 100) || sheet.priceCents,
+                            openPrice: editOpenPrice,
                           });
                           persistWrite(sheet.vendorId || "", "update", sheet.id);
                           if (pendingPrice?.menuItemId === sheet.id) clearPendingPrice();
