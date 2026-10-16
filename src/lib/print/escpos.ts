@@ -318,20 +318,11 @@ function buildGuestCheckEscPos(
       cashSub += cash;
       cardSub += card;
       const item = `${it.qty} ${it.name}`;
-      if (dual) {
-        parts.push(line(item, `${money(cash)} / ${money(card)}`, width));
-      } else {
-        parts.push(line(item, money(cash), width));
-      }
+      parts.push(line(item, money(dual ? card : cash), width));
       for (const m of it.mods ?? []) parts.push(line(`  ${m}`, "", width));
       if (i < g.lines.length - 1) parts.push(FEED);
     }
-    if (dual) {
-      parts.push(line(`${g.displayName} cash`, money(cashSub), width));
-      parts.push(line(`${g.displayName} card`, money(cardSub), width));
-    } else {
-      parts.push(line(`${g.displayName} sub`, money(cashSub), width));
-    }
+    parts.push(line(`${g.displayName}`, money(dual ? cardSub : cashSub), width));
   }
   parts.push(text("-".repeat(width)), FEED);
   const taxLines = job.totals?.taxLines?.filter((t) => t.cents > 0) ?? [];

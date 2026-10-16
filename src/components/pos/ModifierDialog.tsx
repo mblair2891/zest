@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
 import type { MenuItem, SelectedModifier } from "@/lib/pos/types";
 import { cn, formatCurrency } from "@/lib/utils";
-import { isHappyHour } from "@/lib/pos/calculations";
+import { isHappyHour, policyForLine } from "@/lib/pos/calculations";
+import { cardPriceCents } from "@/lib/pos/cash-discount";
 
 interface Props {
   item: MenuItem | null;
@@ -90,7 +91,11 @@ export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Pro
     }
   }
 
-  const lineTotal = (base + modTotal) * qty;
+  const menuCents = (cents: number) => {
+    const policy = policyForLine(settings, { vendorId: item.vendorId }, "card");
+    return policy ? cardPriceCents(cents, policy) : cents;
+  };
+  const lineTotal = menuCents(base + modTotal) * qty;
 
   const confirm = () => {
     if (!valid) return;
@@ -109,7 +114,7 @@ export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Pro
         <DialogHeader>
           <DialogTitle>{item.name}</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            {formatCurrency(base)}
+            {formatCurrency(menuCents(base))}
             {happy && item.happyHourPriceCents != null && (
               <span className="ml-2 text-success">Happy hour</span>
             )}

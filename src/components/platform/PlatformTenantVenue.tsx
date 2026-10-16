@@ -457,10 +457,15 @@ export function PlatformTenantVenue({
             setup.cashRoundIncrement === 0.25 ||
             setup.cashRoundIncrement === 0.5 ||
             setup.cashRoundIncrement === 0.75 ||
+            setup.cashRoundIncrement === 0.99 ||
             setup.cashRoundIncrement === 1
               ? setup.cashRoundIncrement
               : st.settings.cashRoundIncrement,
-          cashRoundMode: setup.cashRoundMode === "up" ? "up" : st.settings.cashRoundMode,
+          cashRoundMode:
+            setup.cashRoundMode === "nearest" || setup.cashRoundMode === "up"
+              ? setup.cashRoundMode
+              : st.settings.cashRoundMode,
+          entityCashPricing: setup.entityCashPricing ?? st.settings.entityCashPricing,
           giftHouseIssuerEnabled: peer
             ? false
             : (setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled),

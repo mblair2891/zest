@@ -354,7 +354,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Tap Describe with AI (or Add by voice or text).",
         "Type a paragraph or tap the mic.",
         "Upload a whole menu from Menu (PDF, photo, DOCX, or pasted text). That draft belongs to the selling entity you have open. Save / Publish is what stations receive.",
-        "If cash discount is on, a single price on Describe with AI is cash. Assist asks cash or card when the basis is open. The menu stores cash; card is computed.",
+        "If cash discount is on, a single price on Describe with AI is cash. Assist asks cash or card when the basis is open. The menu stores the cash price. The card price is calculated from that entity’s percent and rounding, and that card price is what the menu shows.",
         "On a host venue, say which operator owns the item if it is unclear.",
         "Preview the structured card. Edit anything. Confirm — Summex writes the real record.",
       ),

@@ -401,7 +401,7 @@ function DraftFields({
           hint={false}
         />
         <label className="text-xs text-muted-foreground">
-          Cash price (printed / till)
+          Cash price
           <Input
             className="mt-1"
             inputMode="decimal"
@@ -417,7 +417,7 @@ function DraftFields({
         </label>
         {policy && card !== draft.priceCents && (
           <p className="text-xs text-muted-foreground">
-            Card price {formatCurrency(card)}
+            Menu price {formatCurrency(card)}
             {draft.priceBasis === "card" ? " · mapped from a card quote" : ""}
           </p>
         )}

@@ -487,7 +487,21 @@ export interface PosStore {
   }) => { id: string };
   updateVendor: (
     id: string,
-    patch: Partial<Pick<Vendor, "name" | "shortName" | "stationType" | "stationLabel" | "cuisine" | "bankLast4" | "bankLabel" | "active">>,
+    patch: Partial<
+      Pick<
+        Vendor,
+        | "name"
+        | "shortName"
+        | "stationType"
+        | "stationLabel"
+        | "cuisine"
+        | "bankLast4"
+        | "bankLabel"
+        | "active"
+        | "cashDiscountPercent"
+        | "cashRoundIncrement"
+      >
+    >,
   ) => void;
   createEmployee: (input: {
     name: string;

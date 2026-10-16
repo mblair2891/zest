@@ -1,8 +1,10 @@
 import type { Order, OrderLine, PaymentMethod, RestaurantSettings } from "./types";
 import {
+  cashPolicyForEntityId,
   cashPolicyFromSettings,
   cardPriceCents,
   type CashDiscountPolicy,
+  type CashDiscountSettings,
 } from "./cash-discount";
 import {
   computeTaxLines,
@@ -69,6 +71,21 @@ export function lineTotal(
 
 export type TenderLens = PaymentMethod | "card" | "cash";
 
+export function policyForLine(
+  settings: CashDiscountSettings,
+  line: { vendorId?: string | null; entityId?: string | null },
+  tender?: TenderLens,
+): CashDiscountPolicy | null {
+  if (tender === "cash") return null;
+  return cashPolicyForEntityId(settings, line.vendorId || line.entityId);
+}
+
+export function cashDiscountActive(settings: CashDiscountSettings): boolean {
+  const map = settings.entityCashPricing;
+  if (map && Object.values(map).some((row) => Number(row.percent) > 0)) return true;
+  return Boolean(cashPolicyFromSettings(settings));
+}
+
 export function policyForTender(
   settings: RestaurantSettings,
   tender?: TenderLens,
@@ -84,7 +101,7 @@ export function computeTotals(
   settings: RestaurantSettings,
   opts?: { tender?: TenderLens },
 ): OrderTotals {
-  const policy = policyForTender(settings, opts?.tender);
+  const tender = opts?.tender;
   const activeLines = order.lines.filter((l) => !l.voided);
   const itemCount = activeLines.reduce((s, l) => s + l.quantity, 0);
 
@@ -92,7 +109,7 @@ export function computeTotals(
   let taxableCents = 0;
   for (const line of activeLines) {
     if (line.comped) continue;
-    const t = lineTotal(line, policy);
+    const t = lineTotal(line, policyForLine(settings, line, tender));
     subtotalCents += t;
     if (!line.taxExempt) taxableCents += t;
   }
@@ -133,7 +150,7 @@ export function computeTotals(
     const bases: Parameters<typeof computeTaxLines>[0] = {};
     for (const line of elines) {
       if (line.taxExempt) continue;
-      const merch = Math.round(lineTotal(line, policy) * scale);
+      const merch = Math.round(lineTotal(line, policyForLine(settings, line, tender)) * scale);
       const cat = lineTaxCategory(line);
       bases[cat] = (bases[cat] ?? 0) + merch;
     }
@@ -181,7 +198,7 @@ export function computeDualTotals(
   order: Order,
   settings: RestaurantSettings,
 ): { card: OrderTotals; cash: OrderTotals; enabled: boolean } {
-  const enabled = Boolean(cashPolicyFromSettings(settings));
+  const enabled = cashDiscountActive(settings);
   return {
     card: computeTotals(order, settings, { tender: "card" }),
     cash: computeTotals(order, settings, { tender: "cash" }),
@@ -204,8 +221,9 @@ export function tipSuggestions(balanceCents: number): number[] {
 export function printedItemPriceCents(
   cashCents: number,
   settings: RestaurantSettings,
+  vendorId?: string | null,
 ): { card: number; cash: number; enabled: boolean; showBoth: boolean } {
-  const policy = cashPolicyFromSettings(settings);
+  const policy = policyForLine(settings, { vendorId }, "card");
   const cash = cashCents;
   const card = policy ? cardPriceCents(cash, policy) : cash;
   return {

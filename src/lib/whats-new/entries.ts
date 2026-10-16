@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_278_entity_cash_price",
+    date: "2026-10-16",
+    title: "Menu prices follow each entity",
+    summary:
+      "Each selling entity sets its own cash-discount percent and rounding. The menu shows the card price.",
+    body: "Bar and kitchen can use different rounding. On the menu, enter the cash price. Summex calculates the card price from that entity’s percent and nearest $0.25, $0.50, $0.99, or $1.00. The menu and the guest check show the card price. The cash price shows when Cash is the tender.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu", "payments"],
+  },
+  {
     id: "upd_2026_10_277_partner_keys_banner",
     date: "2026-10-16",
     title: "Partner keys banner stays off in training",

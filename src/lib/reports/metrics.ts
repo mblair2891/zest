@@ -3,8 +3,8 @@ import {
   lineCardCents,
   lineCashCents,
   linePrintedCents,
+  policyForLine,
 } from "@/lib/pos/calculations";
-import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import type {
   Chargeback,
   Employee,
@@ -104,8 +104,6 @@ export function buildLocationMetrics(input: MetricsInput): LocationMetrics {
 
   const closed = scoped.filter((o) => o.status === "closed");
   const open = scoped.filter((o) => o.status === "open");
-  const policy = cashPolicyFromSettings(settings);
-
   let netCents = 0;
   let covers = 0;
   let tipsCents = 0;
@@ -171,10 +169,11 @@ export function buildLocationMetrics(input: MetricsInput): LocationMetrics {
 
     for (const line of o.lines) {
       if (op && line.vendorId && line.vendorId !== op) continue;
-      const printed = linePrintedCents(line, policy);
+      const linePolicy = policyForLine(settings, line, "card");
+      const printed = linePrintedCents(line, linePolicy);
       if (line.voided) continue;
-      if (policy && !line.comped) {
-        cashDiscountCostCents += Math.max(0, lineCardCents(line, policy) - lineCashCents(line));
+      if (linePolicy && !line.comped) {
+        cashDiscountCostCents += Math.max(0, lineCardCents(line, linePolicy) - lineCashCents(line));
       }
       const mi = input.menuItems.find((m) => m.id === line.menuItemId);
       const cat = input.categories.find((c) => c.id === mi?.categoryId)?.name ?? "Other";

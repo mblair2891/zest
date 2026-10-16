@@ -126,7 +126,8 @@ export function MenuAdminView() {
   };
 
   const addCashCents = Math.round(Number(price) * 100) || 0;
-  const addDual = printedItemPriceCents(addCashCents, settings);
+  const addVendorId = ownVendorId || vendorId;
+  const addDual = printedItemPriceCents(addCashCents, settings, addVendorId);
 
   const add = () => {
     if (!name.trim() || !canCreate) return;
@@ -196,19 +197,17 @@ export function MenuAdminView() {
           />
           <label className="block">
             <span className="mb-1 block text-[11px] text-muted-foreground">
-              Cash price (printed / till)
+              Cash price
             </span>
             <Input
-              placeholder="18.00"
+              placeholder="10.00"
               inputMode="decimal"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
             />
-            {addDual.showBoth ? (
-              <span className="mt-1 block text-[11px] text-muted-foreground">
-                Card price {formatCurrency(addDual.card)}
-              </span>
-            ) : null}
+            <span className="mt-1 block text-[11px] text-muted-foreground">
+              Menu price {formatCurrency(addDual.card)}
+            </span>
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -411,10 +410,11 @@ export function MenuAdminView() {
                 {items.map((item) => {
                   const openEntry = isOpenMenuItem(item);
                   const editable = !openEntry && canEditMenu(emp, grants, item.vendorId);
-                  const dual = printedItemPriceCents(item.priceCents, settings);
+                  const dual = printedItemPriceCents(item.priceCents, settings, item.vendorId);
                   const editDual = printedItemPriceCents(
                     Math.round(Number(editPrice) * 100) || item.priceCents,
                     settings,
+                    item.vendorId,
                   );
                   const foreign = ownVendorId && item.vendorId && item.vendorId !== ownVendorId;
                   return (
@@ -431,18 +431,16 @@ export function MenuAdminView() {
                             />
                             <label className="block">
                               <span className="mb-1 block text-[11px] text-muted-foreground">
-                                Cash price (printed / till)
+                                Cash price
                               </span>
                               <Input
                                 value={editPrice}
                                 inputMode="decimal"
                                 onChange={(e) => setEditPrice(e.target.value)}
                               />
-                              {editDual.showBoth && (
-                                <span className="mt-1 block text-[11px] text-muted-foreground">
-                                  Card price {formatCurrency(editDual.card)}
-                                </span>
-                              )}
+                              <span className="mt-1 block text-[11px] text-muted-foreground">
+                                Menu price {formatCurrency(editDual.card)}
+                              </span>
                             </label>
                             <label className="flex items-center gap-2 text-sm">
                               <input
@@ -492,9 +490,7 @@ export function MenuAdminView() {
                                 ? "Amount on the check"
                                 : item.openPrice
                                 ? "Open price"
-                                : dual.showBoth
-                                ? `${formatCurrency(dual.cash)} cash · ${formatCurrency(dual.card)} card`
-                                : formatCurrency(dual.cash)}
+                                : formatCurrency(dual.card)}
                               {item.happyHourPriceCents != null && (
                                 <span className="ml-2 text-success">
                                   HH {formatCurrency(item.happyHourPriceCents)}
@@ -625,6 +621,16 @@ export function MenuAdminView() {
                         value={editPrice}
                         onChange={(e) => setEditPrice(e.target.value)}
                       />
+                      <span className="mt-1 block">
+                        Menu price{" "}
+                        {formatCurrency(
+                          printedItemPriceCents(
+                            Math.round(Number(editPrice) * 100) || sheet.priceCents,
+                            settings,
+                            sheet.vendorId,
+                          ).card,
+                        )}
+                      </span>
                     </label>
                     <label className="flex items-center gap-2 text-sm">
                       <input

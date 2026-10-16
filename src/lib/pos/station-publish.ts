@@ -37,6 +37,7 @@ export type StationPublishSetup = {
   cashDiscountPercent?: number;
   cashRoundIncrement?: number;
   cashRoundMode?: string;
+  entityCashPricing?: Record<string, { percent: number; increment: 0.25 | 0.5 | 0.99 | 1 }>;
   hostMayOpenBarTabs?: boolean;
   serversAtHostStand?: boolean;
   orderMayOpenBarTabs?: boolean;
@@ -231,11 +232,17 @@ export function applyStationPublish(
       setup.cashRoundIncrement === 0.25 ||
       setup.cashRoundIncrement === 0.5 ||
       setup.cashRoundIncrement === 0.75 ||
+      setup.cashRoundIncrement === 0.99 ||
       setup.cashRoundIncrement === 1
     ) {
       settings.cashRoundIncrement = setup.cashRoundIncrement;
     }
-    if (setup.cashRoundMode === "up") settings.cashRoundMode = "up";
+    if (setup.cashRoundMode === "up" || setup.cashRoundMode === "nearest") {
+      settings.cashRoundMode = setup.cashRoundMode;
+    }
+    if (setup.entityCashPricing) {
+      settings.entityCashPricing = setup.entityCashPricing;
+    }
     if ("hostMayOpenBarTabs" in setup) {
       settings.hostMayOpenBarTabs = Boolean(setup.hostMayOpenBarTabs);
     }

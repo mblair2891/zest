@@ -28,11 +28,10 @@ import {
   computeDualTotals,
   computeTotals,
   isHappyHour,
-  lineCashCents,
   linePrintedCents,
+  policyForLine,
   printedItemPriceCents,
 } from "@/lib/pos/calculations";
-import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import {
   findWellDrink,
   orderPadCategories,
@@ -46,7 +45,6 @@ import {
 import { needsOpenAmount } from "@/lib/pos/open-items";
 import { OpenAmountDialog } from "./OpenAmountDialog";
 import { WellSpiritDialog } from "./WellSpiritDialog";
-import { formatGuestCardRate } from "@/lib/pos/card-service";
 import { cn, formatCurrency } from "@/lib/utils";
 import { ModifierDialog } from "./ModifierDialog";
 import { PaymentDialog } from "./PaymentDialog";
@@ -200,7 +198,6 @@ export function OrderView({
   const mayPrintCheck = hasBoundReceipt && mayPrintReceipt;
   const dual = order ? computeDualTotals(order, settings) : null;
   const totals = dual?.card ?? null;
-  const cashPolicy = cashPolicyFromSettings(settings);
   const orderAccess = table ? tableAccess(table.id, "order") : { ok: true };
   const orderLocked = !orderAccess.ok || !!orderAccess.viewOnly;
 
@@ -632,16 +629,7 @@ export function OrderView({
                   </span>
                 </span>
                 <span className="shrink-0 text-right tabular text-xs">
-                  {cashPolicy ? (
-                    <>
-                      {formatCurrency(lineCashCents(line))} cash
-                      <span className="block text-[10px] text-muted-foreground">
-                        {formatCurrency(linePrintedCents(line, cashPolicy))} card
-                      </span>
-                    </>
-                  ) : (
-                    formatCurrency(linePrintedCents(line))
-                  )}
+                  {formatCurrency(linePrintedCents(line, policyForLine(settings, line, "card")))}
                 </span>
               </li>
             ))}
@@ -691,7 +679,7 @@ export function OrderView({
                   >
                     <span className="text-base font-semibold leading-snug">{tile.name}</span>
                     <span className="mt-auto pt-2 text-sm font-semibold tabular">
-                      {formatCurrency(tile.priceCents)}
+                      {formatCurrency(printedItemPriceCents(tile.priceCents, settings, tile.entityId).card)}
                     </span>
                   </button>
                 );
@@ -702,7 +690,7 @@ export function OrderView({
                 happy && item.happyHourPriceCents != null
                   ? item.happyHourPriceCents
                   : item.priceCents;
-              const dualPrice = printedItemPriceCents(printed, settings);
+              const dualPrice = printedItemPriceCents(printed, settings, item.vendorId);
               return (
                 <button
                   key={item.id}
@@ -717,11 +705,7 @@ export function OrderView({
                 >
                   <span className="text-base font-semibold leading-snug">{item.name}</span>
                   <span className="mt-auto pt-2 text-sm font-semibold tabular">
-                    {openEntry
-                      ? "Enter amount"
-                      : dualPrice.showBoth
-                        ? `${formatCurrency(dualPrice.cash)} / ${formatCurrency(dualPrice.card)}`
-                        : formatCurrency(dualPrice.cash)}
+                    {openEntry ? "Enter amount" : formatCurrency(dualPrice.card)}
                   </span>
                 </button>
               );
@@ -732,8 +716,8 @@ export function OrderView({
           <div className="max-h-32 overflow-y-auto px-2 py-1">{liveCheckList}</div>
           {dual && (
             <p className="flex justify-between px-3 text-base font-semibold tabular">
-              <span>Cash {formatCurrency(dual.cash.totalCents)}</span>
-              <span>Card {formatCurrency(dual.enabled ? dual.card.totalCents : dual.cash.totalCents)}</span>
+              <span>Total</span>
+              <span>{formatCurrency(dual.enabled ? dual.card.totalCents : dual.cash.totalCents)}</span>
             </p>
           )}
           <div className="p-2">
@@ -899,16 +883,9 @@ export function OrderView({
                       </span>
                     </span>
                     <span className="shrink-0 text-right tabular text-sm">
-                      {cashPolicy ? (
-                        <span className="block text-xs">
-                          Cash {formatCurrency(lineCashCents(line))} · Card{" "}
-                          {formatCurrency(linePrintedCents(line, cashPolicy))}
-                        </span>
-                      ) : (
-                        <span className="block">
-                          {formatCurrency(linePrintedCents(line))}
-                        </span>
-                      )}
+                      <span className="block">
+                        {formatCurrency(linePrintedCents(line, policyForLine(settings, line, "card")))}
+                      </span>
                     </span>
                   </div>
                 </button>
@@ -957,23 +934,12 @@ export function OrderView({
               </div>
             )}
             <div className="flex justify-between text-base font-semibold">
-              <span>
-                {dual?.enabled
-                  ? `Card · ${formatGuestCardRate(cashPolicy?.percent ?? settings.cashDiscountPercent ?? 5)}%`
-                  : "Total"}
-              </span>
+              <span>Total</span>
               <span className="tabular">
                 {formatCurrency(totals.totalCents)}
               </span>
             </div>
-            {dual?.enabled && (
-              <div className="flex justify-between text-sm font-semibold text-foreground">
-                <span>Cash</span>
-                <span className="tabular">
-                  {formatCurrency(dual.cash.totalCents)}
-                </span>
-              </div>
-            )}
+
             {totals.balanceCents < totals.totalCents && (
               <div className="flex justify-between text-muted-foreground">
                 <span>Balance</span>
@@ -1134,9 +1100,6 @@ export function OrderView({
             {totals
               ? formatCurrency(totals.balanceCents || totals.totalCents)
               : ""}
-            {dual?.enabled
-              ? ` · cash ${formatCurrency(dual.cash.balanceCents || dual.cash.totalCents)}`
-              : ""}
           </Button>
           )}
           {mayPrintReceipt &&
@@ -1279,7 +1242,7 @@ export function OrderView({
             )}
             {tiles.map((tile) => {
               if (tile.kind === "spirit") {
-                const dualPrice = printedItemPriceCents(tile.priceCents, settings);
+                const dualPrice = printedItemPriceCents(tile.priceCents, settings, tile.entityId);
                 return (
                   <button
                     key={tile.id}
@@ -1293,16 +1256,7 @@ export function OrderView({
                   >
                     <span className="text-sm font-medium leading-snug">{tile.name}</span>
                     <span className="mt-auto pt-2 text-right tabular text-sm font-semibold">
-                      {dualPrice.showBoth ? (
-                        <span className="block text-xs font-medium">
-                          {formatCurrency(dualPrice.cash)} cash
-                          <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
-                            {formatCurrency(dualPrice.card)} card
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="block">{formatCurrency(dualPrice.cash)}</span>
-                      )}
+                      <span className="block">{formatCurrency(dualPrice.card)}</span>
                     </span>
                   </button>
                 );
@@ -1314,7 +1268,7 @@ export function OrderView({
                 happy && item.happyHourPriceCents != null
                   ? item.happyHourPriceCents
                   : item.priceCents;
-              const dualPrice = printedItemPriceCents(printed, settings);
+              const dualPrice = printedItemPriceCents(printed, settings, item.vendorId);
               return (
                 <div key={item.id} className="relative">
                   <button
@@ -1338,15 +1292,8 @@ export function OrderView({
                       <span className="text-right tabular text-sm font-semibold">
                         {openEntry ? (
                           <span className="block text-xs font-medium">Enter amount</span>
-                        ) : dualPrice.showBoth ? (
-                          <span className="block text-xs font-medium">
-                            {formatCurrency(dualPrice.cash)} cash
-                            <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
-                              {formatCurrency(dualPrice.card)} card
-                            </span>
-                          </span>
                         ) : (
-                          <span className="block">{formatCurrency(dualPrice.cash)}</span>
+                          <span className="block">{formatCurrency(dualPrice.card)}</span>
                         )}
                       </span>
                     </span>
@@ -1380,10 +1327,10 @@ export function OrderView({
             data-live-check-strip
           >
             {liveCheckList}
-            {dual?.enabled && liveLines.length > 0 && (
+            {dual && liveLines.length > 0 && (
               <p className="mt-1 flex justify-between px-1 text-[11px] font-semibold">
-                <span>Cash {formatCurrency(dual.cash.totalCents)}</span>
-                <span>Card {formatCurrency(dual.card.totalCents)}</span>
+                <span>Total</span>
+                <span>{formatCurrency(dual.enabled ? dual.card.totalCents : dual.cash.totalCents)}</span>
               </p>
             )}
             {printMsg && (

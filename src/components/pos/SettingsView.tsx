@@ -87,7 +87,6 @@ import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
   CASH_ROUND_INCREMENTS,
   cardPriceCents,
-  cashPolicyFromSettings,
   type CashRoundIncrement,
 } from "@/lib/pos/cash-discount";
 
@@ -536,6 +535,8 @@ export function SettingsView() {
     });
   }, [updateJumpSerial, updateJumpTab]);
   const updateSettings = usePosStore((s) => s.updateSettings);
+  const vendors = usePosStore((s) => s.vendors);
+  const updateVendor = usePosStore((s) => s.updateVendor);
   const labor = useOpsStore((s) => s.labor);
   const updateLabor = useOpsStore((s) => s.updateLabor);
   const persist = () => {
@@ -1027,92 +1028,139 @@ export function SettingsView() {
             </GuideLearnLink>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            You type the cash (till) price. Card is that amount marked up by this
-            location’s guest card rate, then rounded{" "}
-            <span className="font-medium text-foreground">up</span> to the
-            increment. Not Finix’s 0.25%+$0.10 — that cost is internal.
+            Each selling entity has its own percent and rounding. Menu item settings
+            take the cash price. The menu and the guest check show the card price.
+            The cash price shows when Cash is the tender. Not Finix’s 0.25%+$0.10.
             {sharedMulti
               ? peerVenue
-                ? " Venue admin sets this for the floor. Not a host merchant."
-                : " Host sets this for every tenant on this floor. Entity logins cannot."
+                ? " Two entities at this location can round differently."
+                : " Each tenant on this floor has its own rate."
               : ""}
           </p>
-          <label className="mt-3 flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={!!settings.cashDiscountEnabled}
-              onChange={(e) => {
-                if (!confirmCashDiscountRecalc()) return;
-                updateSettings({ cashDiscountEnabled: e.target.checked });
-                persistCashDiscount();
-              }}
-              className="h-4 w-4 rounded border-border"
-            />
-            Offer a cash discount
-          </label>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">
-                Guest card rate (%)
-              </span>
-              <Input
-                inputMode="decimal"
-                disabled={!settings.cashDiscountEnabled}
-                value={String(settings.cashDiscountPercent ?? 5)}
+          {vendors.length === 0 && (
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={!!settings.cashDiscountEnabled}
                 onChange={(e) => {
-                  const n = parseFloat(e.target.value);
-                  updateSettings({
-                    cashDiscountPercent: Number.isFinite(n)
-                      ? Math.round(Math.min(30, Math.max(0, n)) * 100) / 100
-                      : 5,
-                  });
-                }}
-                onBlur={() => {
                   if (!confirmCashDiscountRecalc()) return;
+                  updateSettings({ cashDiscountEnabled: e.target.checked });
                   persistCashDiscount();
                 }}
+                className="h-4 w-4 rounded border-border"
               />
+              Offer a cash discount
             </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">
-                Round up to
-              </span>
-              <select
-                className="flex h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm"
-                disabled={!settings.cashDiscountEnabled}
-                value={String(settings.cashRoundIncrement ?? 0.25)}
-                onChange={(e) => {
-                  if (!confirmCashDiscountRecalc()) return;
-                  updateSettings({
-                    cashRoundIncrement: Number(
-                      e.target.value,
-                    ) as CashRoundIncrement,
-                  });
-                  persistCashDiscount();
-                }}
-              >
-                {CASH_ROUND_INCREMENTS.map((n) => (
-                  <option key={n} value={n}>
-                    ${n.toFixed(2)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          {settings.cashDiscountEnabled && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              This location {Number(settings.cashDiscountPercent ?? 5).toFixed(2)}% ·
-              example $18.00 cash →{" "}
-              <span className="tabular text-foreground">
-                {formatCurrency(
-                  cashPolicyFromSettings(settings)
-                    ? cardPriceCents(1800, cashPolicyFromSettings(settings)!)
-                    : 1800,
-                )}
-              </span>{" "}
-              card.
-            </p>
           )}
+          <div className="mt-3 space-y-3">
+            {(vendors.length ? vendors : [{ id: "", name: settings.name || "House", shortName: "House" }]).map(
+              (vendor) => {
+                const saved = vendor.id ? settings.entityCashPricing?.[vendor.id] : undefined;
+                const percent = saved?.percent ?? settings.cashDiscountPercent ?? 5;
+                const increment = saved?.increment ?? (
+                  settings.cashRoundIncrement === 0.5 ||
+                  settings.cashRoundIncrement === 0.99 ||
+                  settings.cashRoundIncrement === 1
+                    ? settings.cashRoundIncrement
+                    : 0.25
+                );
+                const sample = cardPriceCents(1000, {
+                  percent,
+                  incrementCents: Math.round(increment * 100),
+                  mode: "nearest",
+                });
+                return (
+                  <div
+                    key={vendor.id || "house"}
+                    className="rounded-xl border border-border p-3"
+                    data-entity-cash={vendor.id || "house"}
+                  >
+                    <p className="text-sm font-medium">{vendor.name}</p>
+                    <div className="mt-2 grid grid-cols-2 gap-3">
+                      <label className="block text-sm">
+                        <span className="mb-1 block text-muted-foreground">Cash discount (%)</span>
+                        <Input
+                          inputMode="decimal"
+                          disabled={!write}
+                          value={String(percent)}
+                          onChange={(e) => {
+                            const n = parseFloat(e.target.value);
+                            const next = Number.isFinite(n)
+                              ? Math.round(Math.min(30, Math.max(0, n)) * 100) / 100
+                              : 0;
+                            if (!vendor.id) {
+                              updateSettings({ cashDiscountPercent: next, cashDiscountEnabled: next > 0 });
+                              return;
+                            }
+                            updateSettings({
+                              entityCashPricing: {
+                                ...(settings.entityCashPricing ?? {}),
+                                [vendor.id]: { percent: next, increment },
+                              },
+                              cashDiscountEnabled:
+                                next > 0 ||
+                                Object.entries(settings.entityCashPricing ?? {}).some(
+                                  ([id, row]) => id !== vendor.id && row.percent > 0,
+                                ),
+                            });
+                            updateVendor(vendor.id, { cashDiscountPercent: next, cashRoundIncrement: increment });
+                          }}
+                          onBlur={() => {
+                            if (!confirmCashDiscountRecalc()) return;
+                            persistCashDiscount();
+                          }}
+                        />
+                      </label>
+                      <label className="block text-sm">
+                        <span className="mb-1 block text-muted-foreground">Round to nearest</span>
+                        <select
+                          className="flex h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm"
+                          disabled={!write}
+                          value={String(increment)}
+                          onChange={(e) => {
+                            if (!confirmCashDiscountRecalc()) return;
+                            const next = Number(e.target.value) as CashRoundIncrement;
+                            if (!vendor.id) {
+                              updateSettings({
+                                cashRoundIncrement: next,
+                                cashRoundMode: "nearest",
+                                cashDiscountEnabled: percent > 0,
+                              });
+                              persistCashDiscount();
+                              return;
+                            }
+                            updateSettings({
+                              entityCashPricing: {
+                                ...(settings.entityCashPricing ?? {}),
+                                [vendor.id]: { percent, increment: next },
+                              },
+                            });
+                            updateVendor(vendor.id, {
+                              cashDiscountPercent: percent,
+                              cashRoundIncrement: next,
+                            });
+                            persistCashDiscount();
+                          }}
+                        >
+                          {CASH_ROUND_INCREMENTS.map((n) => (
+                            <option key={n} value={n}>
+                              ${n.toFixed(2)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      $10.00 cash →{" "}
+                      <span className="tabular text-foreground">{formatCurrency(percent > 0 ? sample : 1000)}</span>{" "}
+                      card
+                      {saved ? "" : vendor.id ? " · location rate until you save this entity" : ""}
+                    </p>
+                  </div>
+                );
+              },
+            )}
+          </div>
         </div>
         </Pack>
 

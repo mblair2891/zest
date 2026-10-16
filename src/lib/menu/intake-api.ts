@@ -8,6 +8,7 @@ function asSettings(raw: unknown): IntakeSettings {
     cashDiscountEnabled: Boolean(o.cashDiscountEnabled),
     cashDiscountPercent: Number(o.cashDiscountPercent) || 0,
     cashRoundIncrement: Number(o.cashRoundIncrement) || 0.25,
+    cashRoundMode: o.cashRoundMode === "nearest" ? "nearest" : "up",
   };
 }
 
@@ -49,6 +50,7 @@ export const extractMenuIntakeFn = createServerFn({ method: "POST" })
       cashDiscountEnabled?: boolean;
       cashDiscountPercent?: number;
       cashRoundIncrement?: number;
+      cashRoundMode?: string;
     }) => ({
       entityId: String(d.entityId ?? "").trim().slice(0, 80),
       text: String(d.text ?? "").slice(0, 20_000),

@@ -4,8 +4,8 @@
  */
 import type { CostInvoice } from "@/lib/costs/types";
 import { useCostStore } from "@/lib/costs/store";
-import { cashPolicyFromSettings, cardPriceCents } from "@/lib/pos/cash-discount";
-import { computeTotals } from "@/lib/pos/calculations";
+import { cardPriceCents } from "@/lib/pos/cash-discount";
+import { computeTotals, policyForLine } from "@/lib/pos/calculations";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import {
   isDrinkLine,
@@ -228,13 +228,13 @@ export function postBooksForBusinessDate(date = businessDateNow()): void {
     book = { ...book, locationId: book.locationId || locationId };
     book = absorbCatalog(book);
     book = postPosDay(book, buildDay(entityId, orders, date, live, locationId));
-    const policy = cashPolicyFromSettings(pos.settings);
     for (const order of orders) {
       for (const line of order.lines) {
         if (!line.sent || line.voided || line.comped) continue;
         if (lineEntity(line) !== entityId) continue;
         const merch = lineMerch(line);
         const cashUnit = line.quantity > 0 ? Math.round(merch / line.quantity) : merch;
+        const linePolicy = policyForLine(pos.settings, line, "card");
         book = recordSale(book, {
           menuItemId: line.menuItemId,
           qty: line.quantity,
@@ -242,7 +242,7 @@ export function postBooksForBusinessDate(date = businessDateNow()): void {
           at: order.closedAt ?? order.createdAt,
           live,
           cashPriceCents: cashUnit,
-          cardPriceCents: policy ? cardPriceCents(cashUnit, policy) : cashUnit,
+          cardPriceCents: linePolicy ? cardPriceCents(cashUnit, linePolicy) : cashUnit,
           locationId,
           key: `sale:${order.id}:${line.id}`,
         });

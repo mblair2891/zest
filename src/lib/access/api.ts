@@ -1118,6 +1118,7 @@ function publishSetupSlice(setup: LocationSetup) {
     cashDiscountPercent: setup.cashDiscountPercent,
     cashRoundIncrement: setup.cashRoundIncrement,
     cashRoundMode: setup.cashRoundMode,
+    entityCashPricing: setup.entityCashPricing,
     hostMayOpenBarTabs: setup.hostMayOpenBarTabs,
     serversAtHostStand: setup.serversAtHostStand,
     orderMayOpenBarTabs: setup.orderMayOpenBarTabs,

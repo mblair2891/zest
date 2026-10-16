@@ -1520,13 +1520,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                     : ""}
               . Tip recorded: {formatCurrency(payTip)}
             </p>
-            {dual.enabled && (
+            {dual.enabled && order.payments.some((p) => p.method === "cash") && (
               <p className="text-xs text-muted-foreground">
-                Card {formatCurrency(dual.card.totalCents)} · Cash{" "}
-                {formatCurrency(dual.cash.totalCents)}
-                {order.payments.some((p) => p.method === "cash")
-                  ? " · Cash discount applied"
-                  : ""}
+                Cash {formatCurrency(dual.cash.totalCents)} · Cash discount applied
               </p>
             )}
             <p className="text-sm font-medium">Receipt</p>
@@ -1828,16 +1824,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   </p>
                 </>
               )}
-              {dual.enabled && (
+              {dual.enabled && method === "cash" && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Cash {formatCurrency(dual.cash.totalCents)} · Card{" "}
-                  {formatCurrency(dual.card.totalCents)}
+                  Cash {formatCurrency(dual.cash.totalCents)}
                 </p>
               )}
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {cashOn
-                  ? "Cash is the entered till price. Card is marked up and rounded up."
-                  : "Guest charge brand is the host. Card runs on Quantum Payments only."}
+                  ? "Cash is the entered till price for each entity."
+                  : "The menu price is the card price. Card runs on Quantum Payments only."}
               </p>
             </div>
 

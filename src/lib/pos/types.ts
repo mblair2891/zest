@@ -205,8 +205,8 @@ export interface SectionAccess {
     | "no_sections";
 }
 
-export type CashRoundIncrement = 0.25 | 0.5 | 0.75 | 1;
-export type CashRoundMode = "up";
+export type CashRoundIncrement = 0.25 | 0.5 | 0.75 | 0.99 | 1;
+export type CashRoundMode = "up" | "nearest";
 
 export interface RestaurantSettings {
   name: string;
@@ -274,8 +274,13 @@ export interface RestaurantSettings {
   /** e.g. 5 for 5% */
   cashDiscountPercent?: number;
   cashRoundIncrement?: CashRoundIncrement;
-  /** Always round up to the increment (never nearest). */
+  /** Location fallback. Each selling entity stores its own rule in entityCashPricing. */
   cashRoundMode?: CashRoundMode;
+  /** Per selling entity: cash-discount percent and nearest rounding. */
+  entityCashPricing?: Record<
+    string,
+    { percent: number; increment: 0.25 | 0.5 | 0.99 | 1 }
+  >;
   kioskMode?: "order" | "checkin" | "combined";
   waitlistEnabled?: boolean;
   waitlistReason?: string;
@@ -850,6 +855,10 @@ export interface Vendor {
   drinks?: boolean;
   /** Optional well catalog. Off leaves the entity menu unchanged. */
   wellBook?: import("./well-book").WellBookConfig;
+  /** This entity’s guest card markup. Empty inherits the location rate. */
+  cashDiscountPercent?: number;
+  /** Nearest $0.25, $0.50, $0.99, or $1.00 for this entity’s card price. */
+  cashRoundIncrement?: 0.25 | 0.5 | 0.99 | 1;
 }
 
 export type SettlementPeriodType =

@@ -198,9 +198,14 @@ export function EntityMenuIntake(props: {
           text: source.kind === "text" ? source.text : pasted,
           fileId: source.kind === "file" ? source.fileId : undefined,
           locationId: locationId || undefined,
-          cashDiscountEnabled: settings.cashDiscountEnabled,
-          cashDiscountPercent: settings.cashDiscountPercent,
-          cashRoundIncrement: settings.cashRoundIncrement,
+          cashDiscountEnabled: settings.entityCashPricing?.[entityId]
+            ? Number(settings.entityCashPricing[entityId]?.percent) > 0
+            : settings.cashDiscountEnabled,
+          cashDiscountPercent:
+            settings.entityCashPricing?.[entityId]?.percent ?? settings.cashDiscountPercent,
+          cashRoundIncrement:
+            settings.entityCashPricing?.[entityId]?.increment ?? settings.cashRoundIncrement,
+          cashRoundMode: settings.entityCashPricing?.[entityId] ? "nearest" : settings.cashRoundMode,
         },
       });
       const rows = next.rows.map((row) => ({ ...row, entityId }));

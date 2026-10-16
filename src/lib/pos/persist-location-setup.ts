@@ -341,6 +341,7 @@ export function persistCashDiscount(): void {
             cashDiscountPercent: s.cashDiscountPercent,
             cashRoundIncrement: s.cashRoundIncrement,
             cashRoundMode: s.cashRoundMode,
+            entityCashPricing: s.entityCashPricing,
           },
         },
       }).catch(() => undefined);

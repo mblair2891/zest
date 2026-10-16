@@ -7,9 +7,8 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { parseTicketQrToken } from "@/lib/pos/qr-table";
 import { isEmptyTable } from "@/lib/pos/floor-status";
 import { openChecksOnTable } from "@/lib/pos/check-integrity";
-import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
-import { computeTotals, linePrintedCents, tipSuggestions } from "@/lib/pos/calculations";
+import { computeTotals, linePrintedCents, policyForLine, printedItemPriceCents, tipSuggestions } from "@/lib/pos/calculations";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import type { MenuItem, Order, OrderLine, Table } from "@/lib/pos/types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
@@ -136,7 +135,6 @@ export function GuestTablePage({
         orders.find((o) => o.id === resolvedTable.orderId)
       : undefined) ??
     openChecks[0];
-  const cardPolicy = cashPolicyFromSettings(settings);
   const totals = order ? computeTotals(order, settings, { tender: "card" }) : null;
 
   const serverless = isServerlessFood(settings.serviceStyle);
@@ -193,7 +191,7 @@ export function GuestTablePage({
       if (!seats.length) return balance;
       const share = lines
         .filter((l) => !l.voided && !l.comped && l.seat != null && seats.includes(l.seat))
-        .reduce((s, l) => s + linePrintedCents(l, cardPolicy), 0);
+        .reduce((s, l) => s + linePrintedCents(l, policyForLine(settings, l, "card")), 0);
       return Math.min(balance, Math.max(0, share));
     }
     if (policy.split === "by_item") {
@@ -201,7 +199,7 @@ export function GuestTablePage({
       if (!ids.length) return balance;
       const share = lines
         .filter((l) => !l.voided && ids.includes(l.id))
-        .reduce((s, l) => s + linePrintedCents(l, cardPolicy), 0);
+        .reduce((s, l) => s + linePrintedCents(l, policyForLine(settings, l, "card")), 0);
       return Math.min(balance, Math.max(0, share));
     }
     return balance;
@@ -483,7 +481,9 @@ export function GuestTablePage({
                     >
                       <span className="text-sm font-medium">{item.name}</span>
                       <span className="text-sm tabular text-muted-foreground">
-                        {formatCurrency(item.priceCents)}
+                        {formatCurrency(
+                          printedItemPriceCents(item.priceCents, settings, item.vendorId).card,
+                        )}
                       </span>
                     </button>
                   ))}
@@ -574,7 +574,6 @@ function GuestDone({
 
 function VendorCheck({ order, hostName }: { order: Order; hostName: string }) {
   const settings = usePosStore((s) => s.settings);
-  const cardPolicy = cashPolicyFromSettings(settings);
   const groups = groupLinesByEntity(
     order.lines.filter((l) => !l.voided),
     hostName,
@@ -599,7 +598,7 @@ function VendorCheck({ order, hostName }: { order: Order; hostName: string }) {
                   {l.quantity}× {l.name}
                   {l.seat ? ` · seat ${l.seat}` : ""}
                 </span>
-                <span className="tabular">{formatCurrency(linePrintedCents(l, cardPolicy))}</span>
+                <span className="tabular">{formatCurrency(linePrintedCents(l, policyForLine(settings, l, "card")))}</span>
               </li>
             ))}
           </ul>
@@ -659,7 +658,6 @@ function PayPanel({
   onPay: () => void;
 }) {
   const settings = usePosStore((s) => s.settings);
-  const cardPolicy = cashPolicyFromSettings(settings);
   const venuePay = parsePaymentMethods(settings.paymentMethods);
   const giftOn =
     venuePay.giftCard && (policy.payAllow === "gift" || policy.payAllow === "both");
@@ -710,7 +708,7 @@ function PayPanel({
                   <span className="flex-1">
                     {l.quantity}× {l.name}
                   </span>
-                  <span className="tabular">{formatCurrency(linePrintedCents(l, cardPolicy))}</span>
+                  <span className="tabular">{formatCurrency(linePrintedCents(l, policyForLine(settings, l, "card")))}</span>
                 </label>
               </li>
             ))}

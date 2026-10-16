@@ -26,6 +26,8 @@ export type LocationSetup = {
   cashDiscountPercent?: number;
   cashRoundIncrement?: number;
   cashRoundMode?: string;
+  /** Per selling entity. Wins over the location percent and rounding. */
+  entityCashPricing?: Record<string, { percent: number; increment: 0.25 | 0.5 | 0.99 | 1 }>;
   timezone?: string;
   /** Country, state, city, optional tax district. Required before live cards. */
   jurisdiction?: import("@/lib/pos/jurisdiction").VenueJurisdiction;

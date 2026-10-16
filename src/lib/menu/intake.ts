@@ -1,7 +1,7 @@
 /**
  * Entity menu intake. Draft rows only — the live catalog is written
  * when the entity admin taps Save / Publish.
- * Cash is the till price. Card follows the venue cash-discount rule.
+ * Cash is the till price. Card follows that entity’s cash-discount rule.
  * Tax is left to the venue tax screen.
  */
 import {
@@ -9,6 +9,7 @@ import {
   cashFromCardCents,
   cashPolicyFromSettings,
   type CashDiscountPolicy,
+  type EntityCashPricing,
 } from "../pos/cash-discount.ts";
 import {
   proposeItemRecipe,
@@ -31,6 +32,9 @@ export type IntakeSettings = {
   cashDiscountEnabled?: boolean;
   cashDiscountPercent?: number;
   cashRoundIncrement?: number;
+  cashRoundMode?: string;
+  /** Per selling entity. The intake uses the open entity’s row when it is set. */
+  entityCashPricing?: Record<string, EntityCashPricing>;
 };
 
 export type IntakeLine = {

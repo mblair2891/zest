@@ -40,7 +40,7 @@ const SUBS: Record<VenueOwnerStepId, string> = {
   model: "Shared building has no host merchant. Single-operator is the same screens with one entity.",
   entity_count: "Peer venues need at least two independent operators.",
   service: "Full service floor, counter, or hybrid.",
-  cash: "You type cash. Card is marked up, then rounded up to this increment.",
+  cash: "You type the cash price. Each selling entity sets its own percent and nearest rounding. The menu shows the card price.",
   qr: "How guests use table QR. Pairing tablets comes later.",
   tax: "One venue rate, or each entity files its own.",
   entity_slots: "DBA plus a POC email or SMS. They complete Finix and menus themselves.",

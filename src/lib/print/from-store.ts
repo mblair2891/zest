@@ -1,7 +1,6 @@
 import { entityMarksForPrint } from "@/lib/brand/logos";
 import { partyHeader } from "@/lib/pos/table-combine";
-import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
-import { computeDualTotals, computeTotals, lineCardCents, lineCashCents, linePrintedCents } from "@/lib/pos/calculations";
+import { computeDualTotals, computeTotals, lineCardCents, lineCashCents, linePrintedCents, policyForLine } from "@/lib/pos/calculations";
 import { usePosStore } from "@/lib/pos/store";
 import type { KitchenTicket, Order, RestaurantSettings } from "@/lib/pos/types";
 import { uid } from "@/lib/utils";
@@ -40,8 +39,7 @@ function linesFromTicket(t: KitchenTicket): PrintLine[] {
 
 function receiptLines(order: Order, settings: RestaurantSettings): PrintLine[] {
   const last = order.payments[order.payments.length - 1];
-  const policy =
-    last?.method === "cash" ? null : cashPolicyFromSettings(settings);
+  const tender = last?.method === "cash" ? "cash" : "card";
   return order.lines
     .filter((l) => !l.voided)
     .map((l) => ({
@@ -52,7 +50,7 @@ function receiptLines(order: Order, settings: RestaurantSettings): PrintLine[] {
       seat: l.seat,
       vendorId: l.vendorId,
       vendorName: l.vendorName,
-      amountCents: linePrintedCents(l, policy),
+      amountCents: linePrintedCents(l, policyForLine(settings, l, tender)),
     }));
 }
 
@@ -149,12 +147,12 @@ function guestCheckJob(
 ): PrintJob {
   const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
   const dual = computeDualTotals(order, s.settings);
-  const policy = cashPolicyFromSettings(s.settings);
   const items: PrintLine[] = order.lines
     .filter((l) => !l.voided)
     .map((l) => {
       const vendorId = l.vendorId || l.entityId;
       const vendor = vendorId ? s.vendors.find((v) => v.id === vendorId) : undefined;
+      const cardPolicy = policyForLine(s.settings, l, "card");
       return {
       qty: l.quantity,
       name: l.name,
@@ -164,8 +162,8 @@ function guestCheckJob(
       vendorId,
       vendorName: l.vendorName || vendor?.name,
       cashCents: lineCashCents(l),
-      cardCents: lineCardCents(l, policy),
-      amountCents: linePrintedCents(l, policy),
+      cardCents: lineCardCents(l, cardPolicy),
+      amountCents: linePrintedCents(l, cardPolicy),
       };
     });
   const loc = locationIdForQr(s, locationId);

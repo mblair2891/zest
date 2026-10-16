@@ -66,10 +66,11 @@ export function BusyPayPanel({ onNeedFloor }: { onNeedFloor: () => void }) {
           {table ? `Table ${table.label}` : order.tabName || "Check"} · #{order.number}
         </p>
         <p className="mt-1 text-lg font-semibold tabular">
-          Cash {formatCurrency(dual.cash.balanceCents || dual.cash.totalCents)}
-          {dual.enabled
-            ? ` · Card ${formatCurrency(dual.card.balanceCents || dual.card.totalCents)}`
-            : ""}
+          {formatCurrency(
+            dual.enabled
+              ? dual.card.balanceCents || dual.card.totalCents
+              : dual.cash.balanceCents || dual.cash.totalCents,
+          )}
         </p>
       </div>
       <div className="grid grid-cols-1 gap-2">

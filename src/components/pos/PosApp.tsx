@@ -328,11 +328,15 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                   setup.cashRoundIncrement === 0.25 ||
                   setup.cashRoundIncrement === 0.5 ||
                   setup.cashRoundIncrement === 0.75 ||
+                  setup.cashRoundIncrement === 0.99 ||
                   setup.cashRoundIncrement === 1
                     ? setup.cashRoundIncrement
                     : st.settings.cashRoundIncrement,
                 cashRoundMode:
-                  setup.cashRoundMode === "up" ? "up" : st.settings.cashRoundMode,
+                  setup.cashRoundMode === "nearest" || setup.cashRoundMode === "up"
+                    ? setup.cashRoundMode
+                    : st.settings.cashRoundMode,
+                entityCashPricing: setup.entityCashPricing ?? st.settings.entityCashPricing,
                 giftHouseIssuerEnabled:
                   setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled,
                 paymentMethods: parsePaymentMethods(
@@ -383,6 +387,15 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                 taxRate:
                   typeof setup.taxRate === "number" ? setup.taxRate : st.settings.taxRate,
               },
+              vendors: st.vendors.map((vendor) => {
+                const rule = (setup.entityCashPricing ?? st.settings.entityCashPricing)?.[vendor.id];
+                if (!rule) return vendor;
+                return {
+                  ...vendor,
+                  cashDiscountPercent: rule.percent,
+                  cashRoundIncrement: rule.increment,
+                };
+              }),
             });
           } catch { /* optional */ }
           try {

@@ -1975,16 +1975,7 @@ function TableDetailBody({
                       </span>
                     </span>
                     <span className="text-right text-xs tabular">
-                      {dual.enabled ? (
-                        <>
-                          <span className="block">Cash {formatCurrency(dual.cash.totalCents)}</span>
-                          <span className="block text-muted-foreground">
-                            Card {formatCurrency(dual.card.totalCents)}
-                          </span>
-                        </>
-                      ) : (
-                        formatCurrency(dual.cash.totalCents)
-                      )}
+                      {formatCurrency(dual.enabled ? dual.card.totalCents : dual.cash.totalCents)}
                     </span>
                   </button>
                   {!busy && (

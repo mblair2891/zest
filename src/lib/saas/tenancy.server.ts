@@ -25,6 +25,7 @@ import type {
 } from "./types";
 import { EMPTY_LOCATION_SETUP, MEMBERSHIP_ROLES, PLAN_SLUGS, VENUE_TYPES } from "./types";
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
+import { parseEntityCashPricing } from "@/lib/pos/cash-discount";
 import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { seedDefaultPrinterAssignments } from "@/lib/print/printer-assignment";
 import { parseNetworkChecklist, parseNetworkReadyStatus } from "./network-readiness";
@@ -319,6 +320,7 @@ function parseSetup(raw: unknown): LocationSetup {
     cashRoundIncrement:
       o.cashRoundIncrement == null ? undefined : Number(o.cashRoundIncrement) || undefined,
     cashRoundMode: typeof o.cashRoundMode === "string" ? o.cashRoundMode : undefined,
+    entityCashPricing: parseEntityCashPricing(o.entityCashPricing),
     quantumReaderId: typeof o.quantumReaderId === "string" ? o.quantumReaderId.slice(0, 80) : undefined,
     paxReaders: parsePaxReaders(o.paxReaders),
     giftHouseIssuerEnabled:

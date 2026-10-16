@@ -3,10 +3,10 @@ import {
   computeTotals,
   lineCardCents,
   lineCashCents,
+  policyForLine,
 } from "./calculations";
 import { allocatePaymentToVendors } from "./settlement";
 import { CHARGEBACK_FEE_CENTS } from "@/lib/platform/brand";
-import { cashPolicyFromSettings } from "./cash-discount";
 
 /**
  * System ledger — first-party book for Quantum Payments / settlement.
@@ -161,15 +161,18 @@ export function entriesForPayment(opts: {
     }
     return out;
   } else if (method === "cash") {
-    const policy = cashPolicyFromSettings(settings);
     let printedMerch = 0;
     let cashMerch = 0;
-    if (policy) {
-      for (const line of order.lines) {
-        if (line.voided || line.comped) continue;
-        printedMerch += lineCardCents(line, policy);
-        cashMerch += lineCashCents(line);
-      }
+    let priced = false;
+    let pricedPolicy: { percent: number; incrementCents: number } | null = null;
+    for (const line of order.lines) {
+      if (line.voided || line.comped) continue;
+      const linePolicy = policyForLine(settings, line, "card");
+      if (!linePolicy) continue;
+      priced = true;
+      if (!pricedPolicy) pricedPolicy = linePolicy;
+      printedMerch += lineCardCents(line, linePolicy);
+      cashMerch += lineCashCents(line);
     }
     out.push(
       row(ids, {
@@ -185,7 +188,7 @@ export function entriesForPayment(opts: {
       }),
     );
     const adj = printedMerch > 0 && cashMerch > 0 ? printedMerch - cashMerch : 0;
-    if (adj > 0 && policy) {
+    if (adj > 0 && priced && pricedPolicy) {
       const share = Math.round(
         adj * (payment.amountCents / Math.max(1, computeTotals(order, settings, { tender: "cash" }).totalCents)),
       );
@@ -201,8 +204,8 @@ export function entriesForPayment(opts: {
             paymentId: payId,
             party: "host",
             meta: {
-              percent: policy.percent,
-              incrementCents: policy.incrementCents,
+              percent: pricedPolicy.percent,
+              incrementCents: pricedPolicy.incrementCents,
               orderNumber: order.number,
             },
           }),

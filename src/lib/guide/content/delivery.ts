@@ -16,7 +16,7 @@ export const DELIVERY_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Integrations → Delivery. DoorDash takes a developer id, key id, signing secret, store id, and sandbox or live. Uber Eats takes a client id, client secret, store id, and sandbox or live. Commission percent is display only.",
-        "With those partner fields empty, only the signed webhook accepts orders. Waiting for partner keys stays off the floor and the order pad while the location is in training or sandbox. After the location is live, a short status shows only when a live delivery channel has no live key. Orders and pay still work. A status or 86 push waits until that vendor is configured.",
+        "With those partner fields empty, only the signed webhook accepts orders. Each selling entity sets its own cash-discount percent and rounding. The menu and the guest check show the card price. The cash price shows when Cash is the tender. A status or 86 push waits until that vendor is configured.",
         "An inbound order opens a check. The dining option is Delivery-DoorDash or Delivery-UberEats. The tender is Marketplace payable. The channel order number and the due time print on the kitchen slip.",
         "SKUs map to entity items. An unmapped line prints as open item and raises a manager flag. Food groups route to the order printers and the order display the same way as to-go. When every food line is bumped, the check is ready for pickup. A phone on the order can get the same ready text.",
         "Publish the delivery menu from the entity catalog when you are ready. An optional percent markup is applied then, not on each keystroke. 86 and un-86 in the POS push that item’s availability. The house menu row stays.",

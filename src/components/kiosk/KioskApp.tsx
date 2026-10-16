@@ -443,13 +443,7 @@ function OrderPane() {
           >
             {item.name}
             <span className="mt-2 block text-base tabular text-muted-foreground">
-              {(() => {
-                const dual = printedItemPriceCents(item.priceCents, settings);
-                if (dual.showBoth && payCfg.cash && payCfg.card) {
-                  return `${formatCurrency(dual.cash)} cash · ${formatCurrency(dual.card)} card`;
-                }
-                return formatCurrency(payCfg.card && !payCfg.cash ? dual.card : dual.cash);
-              })()}
+              {formatCurrency(printedItemPriceCents(item.priceCents, settings, item.vendorId).card)}
             </span>
           </button>
         ))}

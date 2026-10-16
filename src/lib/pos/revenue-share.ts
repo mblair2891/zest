@@ -4,8 +4,7 @@
  * or the Quantum Payments card split (the card still follows who sold the item).
  */
 import type { Employee, FloorSection, MenuItem, Order, OrderLine, RestaurantSettings, Table } from "./types";
-import { lineCardCents, lineCashCents } from "./calculations";
-import { cashPolicyFromSettings } from "./cash-discount";
+import { lineCardCents, lineCashCents, policyForLine } from "./calculations";
 import { computeTaxLines, lineTaxCategory, ratesForEntity } from "./tax-rates";
 import { isHostPrivileged } from "@/lib/access/entity-grants";
 
@@ -629,7 +628,8 @@ function lineBaseCents(
   tips: Map<string, number>,
 ): number {
   if (line.voided || line.comped) return 0;
-  const policy = rule.includeCardMarkup && settings ? cashPolicyFromSettings(settings) : null;
+  const policy =
+    rule.includeCardMarkup && settings ? policyForLine(settings, line, "card") : null;
   let base = policy ? lineCardCents(line, policy) : lineCashCents(line);
   if (rule.includeTax && settings && base > 0) {
     const rates = ratesForEntity(settings, sellingEntityId(line) || null);
