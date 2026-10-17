@@ -14,7 +14,9 @@ import {
 } from "@/lib/pos/station-role-sync";
 import { usePosStore } from "@/lib/pos/store";
 import { deliverRawPrint } from "@/lib/print/dispatch";
-import { claimStationPrintFn, completeStationPrintFn, finishPrinterScanFn, pullPrinterScanFn } from "@/lib/print/api";
+import { sendNativeUsbBytes, nativeUsbPrinterConnected } from "@/lib/print/capacitor-raw-print";
+import { isUsbPrintJob } from "@/lib/print/printer-transport";
+import { claimStationPrintFn, completeStationPrintFn, finishPrinterScanFn, noteStationUsbFn, pullPrinterScanFn } from "@/lib/print/api";
 import { scanNativePrinters } from "@/lib/print/discover-printers";
 import { isNativeApp } from "@/lib/native-shell";
 import { heartbeatLocationDeviceFn } from "@/lib/access/api";
@@ -27,6 +29,17 @@ import {
 
 const STATE_POLL_MS = 5_000;
 let printerScanBusy = false;
+let lastUsbNote: boolean | null = null;
+
+function pollUsbAttachment(locationId: string, deviceId: string): void {
+  void nativeUsbPrinterConnected().then((attached) => {
+    if (attached == null || lastUsbNote === attached) return;
+    lastUsbNote = attached;
+    void noteStationUsbFn({ data: { locationId, deviceId, attached } }).catch(() => {
+      lastUsbNote = null;
+    });
+  });
+}
 
 function pollPrinterScan(locationId: string, deviceId: string): void {
   if (printerScanBusy || !isNativeApp()) return;
@@ -82,13 +95,23 @@ function pollStationState(): void {
     .catch(() => undefined);
   const role = readStationDeviceRole() ?? pair?.station ?? "order";
   pollPrinterScan(locationId, deviceId);
+  pollUsbAttachment(locationId, deviceId);
   void claimStationPrintFn({ data: { locationId, deviceId, role } })
     .then(async (res) => {
       const job = res.job;
       if (!job) return;
-      const ok = await deliverRawPrint(job.host, job.port, job.escposBase64);
+      const usb = isUsbPrintJob(job);
+      let ok = false;
+      let usbAttached: boolean | undefined;
+      if (usb) {
+        const sent = await sendNativeUsbBytes(job.escposBase64);
+        ok = sent === "ok";
+        if (sent !== "unavailable") usbAttached = ok;
+      } else {
+        ok = await deliverRawPrint(job.host, job.port, job.escposBase64);
+      }
       await completeStationPrintFn({
-        data: { locationId, deviceId, jobId: job.id, ok },
+        data: { locationId, deviceId, jobId: job.id, ok, usbAttached },
       });
     })
     .catch(() => undefined);

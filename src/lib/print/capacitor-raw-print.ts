@@ -5,6 +5,8 @@ import { isPrintLanHost } from "./lan-hosts";
 type RawPrintPlugin = {
   sendBytes: (opts: { host: string; port: number; payload: string }) => Promise<{ ok: boolean }>;
   probe: (opts: { host: string; port: number }) => Promise<{ ok: boolean }>;
+  sendUsb: (opts: { payload: string }) => Promise<{ ok: boolean; connected?: boolean }>;
+  usbStatus: () => Promise<{ connected?: boolean; present?: boolean }>;
 };
 
 const RawPrint = registerPlugin<RawPrintPlugin>("RawPrint");
@@ -22,6 +24,34 @@ export async function sendNativeBytes(
   try {
     const res = await RawPrint.sendBytes({ host, port: p, payload: payloadBase64 });
     return res?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Android shell only. Writes the same ESC/POS bytes to the plugged-in USB printer.
+ * "ok" printed. "absent" nothing is attached. "unavailable" this is not the station app.
+ */
+export async function sendNativeUsbBytes(
+  payloadBase64: string,
+): Promise<"ok" | "absent" | "unavailable"> {
+  if (!isNativeApp()) return "unavailable";
+  if (!payloadBase64) return "absent";
+  try {
+    const res = await RawPrint.sendUsb({ payload: payloadBase64 });
+    return res?.ok === true ? "ok" : "absent";
+  } catch {
+    return "absent";
+  }
+}
+
+/** Android shell only. Null when this is not the station app. */
+export async function nativeUsbPrinterConnected(): Promise<boolean | null> {
+  if (!isNativeApp()) return null;
+  try {
+    const res = await RawPrint.usbStatus();
+    return res?.connected === true;
   } catch {
     return false;
   }

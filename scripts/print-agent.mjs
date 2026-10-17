@@ -150,6 +150,10 @@ async function drainVenueQueue() {
     const claimed = await venueJson("claim");
     const job = claimed?.job;
     if (!job?.host || !job?.escposBase64) return;
+    if (job.host === "usb" || job.transport === "usb") {
+      await venueJson("complete", { jobId: job.id, ok: false });
+      return;
+    }
     let ok = false;
     try {
       const buf = Buffer.from(String(job.escposBase64), "base64");

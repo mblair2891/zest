@@ -11,8 +11,12 @@ import {
 import { uid } from "@/lib/utils";
 import { bytesToBase64, buildDrawerKickBytes, escposBase64, parseDrawerKickPin } from "./escpos";
 import { receiptDrawerKickAllowed, resolveReceiptDrawer } from "./receipt-drawer";
-import { parseLanTarget } from "./printer-models";
-import { sendNativeBytes } from "./capacitor-raw-print";
+import { sendNativeBytes, sendNativeUsbBytes } from "./capacitor-raw-print";
+import {
+  USB_NOT_CONNECTED_LABEL,
+  byteTargetForPrinter,
+  type PrinterByteTarget,
+} from "./printer-transport";
 import {
   DEFAULT_PRINT_AGENT_URL,
   type AgentPrintRequest,
@@ -98,6 +102,19 @@ async function sendToAgent(req: AgentPrintRequest | { target: string; escposBase
   }
 }
 
+async function deliverConfigured(
+  cfg: Parameters<typeof byteTargetForPrinter>[0],
+  payload: string,
+): Promise<{ ok: boolean; target: PrinterByteTarget | null; usb?: "ok" | "absent" | "unavailable" }> {
+  const target = byteTargetForPrinter(cfg);
+  if (!target) return { ok: false, target: null };
+  if (target.transport === "usb") {
+    const usb = await sendNativeUsbBytes(payload);
+    return { ok: usb === "ok", target, usb };
+  }
+  return { ok: await deliverRawPrint(target.host, target.port, payload), target };
+}
+
 /** Capacitor station first (raw 9100), then LAN print agent. Never the OS print dialog. */
 export async function deliverRawPrint(
   host: string,
@@ -106,13 +123,6 @@ export async function deliverRawPrint(
 ): Promise<boolean> {
   if (await sendNativeBytes(host, port, escposBase64)) return true;
   return sendToAgent({ target: `${host}:${port}`, escposBase64 });
-}
-
-async function sendLanPayload(
-  lan: { host: string; port: number; target: string },
-  req: AgentPrintRequest,
-): Promise<boolean> {
-  return deliverRawPrint(lan.host, lan.port, req.escposBase64);
 }
 
 /**
@@ -138,7 +148,11 @@ export async function dispatchTurnInSlip(
   const named = opts?.printerId ? all.find((d) => d.id === opts.printerId) : undefined;
   const receipts = printersForStation(devices, "receipt", job.operatorId);
   const targets = named ? [named] : receipts.length ? receipts : all.filter((d) => d.print?.station === "receipt");
-  const agentTargets = targets.filter((p) => p.print && p.print.connection !== "browser" && p.print.target);
+  const agentTargets = targets.filter((p) => {
+    if (!p.print || p.print.connection === "browser") return false;
+    if (p.print.link === "usb") return true;
+    return Boolean(p.print.target);
+  });
 
   let printed = 0;
   for (let i = 0; i < copies; i += 1) {
@@ -147,19 +161,11 @@ export async function dispatchTurnInSlip(
       let any = false;
       for (const p of agentTargets) {
         const cfg = p.print;
-        if (!cfg?.target) continue;
-        const lan = parseLanTarget(cfg.ip, cfg.port, cfg.target);
-        if (!lan) continue;
-        const ok = await sendLanPayload(lan, {
-          locationId: copyJob.locationId,
-          printerId: p.id,
-          family: cfg.family,
-          connection: "lan",
-          target: lan.target,
-          job: copyJob,
-          escposBase64: escposBase64(copyJob),
-        });
-        if (ok) {
+        if (!cfg) continue;
+        const payload = escposBase64(copyJob);
+        const sent = await deliverConfigured(cfg, payload);
+        if (!sent.target) continue;
+        if (sent.ok) {
           any = true;
           printed += 1;
         }
@@ -195,24 +201,14 @@ export async function dispatchPrintJob(
   for (const p of printers) {
     const cfg = p.print;
     if (!cfg) continue;
-    const lan = parseLanTarget(cfg.ip, cfg.port, cfg.target);
-    if (!lan) continue;
     const payload = escposBase64(job, {
       modelPreset: cfg.modelPreset,
       emulation: cfg.emulation,
       paperWidthMm: cfg.paperWidthMm,
       cutter: cfg.cutter,
     });
-    const ok = await sendLanPayload(lan, {
-      locationId: job.locationId,
-      printerId: p.id,
-      family: cfg.family,
-      connection: "lan",
-      target: lan.target,
-      job,
-      escposBase64: payload,
-    });
-    if (ok) agent += 1;
+    const sent = await deliverConfigured(cfg, payload);
+    if (sent.ok) agent += 1;
   }
 
   if (agent === 0) {
@@ -237,47 +233,68 @@ export async function dispatchRawTestPrint(
       port: number;
       escposBase64: string;
       printerId: string;
+      transport?: "lan" | "usb";
+      stationIds?: string[];
     }) => Promise<{ ok: boolean; queued?: boolean; error?: string }>;
   },
 ): Promise<{ ok: boolean; queued?: boolean; error?: string; target?: string }> {
   const cfg = device.print;
-  const lan = parseLanTarget(cfg?.ip, cfg?.port, cfg?.target);
-  if (!lan) {
-    return {
-      ok: false,
-      error: "Add a static IP. Test print sends raw bytes to port 9100 — not the OS print dialog.",
-    };
-  }
   const payload = escposBase64(job, {
     modelPreset: cfg?.modelPreset,
     emulation: cfg?.emulation,
     paperWidthMm: cfg?.paperWidthMm,
     cutter: cfg?.cutter,
   });
-  const ok = await sendLanPayload(lan, {
-    locationId: job.locationId,
-    printerId: device.id,
-    family: cfg?.family ?? "generic",
-    connection: "lan",
-    target: lan.target,
-    job,
-    escposBase64: payload,
-  });
-  if (ok) return { ok: true, target: lan.target };
+  const dest = byteTargetForPrinter(cfg);
+  if (!dest) {
+    return {
+      ok: false,
+      error: "Add a static IP. Test print sends raw bytes to port 9100 — not the OS print dialog.",
+    };
+  }
+  if (dest.transport === "usb") {
+    const usb = await sendNativeUsbBytes(payload);
+    if (usb === "ok") return { ok: true, target: dest.target };
+    if (opts?.stationOnline && opts.enqueueToStation) {
+      const queued = await opts.enqueueToStation({
+        host: dest.host,
+        port: dest.port,
+        escposBase64: payload,
+        printerId: device.id,
+        transport: "usb",
+        stationIds: dest.stationIds,
+      });
+      if (queued.ok) {
+        return {
+          ok: true,
+          queued: true,
+          target: dest.target,
+          error: usb === "absent" ? USB_NOT_CONNECTED_LABEL : undefined,
+        };
+      }
+      return { ok: false, target: dest.target, error: queued.error || PRINT_NEED_STATION_OR_AGENT };
+    }
+    if (usb === "absent") return { ok: false, target: dest.target, error: USB_NOT_CONNECTED_LABEL };
+    return { ok: false, target: dest.target, error: PRINT_NEED_STATION_OR_AGENT };
+  }
+  const ok = await deliverRawPrint(dest.host, dest.port, payload);
+  if (ok) return { ok: true, target: dest.target };
   if (opts?.stationOnline && opts.enqueueToStation) {
     const queued = await opts.enqueueToStation({
-      host: lan.host,
-      port: lan.port,
+      host: dest.host,
+      port: dest.port,
       escposBase64: payload,
       printerId: device.id,
+      transport: "lan",
+      stationIds: dest.stationIds,
     });
-    if (queued.ok) return { ok: true, queued: queued.queued !== false, target: lan.target };
-    return { ok: false, target: lan.target, error: queued.error || PRINT_NEED_STATION_OR_AGENT };
+    if (queued.ok) return { ok: true, queued: queued.queued !== false, target: dest.target };
+    return { ok: false, target: dest.target, error: queued.error || PRINT_NEED_STATION_OR_AGENT };
   }
   if (opts?.stationOnline) {
-    return { ok: true, queued: true, target: lan.target };
+    return { ok: true, queued: true, target: dest.target };
   }
-  return { ok: false, target: lan.target, error: PRINT_NEED_STATION_OR_AGENT };
+  return { ok: false, target: dest.target, error: PRINT_NEED_STATION_OR_AGENT };
 }
 
 export function testPrintJob(opts: {
@@ -328,41 +345,21 @@ export async function kickCashDrawer(opts: {
       : undefined) ||
     printers.find(isKickableReceipt);
   if (!target?.print) return false;
-  const lan = parseLanTarget(target.print.ip, target.print.port, target.print.target);
-  if (!lan) return false;
+  const dest = byteTargetForPrinter(target.print);
+  if (!dest) return false;
   const pin = parseDrawerKickPin(opts.pin);
-  const job: PrintJob = {
-    id: uid("kick"),
-    kind: "drawer_kick",
-    station: "receipt",
-    locationId: opts.locationId,
-    locationName: "Kick",
-    checkId: "kick",
-    checkNumber: "",
-    tableLabel: "",
-    serverName: "",
-    items: [],
-    at: Date.now(),
-    drawerKickPin: pin,
-  };
   const payload = bytesToBase64(buildDrawerKickBytes({ pin }));
-  const ok = await sendLanPayload(lan, {
-    locationId: opts.locationId,
-    printerId: target.id,
-    family: target.print.family,
-    connection: "lan",
-    target: lan.target,
-    job,
-    escposBase64: payload,
-  });
-  if (ok) return true;
+  const sent = await deliverConfigured(target.print, payload);
+  if (sent.ok) return true;
   try {
     const { enqueueStationPrintFn, enqueueVenuePrintFn } = await import("./api");
     const body = {
       locationId: opts.locationId,
       printerId: target.id,
-      host: lan.host,
-      port: lan.port,
+      host: dest.host,
+      port: dest.port,
+      transport: dest.transport,
+      stationIds: dest.stationIds,
       escposBase64: payload,
       kind: "test",
       deviceId: opts.deviceId || "",

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- USB printer class, plus Epson, Star, and Bixolon vendor ids. -->
+    <usb-device class="7" />
+    <usb-device vendor-id="1208" />
+    <usb-device vendor-id="1305" />
+    <usb-device vendor-id="5380" />
+</resources>

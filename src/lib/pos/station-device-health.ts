@@ -20,6 +20,8 @@ export type StationHealthDevice = {
     ip?: string | null;
     port?: number | null;
     target?: string | null;
+    link?: string | null;
+    usbAttached?: boolean | null;
     boundStationIds?: string[] | null;
   } | null;
 };
@@ -35,6 +37,8 @@ export type StationAssignment = {
   /** Set when the printer has a house LAN host. Absent while the probe has not finished means quiet. */
   host: string | null;
   port: number;
+  usb?: boolean;
+  usbAttached?: boolean | null;
 };
 
 function isReceiptType(type: string): boolean {
@@ -92,13 +96,16 @@ export function assignedStationSystems(input: {
   const pushPrinter = (device: StationHealthDevice, kind: "receipt_printer" | "order_printer") => {
     if (seen.has(`${kind}:${device.id}`)) return;
     seen.add(`${kind}:${device.id}`);
-    const host = printerHost(device);
+    const usb = device.print?.link === "usb";
+    const host = usb ? null : printerHost(device);
     out.push({
       kind,
       id: device.id,
       label: device.label?.trim() || (kind === "receipt_printer" ? "Receipt printer" : "Order printer"),
       host: host?.host ?? null,
       port: host?.port ?? 0,
+      usb,
+      usbAttached: usb ? device.print?.usbAttached : undefined,
     });
   };
 
@@ -122,6 +129,11 @@ function printerResponding(
   system: StationAssignment,
   probe: Record<string, PrinterProbeState | undefined>,
 ): boolean {
+  if (system.usb) {
+    if (probe[system.id] === "up") return true;
+    if (probe[system.id] === "down" || system.usbAttached === false) return false;
+    return true;
+  }
   if (!system.host) return false;
   return probe[system.id] !== "down";
 }
@@ -149,7 +161,7 @@ export function stationHealthNotices(input: {
     notices.push({
       id: system.id,
       kind: system.kind,
-      text: `${system.label} is not responding.`,
+      text: system.usb ? "USB printer not connected" : `${system.label} is not responding.`,
     });
   }
   return notices;

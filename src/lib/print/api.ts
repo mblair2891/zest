@@ -135,13 +135,17 @@ function enqueueInput(d: {
   source?: string;
   preferDocked?: boolean;
   deviceId?: string;
+  transport?: string;
+  stationIds?: string[];
 }) {
+  const host = String(d.host ?? "").trim().slice(0, 80);
+  const transport: "lan" | "usb" = d.transport === "usb" || host === "usb" ? "usb" : "lan";
   return {
     orgId: String(d.orgId ?? "").trim(),
     locationId: String(d.locationId ?? "").trim().slice(0, 80),
     printerId: String(d.printerId ?? "").trim().slice(0, 80),
-    host: String(d.host ?? "").trim().slice(0, 80),
-    port: Number(d.port) > 0 ? Math.round(Number(d.port)) : 9100,
+    host,
+    port: transport === "usb" ? 0 : Number(d.port) > 0 ? Math.round(Number(d.port)) : 9100,
     escposBase64: String(d.escposBase64 ?? "").slice(0, 200_000),
     kind: String(d.kind ?? "test").slice(0, 40),
     ticketId: d.ticketId ? String(d.ticketId).slice(0, 80) : undefined,
@@ -149,6 +153,10 @@ function enqueueInput(d: {
     source: parseKitchenPrintSource(d.source),
     preferDocked: d.preferDocked !== false,
     deviceId: d.deviceId ? String(d.deviceId).trim().slice(0, 80) : "",
+    transport,
+    stationIds: Array.isArray(d.stationIds)
+      ? d.stationIds.map((id) => String(id).trim()).filter(Boolean).slice(0, 40)
+      : [],
   };
 }
 
@@ -160,6 +168,8 @@ function toQueued(data: ReturnType<typeof enqueueInput>): StationPrintQueued {
     printerId: data.printerId,
     host: data.host,
     port: data.port,
+    transport: data.transport,
+    stationIds: data.stationIds,
     escposBase64: data.escposBase64,
     kind,
     queuedAt: Date.now(),
@@ -290,11 +300,12 @@ export const claimPrintAgentFn = createServerFn({ method: "POST" })
   });
 
 export const completeStationPrintFn = createServerFn({ method: "POST" })
-  .validator((d: { locationId: string; deviceId: string; jobId: string; ok: boolean }) => ({
+  .validator((d: { locationId: string; deviceId: string; jobId: string; ok: boolean; usbAttached?: boolean }) => ({
     locationId: String(d.locationId ?? "").trim().slice(0, 80),
     deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
     jobId: String(d.jobId ?? "").trim().slice(0, 80),
     ok: Boolean(d.ok),
+    usbAttached: d.usbAttached === true ? true : d.usbAttached === false ? false : undefined,
   }))
   .handler(async ({ data }) => {
     const { readStationPairState } = await import("@/lib/pos/station-state.server");
@@ -305,7 +316,24 @@ export const completeStationPrintFn = createServerFn({ method: "POST" })
       workerId: data.deviceId,
       jobId: data.jobId,
       ok: data.ok,
+      usbAttached: data.usbAttached,
     });
+    return { ok: true as const };
+  });
+
+export const noteStationUsbFn = createServerFn({ method: "POST" })
+  .validator((d: { locationId: string; deviceId: string; attached: boolean }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+    attached: d.attached === true,
+  }))
+  .handler(async ({ data }) => {
+    if (!data.locationId || !data.deviceId) return { ok: false as const };
+    const { readStationPairState } = await import("@/lib/pos/station-state.server");
+    const live = await readStationPairState(data);
+    if (!live.ok) return { ok: false as const };
+    const { noteUsbAttached } = await import("./queue.server");
+    await noteUsbAttached(data);
     return { ok: true as const };
   });
 

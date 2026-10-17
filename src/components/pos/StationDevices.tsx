@@ -45,6 +45,7 @@ import {
   type PrinterProbeState,
 } from "@/lib/pos/station-device-health";
 import { probePrinter } from "@/lib/print/printer-probe";
+import { nativeUsbPrinterConnected } from "@/lib/print/capacitor-raw-print";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
 
 let devicesOpen = false;
@@ -171,11 +172,13 @@ export function StationDeviceHealthBanner() {
   );
   const printerKey = systems
     .filter((system) => system.kind !== "card_reader")
-    .map((system) => `${system.id}:${system.host ?? ""}:${system.port}`)
+    .map((system) => `${system.id}:${system.usb ? "usb" : system.host ?? ""}:${system.port}`)
     .join("|");
 
   useEffect(() => {
-    const targets = systems.filter((system) => system.kind !== "card_reader" && system.host);
+    const targets = systems.filter(
+      (system) => system.kind !== "card_reader" && (system.host || system.usb),
+    );
     if (!targets.length) return;
     let cancel = false;
     setProbe((prev) => {
@@ -186,6 +189,13 @@ export function StationDeviceHealthBanner() {
       return next;
     });
     for (const target of targets) {
+      if (target.usb) {
+        void nativeUsbPrinterConnected().then((ok) => {
+          if (cancel || ok == null) return;
+          setProbe((prev) => ({ ...prev, [target.id]: ok ? "up" : "down" }));
+        });
+        continue;
+      }
       const host = target.host;
       if (!host) continue;
       void probePrinter(host, target.port).then((ok) => {

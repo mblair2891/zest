@@ -21,6 +21,7 @@ import {
   type PrinterModelPreset,
   type PrinterPaperMm,
 } from "@/lib/print/printer-models";
+import { normalizePrinterLink } from "@/lib/print/printer-transport";
 
 export {
   DEFAULT_PRINTER_PORT,
@@ -80,7 +81,7 @@ export type LocationDeviceStatus = "online" | "offline" | "pending" | "inactive"
 
 export type PrinterConnection = "lan" | "bluetooth" | "browser";
 export type PrintStation = "kitchen" | "bar" | "receipt" | "expo" | "label";
-export type PrinterLink = "wifi" | "ethernet";
+export type PrinterLink = "wifi" | "ethernet" | "usb";
 export type PrinterDrawerKick = "none" | "attached";
 export type PrintRoute = "receipts" | "kitchen_tickets" | "bar_tickets" | "labels";
 export type PrinterReachability = "unreachable" | "idle" | "last_print";
@@ -92,6 +93,8 @@ export type PrinterConfig = {
   target: string;
   station: PrintStation;
   link?: PrinterLink;
+  /** False when this station last looked and no USB printer was attached. */
+  usbAttached?: boolean;
   ip?: string;
   port?: number;
   modelPreset?: PrinterModelPreset;
@@ -122,7 +125,7 @@ export type PrinterConfig = {
 
 export const PRINTER_CONNECTIONS: PrinterConnection[] = ["lan", "bluetooth", "browser"];
 export const PRINT_STATIONS: PrintStation[] = ["kitchen", "bar", "receipt", "expo", "label"];
-export const PRINTER_LINKS: PrinterLink[] = ["ethernet", "wifi"];
+export const PRINTER_LINKS: PrinterLink[] = ["ethernet", "wifi", "usb"];
 export const PRINT_ROUTES: PrintRoute[] = [
   "receipts",
   "kitchen_tickets",
@@ -139,6 +142,7 @@ export const PRINTER_CONNECTION_LABEL: Record<PrinterConnection, string> = {
 export const PRINTER_LINK_LABEL: Record<PrinterLink, string> = {
   ethernet: "Ethernet",
   wifi: "Wi-Fi",
+  usb: "USB",
 };
 
 export const PRINT_STATION_LABEL: Record<PrintStation, string> = {
@@ -624,9 +628,12 @@ export function stationPresenceStatus(
 export function printerStatusLabel(
   d: LocationDevice,
   venueDevices: LocationDevice[] = [],
-): "pending" | "unreachable" | "idle" | "last-print" | "lan_via_station" | "no_station_on_lan" | LocationDeviceStatus {
+): "pending" | "unreachable" | "idle" | "last-print" | "lan_via_station" | "no_station_on_lan" | "usb" | "usb_not_connected" | LocationDeviceStatus {
   if (!isPrinterDevice(d)) return stationPresenceStatus(d);
   if (d.status === "inactive") return "inactive";
+  if (d.print?.link === "usb") {
+    return d.print.usbAttached === false ? "usb_not_connected" : "usb";
+  }
   const lan = printerLanBadge(d, venueDevices);
   if (lan === "lan_via_station") return "lan_via_station";
   if (lan === "no_station_on_lan") return "no_station_on_lan";
@@ -653,10 +660,10 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
     ? (familyRaw as PrinterFamily)
     : spec.family;
   const linkRaw = String(o.link ?? "");
-  const link: PrinterLink | undefined = PRINTER_LINKS.includes(linkRaw as PrinterLink)
+  const parsedLink: PrinterLink | undefined = PRINTER_LINKS.includes(linkRaw as PrinterLink)
     ? (linkRaw as PrinterLink)
     : undefined;
-  const connRaw = String(o.connection ?? o.printerConnection ?? (link ? "lan" : "lan"));
+  const connRaw = String(o.connection ?? o.printerConnection ?? (parsedLink ? "lan" : "lan"));
   const connection: PrinterConnection = PRINTER_CONNECTIONS.includes(connRaw as PrinterConnection)
     ? (connRaw as PrinterConnection)
     : "lan";
@@ -708,12 +715,24 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
     reachRaw === "unreachable" || reachRaw === "idle" || reachRaw === "last_print"
       ? reachRaw
       : undefined;
+  const linkFallback =
+    parsedLink ?? (connection === "lan" || connection === "browser" ? "ethernet" : undefined);
+  const link = linkFallback ? normalizePrinterLink(linkFallback, modelPreset) : undefined;
+  const usbAttached =
+    link === "usb"
+      ? o.usbAttached === true
+        ? true
+        : o.usbAttached === false
+          ? false
+          : undefined
+      : undefined;
   return {
     family: spec.family || family,
     connection: connection === "browser" ? "lan" : connection,
     station,
     target,
-    link: link ?? (connection === "lan" || connection === "browser" ? "ethernet" : undefined),
+    link,
+    usbAttached,
     ip: ipFromTarget || undefined,
     port,
     modelPreset,

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_285_usb_printer",
+    date: "2026-10-17",
+    title: "USB or Ethernet printer",
+    summary:
+      "A receipt or order printer can use Ethernet or USB. The Star kitchen printer stays on Ethernet.",
+    body: "On Devices, Connection is Ethernet or USB. Ethernet keeps the static IP and port 9100. USB hides the IP and shows USB. The station that owns the printer sends the same ticket out the USB port. USB printer not connected means the cable is out, and the guest check or order ticket waits until the printer is plugged in. Test print uses the connection that is saved. The Star kitchen printer stays on Ethernet and still prints orders.",
+    roles: ["owner_manager", "kitchen_bar", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["devices", "printers"],
+  },
+  {
     id: "upd_2026_10_284_open_card_exact",
     date: "2026-10-17",
     title: "Open items stay exact on card pay",

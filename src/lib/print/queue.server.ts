@@ -1,4 +1,5 @@
 import { parseLocationDevices } from "@/lib/pos/location-devices";
+import { isUsbPrintJob } from "./printer-transport";
 import {
   PRINT_AGENT_WORKER,
   STATION_ONLINE_MS,
@@ -6,7 +7,7 @@ import {
   countWaitingKitchenPrints,
   isPreferredPrintWorkerDevice,
   isPreferredPrintWorkerRole,
-  jobIsClaimable,
+  jobClaimableBy,
   parseStationPrintQueue,
   pruneStationPrintQueue,
   type StationPrintQueued,
@@ -105,7 +106,12 @@ export async function claimPrintJob(opts: {
   let claimed: StationPrintQueued | null = null;
   await patchLocationSetup(opts.locationId, (setup) => {
     const queue = pruneStationPrintQueue(parseStationPrintQueue(setup.stationPrintQueue), now);
-    const idx = queue.findIndex((j) => jobIsClaimable(j, now));
+    const idx = queue.findIndex((j) => {
+      if (!jobClaimableBy(j, opts.workerId, role, now)) return false;
+      // A docked host still takes LAN jobs. USB stays on the station that owns the cable.
+      if (preferOnly && !isUsbPrintJob(j)) return false;
+      return true;
+    });
     if (idx >= 0) {
       queue[idx] = { ...queue[idx]!, claimedBy: opts.workerId, claimedAt: now };
       claimed = queue[idx]!;
@@ -124,38 +130,68 @@ export async function completePrintJob(opts: {
   workerId: string;
   jobId: string;
   ok: boolean;
+  usbAttached?: boolean;
 }): Promise<boolean> {
   const now = Date.now();
   await patchLocationSetup(opts.locationId, (setup) => {
     const queue = pruneStationPrintQueue(parseStationPrintQueue(setup.stationPrintQueue), now);
     const job = queue.find((j) => j.id === opts.jobId);
     if (!job) return { ...setup, stationPrintQueue: queue };
+    const stampUsb = typeof opts.usbAttached === "boolean";
+    const devicesFor = (markPrint: boolean) =>
+      parseLocationDevices(setup.locationDevices).map((d) => {
+        if (d.id !== job.printerId || !d.print) return d;
+        return {
+          ...d,
+          print: {
+            ...d.print,
+            ...(stampUsb ? { usbAttached: opts.usbAttached } : {}),
+            ...(markPrint ? { lastPrintAt: now, reachability: "idle" as const } : {}),
+          },
+        };
+      });
     if (!opts.ok) {
       job.claimedBy = undefined;
       job.claimedAt = undefined;
       job.ok = false;
+      if (stampUsb && job.printerId) {
+        return { ...setup, stationPrintQueue: queue, locationDevices: devicesFor(false) };
+      }
       return { ...setup, stationPrintQueue: queue };
     }
     job.doneAt = now;
     job.ok = true;
     job.claimedBy = opts.workerId;
     if (job.printerId) {
-      const devices = parseLocationDevices(setup.locationDevices).map((d) => {
-        if (d.id !== job.printerId || !d.print) return d;
-        return {
-          ...d,
-          print: {
-            ...d.print,
-            lastPrintAt: now,
-            reachability: "idle" as const,
-          },
-        };
-      });
-      return { ...setup, stationPrintQueue: queue, locationDevices: devices };
+      return { ...setup, stationPrintQueue: queue, locationDevices: devicesFor(true) };
     }
     return { ...setup, stationPrintQueue: queue };
   });
   return true;
+}
+
+/** The station that owns a USB printer reports whether a printer is plugged in. */
+export async function noteUsbAttached(opts: {
+  locationId: string;
+  deviceId: string;
+  attached: boolean;
+}): Promise<void> {
+  await patchLocationSetup(opts.locationId, (setup) => {
+    const devices = parseLocationDevices(setup.locationDevices);
+    const station = devices.find((d) => d.id === opts.deviceId);
+    const next = devices.map((d) => {
+      if (!d.print || d.print.link !== "usb") return d;
+      const bound = d.print.boundStationIds ?? [];
+      const owns =
+        bound.includes(opts.deviceId) ||
+        station?.receiptPrinterId === d.id ||
+        (station?.orderPrinterIds ?? []).includes(d.id);
+      if (!owns) return d;
+      if (d.print.usbAttached === opts.attached) return d;
+      return { ...d, print: { ...d.print, usbAttached: opts.attached } };
+    });
+    return { ...setup, locationDevices: next };
+  });
 }
 
 export async function countWaitingKitchenPrint(locationId: string): Promise<number> {

@@ -16,7 +16,7 @@ import { splitTenderByEntity } from "@/lib/payments/entity-split";
 import { parseQrPolicy, shouldPrintPayQr } from "@/lib/pos/qr-policy";
 import { checkGuestUrl, tableGuestUrl } from "@/lib/pos/qr-table";
 import { parseVenueTimezone, venueNowMs } from "@/lib/pos/venue-time";
-import { parseLanTarget } from "./printer-models";
+import { byteTargetForPrinter } from "./printer-transport";
 import { cardPaidTenderLine, escposBase64, parseDrawerKickPin } from "./escpos";
 import { enqueueStationPrintFn, enqueueVenuePrintFn } from "./api";
 import { readStationPair } from "@/lib/pos/station-pair";
@@ -74,13 +74,17 @@ async function enqueueKitchenJob(
   payload: string,
   source: KitchenPrintSource,
   kind: "ticket" | "receipt" | "test" = "ticket",
+  route?: { transport?: "lan" | "usb"; stationIds?: string[] },
 ): Promise<boolean> {
   const pair = readStationPair();
+  const transport = route?.transport ?? (host === "usb" ? "usb" : "lan");
   const body = {
     locationId: job.locationId,
     printerId,
     host,
     port,
+    transport,
+    stationIds: route?.stationIds ?? [],
     escposBase64: payload,
     kind,
     ticketId: job.ticketId,
@@ -431,8 +435,8 @@ export async function printFromPos(
     if (job.kind === "ticket" && (queueOnly || printers.length > 0)) {
       for (const p of printers) {
         const cfg = p.print;
-        const lan = parseLanTarget(cfg?.ip, cfg?.port, cfg?.target);
-        if (!lan || !cfg) continue;
+        const dest = byteTargetForPrinter(cfg);
+        if (!dest || !cfg) continue;
         const payload = escposBase64(job, {
           modelPreset: cfg.modelPreset,
           emulation: cfg.emulation,
@@ -443,7 +447,10 @@ export async function printFromPos(
           const local = await dispatchPrintJob(job, [p], { printerId: p.id });
           if (local.printed > 0) continue;
         }
-        await enqueueKitchenJob(job, p.id, lan.host, lan.port, payload, source);
+        await enqueueKitchenJob(job, p.id, dest.host, dest.port, payload, source, "ticket", {
+          transport: dest.transport,
+          stationIds: dest.stationIds,
+        });
       }
       continue;
     }
@@ -457,17 +464,13 @@ export async function printFromPos(
         local.printed < 1 &&
         mappedReceipt?.print
       ) {
-        const lan = parseLanTarget(
-          mappedReceipt.print.ip,
-          mappedReceipt.print.port,
-          mappedReceipt.print.target,
-        );
-        if (lan) {
+        const dest = byteTargetForPrinter(mappedReceipt.print);
+        if (dest) {
           await enqueueKitchenJob(
             job,
             mappedReceipt.id,
-            lan.host,
-            lan.port,
+            dest.host,
+            dest.port,
             escposBase64(job, {
               modelPreset: mappedReceipt.print.modelPreset,
               emulation: mappedReceipt.print.emulation,
@@ -476,6 +479,7 @@ export async function printFromPos(
             }),
             source,
             job.kind === "guest_check" || job.kind === "receipt" ? "receipt" : "ticket",
+            { transport: dest.transport, stationIds: dest.stationIds },
           );
         }
       }
@@ -503,13 +507,13 @@ async function deliverReceiptJob(job: PrintJob): Promise<{
   const res = await dispatchPrintJob(job, devices, { printerId: printer.id });
   if (res.printed > 0) return { ok: true, printerLabel: printer.label };
   const cfg = printer.print;
-  const lan = cfg ? parseLanTarget(cfg.ip, cfg.port, cfg.target) : null;
-  if (!lan || !cfg) return { ok: false, error: res.error || "Receipt printer needs a static IP." };
+  const dest = cfg ? byteTargetForPrinter(cfg) : null;
+  if (!dest || !cfg) return { ok: false, error: res.error || "Receipt printer needs a static IP." };
   const queued = await enqueueKitchenJob(
     job,
     printer.id,
-    lan.host,
-    lan.port,
+    dest.host,
+    dest.port,
     escposBase64(job, {
       modelPreset: cfg.modelPreset,
       emulation: cfg.emulation,
@@ -518,6 +522,7 @@ async function deliverReceiptJob(job: PrintJob): Promise<{
     }),
     "station",
     "receipt",
+    { transport: dest.transport, stationIds: dest.stationIds },
   );
   if (queued) return { ok: true, printerLabel: printer.label };
   return { ok: false, error: res.error || "Use a paired station or print agent." };
@@ -704,15 +709,15 @@ async function printGuestCheckInner(orderId?: string): Promise<{
     return { ok: true, printerLabel: printer.label, sentTo };
   }
   const cfg = printer.print;
-  const lan = cfg ? parseLanTarget(cfg.ip, cfg.port, cfg.target) : null;
-  if (!lan || !cfg) {
+  const dest = cfg ? byteTargetForPrinter(cfg) : null;
+  if (!dest || !cfg) {
     return { ok: false, error: noPrinter };
   }
   const queued = await enqueueKitchenJob(
     job,
     printer.id,
-    lan.host,
-    lan.port,
+    dest.host,
+    dest.port,
     escposBase64(job, {
       modelPreset: cfg.modelPreset,
       emulation: cfg.emulation,
@@ -721,6 +726,7 @@ async function printGuestCheckInner(orderId?: string): Promise<{
     }),
     "station",
     "receipt",
+    { transport: dest.transport, stationIds: dest.stationIds },
   );
   if (queued) {
     return { ok: true, printerLabel: printer.label, sentTo };

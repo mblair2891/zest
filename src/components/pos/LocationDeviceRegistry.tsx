@@ -28,7 +28,6 @@ import {
   DEFAULT_ORDER_DESTINATION,
   PRINTER_UI_TYPES,
   PRINTER_LINK_LABEL,
-  PRINTER_LINKS,
   PRINTER_MODEL_GROUPS,
   PRINTER_MODEL_LABEL,
   STATION_DEVICE_FUNCTIONS,
@@ -68,6 +67,14 @@ import {
   type PrinterModelPreset,
 } from "@/lib/pos/location-devices";
 import { dispatchRawTestPrint, testPrintJob } from "@/lib/print/dispatch";
+import { nativeUsbPrinterConnected } from "@/lib/print/capacitor-raw-print";
+import {
+  printerEthernetOnly,
+  printerIsUsb,
+  printerLinkChoices,
+  usbStatusLabel,
+} from "@/lib/print/printer-transport";
+import { isNativeApp } from "@/lib/native-shell";
 import {
   isBarOrderPrinter,
   seedDefaultPrinterAssignments,
@@ -254,6 +261,7 @@ export function LocationDeviceRegistry({
   const [stationRole, setStationRole] = useState<DeviceRole>("order");
   const [publishMsg, setPublishMsg] = useState<string | null>(null);
   const [printLink, setPrintLink] = useState<PrinterLink>("ethernet");
+  const [usbLive, setUsbLive] = useState<boolean | null>(null);
   const [printIp, setPrintIp] = useState("");
   const [printPort, setPrintPort] = useState("9100");
   const [printModel, setPrintModel] = useState<PrinterModelPreset>(defaultPrinterModel("receipt"));
@@ -300,6 +308,25 @@ export function LocationDeviceRegistry({
     setResolvedLocId(locationId);
     setResolvedName(locationName);
   }, [orgId, locationId, locationName]);
+
+  useEffect(() => {
+    if (!printerIsUsb(printLink, printModel) || !isNativeApp()) {
+      setUsbLive(null);
+      return;
+    }
+    let cancel = false;
+    const tick = () => {
+      void nativeUsbPrinterConnected().then((attached) => {
+        if (!cancel && attached != null) setUsbLive(attached);
+      });
+    };
+    tick();
+    const id = window.setInterval(tick, 3000);
+    return () => {
+      cancel = true;
+      window.clearInterval(id);
+    };
+  }, [printLink, printModel]);
 
   useEffect(() => {
     let cancelled = false;
@@ -727,9 +754,12 @@ export function LocationDeviceRegistry({
             ? functionForDeviceRole(stationRole)
             : fn;
       const spec = printerModelSpec(printModel);
-      const ip = printIp.trim();
-      const port = Number(printPort) || spec.port;
-      const target = ip ? `${ip}:${port}` : "";
+      const link = printerEthernetOnly(printModel) ? "ethernet" : printLink;
+      const usb = link === "usb";
+      const ip = usb ? "" : printIp.trim();
+      const port = usb ? spec.port : Number(printPort) || spec.port;
+      const target = usb ? "" : ip ? `${ip}:${port}` : "";
+      const savedUsb = devices.find((d) => d.id === id)?.print?.usbAttached;
       const isBarDest =
         isOrderPrinterType(type) &&
         normalizeDestinationName(destinationName).toLowerCase() === "bar";
@@ -754,7 +784,8 @@ export function LocationDeviceRegistry({
                   connection: "lan",
                   target,
                   station: stationFromPrinterType(type, destinationName),
-                  link: printLink,
+                  link,
+                  usbAttached: usb ? savedUsb : undefined,
                   ip,
                   port,
                   modelPreset: printModel,
@@ -860,6 +891,8 @@ export function LocationDeviceRegistry({
               printerId: payload.printerId,
               host: payload.host,
               port: payload.port,
+              transport: payload.transport,
+              stationIds: payload.stationIds,
               escposBase64: payload.escposBase64,
               kind: "test",
             },
@@ -880,7 +913,8 @@ export function LocationDeviceRegistry({
       });
       const printed = result.ok && !result.queued;
       const failHard = !result.ok && !stationOnline;
-      await saveLocationDeviceFn({
+      const usbQueued = result.target === "usb" && result.queued;
+      if (!usbQueued) await saveLocationDeviceFn({
         data: {
           orgId: resolvedOrgId,
           locationId: resolvedLocId,
@@ -897,6 +931,8 @@ export function LocationDeviceRegistry({
               station: d.print?.station ?? stationFromPrinterType(d.type),
               lastPrintAt: printed ? Date.now() : d.print?.lastPrintAt,
               reachability: failHard ? "unreachable" : "idle",
+              usbAttached:
+                result.target === "usb" && printed ? true : d.print?.usbAttached,
             },
           },
         },
@@ -904,6 +940,8 @@ export function LocationDeviceRegistry({
       await load();
       if (!result.ok) {
         setError(result.error || "Use a paired station or print agent.");
+      } else if (usbQueued) {
+        setNotice("USB printer not connected. The job waits until it is plugged in.");
       } else if (result.queued) {
         const via = devices.find((x) => isVenueStationOnline(x));
         setNotice(`Printed via ${via?.label || "station"}`);
@@ -1116,7 +1154,7 @@ export function LocationDeviceRegistry({
   const heading = mode === "hardware" ? "Hardware" : "Devices";
   const help =
     mode === "hardware"
-      ? "Register Quantum readers and hospitality printers (Star, Epson, Citizen, Bixolon, generic ESC/POS). Wi-Fi or Ethernet, static IP (port 9100). Test print sends raw bytes — never the OS dialog."
+      ? "Register Quantum readers and hospitality printers (Star, Epson, Citizen, Bixolon, generic ESC/POS). Ethernet uses a static IP (port 9100). USB uses the station’s USB port. Test print sends raw bytes — never the OS dialog."
       : "Add a tablet or a printer from the same button. Tablets: pick Order / Host / ODS / Kiosk, then type the one-time code on the glass. Printers: Receipt printer or Order printer. Order destination is the production line (Kitchen, Bar, Expo, Window, Prep, Other — or add one). Receipt printers have no destination. Host and order tablets use the bound receipt printer; ODS does not need one.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
@@ -1832,15 +1870,21 @@ export function LocationDeviceRegistry({
                   Connection
                   <select
                     className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
-                    value={printLink}
+                    data-printer-connection
+                    value={printerEthernetOnly(printModel) ? "ethernet" : printLink}
                     onChange={(e) => setPrintLink(e.target.value as PrinterLink)}
                   >
-                    {PRINTER_LINKS.map((c) => (
+                    {printerLinkChoices(printLink, printModel).map((c) => (
                       <option key={c} value={c}>
                         {PRINTER_LINK_LABEL[c]}
                       </option>
                     ))}
                   </select>
+                  {printerEthernetOnly(printModel) ? (
+                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                      Star kitchen printers stay on Ethernet.
+                    </span>
+                  ) : null}
                 </label>
                 <label className="text-xs text-muted-foreground">
                   Make / model
@@ -1851,6 +1895,7 @@ export function LocationDeviceRegistry({
                       const next = e.target.value as PrinterModelPreset;
                       setPrintModel(next);
                       setPrintPort(String(printerModelSpec(next).port));
+                      if (printerEthernetOnly(next)) setPrintLink("ethernet");
                     }}
                   >
                     {PRINTER_MODEL_GROUPS.map((g) => (
@@ -1867,6 +1912,18 @@ export function LocationDeviceRegistry({
                     {printerModelHint(printModel)}
                   </span>
                 </label>
+                {printerIsUsb(printLink, printModel) ? (
+                  <p className="text-xs text-muted-foreground sm:col-span-2" data-printer-usb-status>
+                    {usbStatusLabel(
+                      usbLive === false
+                        ? false
+                        : usbLive === true
+                          ? true
+                          : devices.find((row) => row.id === editingId)?.print?.usbAttached,
+                    )}
+                  </p>
+                ) : (
+                  <>
                 <label className="text-xs text-muted-foreground">
                   Static IP
                   <Input
@@ -1886,6 +1943,8 @@ export function LocationDeviceRegistry({
                     onChange={(e) => setPrintPort(e.target.value.replace(/\D/g, "").slice(0, 5))}
                   />
                 </label>
+                  </>
+                )}
                 {isReceiptPrinterType(type) && (
                 <label className="text-xs text-muted-foreground">
                   Cash drawer kick
@@ -2430,7 +2489,7 @@ export function LocationDeviceRegistry({
                           : ""
                       }${d.print.venueDefault ? " · venue default" : ""}${
                         d.print.serveNoSection ? " · bar tabs" : ""
-                      } · ${entityName(d.assignment.operatorId)} · ${d.print.modelPreset ? PRINTER_MODEL_LABEL[d.print.modelPreset] : ""} · ${d.print.link ? PRINTER_LINK_LABEL[d.print.link] : ""} ${d.print.ip || d.print.target || "(pending IP)"}`
+                      } · ${entityName(d.assignment.operatorId)} · ${d.print.modelPreset ? PRINTER_MODEL_LABEL[d.print.modelPreset] : ""} · ${d.print.link ? PRINTER_LINK_LABEL[d.print.link] : ""} ${printerIsUsb(d.print.link, d.print.modelPreset) ? usbStatusLabel(d.print.usbAttached) : d.print.ip || d.print.target || "(pending IP)"}`
                     : `${DEVICE_TYPE_LABEL[d.type]} · ${entityName(d.assignment.operatorId)} · ${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}`}
                 </p>
                 {mode === "stations" && !isPrinterDevice(d) && d.claimCode && d.status !== "online" ? (
@@ -2634,13 +2693,16 @@ function DevicePresenceBits({
   d: LocationDevice;
   devices: LocationDevice[];
 }) {
-  const lan = isPrinterDevice(d) ? printerLanVia(d, devices) : null;
-  const presence = lan ? null : stationPresenceStatus(d);
-  const live = lan ? lan.badge === "lan_via_station" : presence === "online";
-  const pending = lan ? false : presence === "pending";
-  const label = lan
-    ? printerLanBadgeLabel(lan.badge, lan.via?.label)
-    : presence;
+  const usb = isPrinterDevice(d) && printerIsUsb(d.print?.link, d.print?.modelPreset);
+  const lan = !usb && isPrinterDevice(d) ? printerLanVia(d, devices) : null;
+  const presence = lan || usb ? null : stationPresenceStatus(d);
+  const live = usb ? d.print?.usbAttached !== false : lan ? lan.badge === "lan_via_station" : presence === "online";
+  const pending = usb ? d.print?.usbAttached === false : lan ? false : presence === "pending";
+  const label = usb
+    ? usbStatusLabel(d.print?.usbAttached)
+    : lan
+      ? printerLanBadgeLabel(lan.badge, lan.via?.label)
+      : presence;
   const seen = lan ? lan.via?.lastSeenAt : d.lastSeenAt;
   return (
     <>

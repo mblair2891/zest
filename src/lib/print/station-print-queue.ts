@@ -1,5 +1,7 @@
 /** Venue print jobs. Guest QR / kiosk / online cannot TCP 9100. */
 
+import { isUsbPrintJob } from "./printer-transport.ts";
+
 export { STATION_ONLINE_MS } from "@/lib/pos/location-devices";
 export const PRINT_TEST_TTL_MS = 120_000;
 export const PRINT_TICKET_TTL_MS = 8 * 60 * 60_000;
@@ -16,6 +18,10 @@ export type StationPrintQueued = {
   printerId: string;
   host: string;
   port: number;
+  /** usb writes the local USB port. lan is TCP 9100. */
+  transport?: "lan" | "usb";
+  /** Stations that own this USB printer. Empty means any paired station. */
+  stationIds?: string[];
   escposBase64: string;
   kind: string;
   queuedAt: number;
@@ -73,17 +79,23 @@ export function parseStationPrintQueue(raw: unknown): StationPrintQueued[] {
     const id = String(o.id ?? "").trim().slice(0, 80);
     const printerId = String(o.printerId ?? "").trim().slice(0, 80);
     const host = String(o.host ?? "").trim().slice(0, 80);
-    const port = Number(o.port) > 0 ? Math.round(Number(o.port)) : 9100;
+    const transport = o.transport === "usb" || host === "usb" ? "usb" : "lan";
+    const port = transport === "usb" ? 0 : Number(o.port) > 0 ? Math.round(Number(o.port)) : 9100;
     const escposBase64 = String(o.escposBase64 ?? "");
     const queuedAt = Number(o.queuedAt) || 0;
     const kind = String(o.kind ?? "test").slice(0, 40);
+    const stationIds = Array.isArray(o.stationIds)
+      ? o.stationIds.map((sid) => String(sid).trim()).filter(Boolean).slice(0, 40)
+      : [];
     if (!id || !printerId || !host || !escposBase64 || !queuedAt) continue;
     if (now - queuedAt > jobTtlMs(kind) && o.doneAt == null) continue;
     out.push({
       id,
       printerId,
       host,
-      port: port > 0 && port < 65536 ? port : 9100,
+      port: transport === "usb" ? 0 : port > 0 && port < 65536 ? port : 9100,
+      transport,
+      stationIds,
       escposBase64: escposBase64.slice(0, 200_000),
       kind,
       queuedAt,
@@ -139,4 +151,19 @@ export function jobIsClaimable(j: StationPrintQueued, now = Date.now()): boolean
   if (j.ok === true) return false;
   if (!j.claimedBy) return true;
   return now - (j.claimedAt ?? 0) > PRINT_CLAIM_STALE_MS;
+}
+
+/** USB jobs stay on the station that owns the printer. The print agent does not take them. */
+export function jobClaimableBy(
+  j: StationPrintQueued,
+  workerId: string,
+  role: string | null | undefined,
+  now = Date.now(),
+): boolean {
+  if (!jobIsClaimable(j, now)) return false;
+  if (!isUsbPrintJob(j)) return true;
+  if (String(role ?? "").trim() === PRINT_AGENT_WORKER) return false;
+  const owners = j.stationIds ?? [];
+  if (owners.length && !owners.includes(workerId)) return false;
+  return true;
 }
