@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- USB printer class, plus Epson, Star, and Bixolon vendor ids. -->
+    <!-- USB printer class, plus Epson, Star, and Bixolon vendor ids. PAX reader vendor is 12216. -->
     <usb-device class="7" />
     <usb-device vendor-id="1208" />
     <usb-device vendor-id="1305" />
     <usb-device vendor-id="5380" />
+    <usb-device vendor-id="12216" />
 </resources>

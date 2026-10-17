@@ -1,6 +1,8 @@
 package app.summex.pos;
 
 import android.Manifest;
+import android.app.Activity;
+import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -9,6 +11,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.hardware.usb.UsbConstants;
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -20,9 +25,14 @@ import com.finix.mpos.models.MerchantData;
 import com.finix.mpos.models.PromptForSignature;
 import com.finix.mpos.models.TransactionResult;
 import com.finix.mpos.models.TransactionType;
+import com.finix.mpos.models.RefundResult;
 import com.finix.mpos.sdk.MPOSConnectionCallback;
 import com.finix.mpos.sdk.MPOSFinix;
+import com.finix.mpos.sdk.MPOSFinixImpl;
+import com.finix.mpos.sdk.MPOSRefundCallback;
 import com.finix.mpos.sdk.MPOSTransactionCallback;
+import com.paxsz.easylink.api.EasyLinkSdkManager;
+import com.paxsz.easylink.device.DeviceInfo;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -45,6 +55,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import kotlin.coroutines.Continuation;
+import kotlin.coroutines.CoroutineContext;
+import kotlin.coroutines.EmptyCoroutineContext;
 import org.json.JSONObject;
 
 /**
@@ -84,6 +97,10 @@ public class PaxD135Plugin extends Plugin {
     static final String MSG_NO_D135 = "No D135 with this serial is in range.";
     static final String MSG_DISCONNECT = "The reader disconnected. The check is not paid. Try again.";
     static final String MSG_NOT_CONNECTED = "Scan for the reader, then pick the registered PAX D135.";
+    /** Pay status when the USB reader is unplugged. Card bytes stay in the Finix SDK. */
+    static final String MSG_USB = "Card reader not connected";
+    /** PAX USB vendor. Printer vendors are not readers. */
+    static final int PAX_USB_VENDOR = 0x2FB8;
     static final String MSG_STILL_SETUP = "The reader is still setting up. No charge was sent.";
     static final String MSG_ALREADY = "This check is already paid. No second charge was sent.";
     static final String MSG_TIMEOUT = "The card read timed out. The check is not paid. Try again.";
@@ -104,6 +121,11 @@ public class PaxD135Plugin extends Plugin {
     private static volatile boolean heldSettingUp;
     private static volatile String heldName = "";
     private static volatile String heldAddress = "";
+    /** bluetooth, network, or usb. Sale follows the connection that last started. */
+    private static volatile String heldLink = "bluetooth";
+    /** True only after a USB EasyLink connect succeeded. A Bluetooth session does not set this. */
+    private static volatile boolean heldUsb;
+    private boolean usbWatchRegistered;
     private static volatile Integer heldBattery;
     private volatile MPOSFinix mpos;
     private volatile boolean settingUp;
@@ -159,11 +181,13 @@ public class PaxD135Plugin extends Plugin {
             call.resolve(ret);
             return;
         }
-        if (!bluetoothOn()) {
+        final boolean usb = "usb".equals(call.getString("link", ""));
+        heldLink = usb ? "usb" : "bluetooth";
+        if (!usb && !bluetoothOn()) {
             resolveMessage(call, MSG_BLUETOOTH);
             return;
         }
-        if (!hasScanPermissions()) {
+        if (!usb && !hasScanPermissions()) {
             requestPermissionForAliases(scanAliases(), call, "connectPerms");
             return;
         }
@@ -181,7 +205,7 @@ public class PaxD135Plugin extends Plugin {
             resolveMessage(call, missing);
             return;
         }
-        if (serialOf(name) == null) {
+        if (!usb && serialOf(name) == null) {
             resolveMessage(call, "Connection failed: missing Bluetooth address.");
             return;
         }
@@ -189,7 +213,20 @@ public class PaxD135Plugin extends Plugin {
         Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId, mid));
         Log.i("PaxD135", diagnostic);
         restoreHeld();
-        if (reuseHeld(name, address)) {
+        if (usb && heldUsb && usbReaderAttached() && reuseHeld(name, heldAddress)) {
+            settingUp = false;
+            connected = true;
+            JSObject ret = new JSObject();
+            ret.put("ok", true);
+            ret.put("message", MSG_CONNECTED);
+            if (batteryPercent != null) ret.put("batteryPercent", batteryPercent);
+            call.resolve(ret);
+            emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), batteryPercent);
+            watchUsb();
+            return;
+        }
+        if (!usb && reuseHeld(name, address)) {
+            heldUsb = false;
             settingUp = false;
             connected = true;
             JSObject ret = new JSObject();
@@ -205,7 +242,91 @@ public class PaxD135Plugin extends Plugin {
         settingUp = false;
         heldSettingUp = false;
         emit("connecting", diagnostic, serialOf(name), null);
+        if (usb) {
+            onWorker(() -> connectUsbOnWorker(call, name, merchantId, deviceId, userId, password, mid, diagnostic));
+            return;
+        }
         onWorker(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password, mid, diagnostic));
+    }
+
+    /** Cable present or not. Does not read a card and does not open the printer. */
+    @PluginMethod
+    public void usbStatus(PluginCall call) {
+        boolean attached = usbReaderAttached();
+        JSObject ret = new JSObject();
+        ret.put("attached", attached);
+        ret.put("ready", attached && heldReady && "usb".equals(heldLink));
+        call.resolve(ret);
+        if (!attached && "usb".equals(heldLink) && heldReady) markUsbUnplugged();
+    }
+
+    /** Finish the authorized USB sale. The tip is not a second charge. */
+    @PluginMethod
+    public void capture(PluginCall call) {
+        if (!"usb".equals(heldLink)) {
+            JSObject ret = new JSObject();
+            ret.put("ok", true);
+            ret.put("skipped", true);
+            call.resolve(ret);
+            return;
+        }
+        restoreHeld();
+        if (!usbReaderAttached() || mpos == null) {
+            resolveMessage(call, MSG_USB);
+            return;
+        }
+        try {
+            mpos.finishTransaction();
+            JSObject ret = new JSObject();
+            ret.put("ok", true);
+            call.resolve(ret);
+        } catch (Exception e) {
+            String detail = e.getMessage() == null ? "" : e.getMessage().trim();
+            resolveMessage(call, detail.isEmpty() ? MSG_USB : detail);
+        }
+    }
+
+    /** Void the authorized USB sale through the Finix SDK. No card bytes are parsed here. */
+    @PluginMethod
+    public void voidSale(PluginCall call) {
+        if (!"usb".equals(heldLink)) {
+            JSObject ret = new JSObject();
+            ret.put("ok", true);
+            ret.put("skipped", true);
+            call.resolve(ret);
+            return;
+        }
+        restoreHeld();
+        final MPOSFinix current = mpos;
+        if (!usbReaderAttached() || current == null) {
+            resolveMessage(call, MSG_USB);
+            return;
+        }
+        final String transferId = call.getString("transferId", "");
+        final int amount = call.getInt("amountCents", 0);
+        if (transferId == null || transferId.trim().isEmpty() || amount <= 0) {
+            resolveMessage(call, MSG_USB);
+            return;
+        }
+        try {
+            current.startRefund(transferId.trim(), amount, new MPOSRefundCallback() {
+                @Override
+                public void onSuccess(RefundResult result) {
+                    JSObject ret = new JSObject();
+                    ret.put("ok", true);
+                    call.resolve(ret);
+                }
+
+                @Override
+                public void onError(String error) {
+                    String shown = error == null ? "" : error.replaceAll("\\s+", " ").trim();
+                    resolveMessage(call, shown.isEmpty() ? MSG_USB : shown);
+                }
+            });
+        } catch (Exception e) {
+            String detail = e.getMessage() == null ? "" : e.getMessage().trim();
+            resolveMessage(call, detail.isEmpty() ? MSG_USB : detail);
+        }
     }
 
     @PluginMethod
@@ -239,6 +360,15 @@ public class PaxD135Plugin extends Plugin {
             return;
         }
         restoreHeld();
+        if ("usb".equals(heldLink) && !usbReaderAttached()) {
+            markUsbUnplugged();
+            JSObject ret = new JSObject();
+            ret.put("ok", false);
+            ret.put("code", "disconnect");
+            ret.put("message", MSG_USB);
+            call.resolve(ret);
+            return;
+        }
         final MPOSFinix current = mpos;
         final boolean wasReady = heldReady || connected;
         boolean live = false;
@@ -362,6 +492,7 @@ public class PaxD135Plugin extends Plugin {
                     heldSettingUp = false;
                     connected = true;
                     heldReady = true;
+                    heldUsb = false;
                     heldMpos = next;
                     heldName = name;
                     heldAddress = address == null ? "" : address;
@@ -1110,6 +1241,399 @@ public class PaxD135Plugin extends Plugin {
             aclRegistered = true;
         } catch (Exception ignored) {
             /* the next sale still checks isConnected */
+        }
+    }
+
+    /**
+     * USB host connect on the Finix EasyLink instance.
+     * The public Finix connect(String, String) always opens Bluetooth, so this path does not call it.
+     * Card data stays inside the SDK. This method does not read a PAN.
+     */
+    private void connectUsbOnWorker(
+        PluginCall call,
+        String name,
+        String merchantId,
+        String deviceId,
+        String userId,
+        String password,
+        String mid,
+        String diagnostic
+    ) {
+        final AtomicBoolean settled = new AtomicBoolean(false);
+        final String passedMerchant = merchantId == null ? "" : merchantId.trim();
+        final String passedDevice = deviceId == null ? "" : deviceId.trim();
+        final String passedUser = userId == null ? "" : userId;
+        final String passedPassword = password == null ? "" : password;
+        final String passedMid = mid == null ? "" : mid.trim();
+        final String prefix = usernamePrefix(passedUser);
+        try {
+            if (passedMid.isEmpty()) {
+                resolveMessage(call, "missing mid");
+                return;
+            }
+            if (!usbReaderAttached()) {
+                resolveMessage(call, MSG_USB);
+                emit("error", MSG_USB, serialOf(name), null);
+                return;
+            }
+            UsbDevice hardware = findCardReader(usbManager());
+            if (hardware != null) {
+                UsbManager mgr = usbManager();
+                if (mgr != null && !mgr.hasPermission(hardware) && !requestUsbPermission(mgr, hardware)) {
+                    resolveMessage(call, MSG_USB);
+                    emit("error", MSG_USB, serialOf(name), null);
+                    return;
+                }
+            }
+            MerchantData data = new MerchantData(
+                passedMerchant,
+                passedMid,
+                passedDevice,
+                Currency.USD,
+                EnvEnum.SB,
+                passedUser,
+                passedPassword
+            );
+            final MPOSFinix next = MPOSFinix.Companion.invoke(getContext(), data);
+            mpos = next;
+            MPOSFinixImpl impl = implOf(next);
+            EasyLinkSdkManager easy = easyLinkOf(impl);
+            if (easy == null) easy = EasyLinkSdkManager.getInstance(getContext());
+            if (easy == null) {
+                resolveMessage(call, MSG_USB);
+                emit("error", MSG_USB, serialOf(name), null);
+                return;
+            }
+            DeviceInfo info = pickUsbReader(easy);
+            if (info == null) {
+                resolveMessage(call, MSG_USB);
+                emit("error", MSG_USB, serialOf(name), null);
+                return;
+            }
+            info.setCommType(DeviceInfo.CommType.USB);
+            final MPOSConnectionCallback connectionCallback = new MPOSConnectionCallback() {
+                @Override
+                public void onProcessing(String message) {
+                    settingUp = true;
+                    heldSettingUp = true;
+                    String shown = message == null ? "" : message.replaceAll("\\s+", " ").trim();
+                    emit("setting_up", shown, serialOf(name), null);
+                }
+
+                @Override
+                public void onSuccess() {
+                    if (!settled.compareAndSet(false, true)) return;
+                    markUsbReady(next, name);
+                    JSObject ret = new JSObject();
+                    ret.put("ok", true);
+                    ret.put("message", MSG_CONNECTED);
+                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_CONNECTED, "none");
+                    call.resolve(ret);
+                    emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), null);
+                    watchUsb();
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    if (!settled.compareAndSet(false, true)) return;
+                    settingUp = false;
+                    heldSettingUp = false;
+                    connected = false;
+                    heldUsb = false;
+                    String shown = callbackError(errorMessage);
+                    JSObject ret = new JSObject();
+                    ret.put("ok", false);
+                    ret.put("message", shown);
+                    call.resolve(ret);
+                    emit("error", shown, serialOf(name), null);
+                }
+            };
+            int code = easy.connect(info);
+            if (!usbCommandOk(impl, code)) {
+                resolveMessage(call, MSG_USB);
+                emit("error", MSG_USB, serialOf(name), null);
+                return;
+            }
+            if (impl != null) {
+                markFinixUsbState(impl);
+                Object pending = configureUsbReader(impl, connectionCallback);
+                if (pending != kotlin.coroutines.intrinsics.IntrinsicsKt.getCOROUTINE_SUSPENDED()
+                    && settled.compareAndSet(false, true)) {
+                    markUsbReady(next, name);
+                    JSObject ret = new JSObject();
+                    ret.put("ok", true);
+                    ret.put("message", MSG_CONNECTED);
+                    call.resolve(ret);
+                    emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), null);
+                    watchUsb();
+                }
+            } else if (settled.compareAndSet(false, true)) {
+                markUsbReady(next, name);
+                JSObject ret = new JSObject();
+                ret.put("ok", true);
+                ret.put("message", MSG_CONNECTED);
+                call.resolve(ret);
+                emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), null);
+                watchUsb();
+            }
+        } catch (Exception e) {
+            if (!settled.compareAndSet(false, true)) return;
+            String detail = e.getMessage() == null ? "" : e.getMessage().trim();
+            resolveMessage(call, detail.isEmpty() ? MSG_USB : detail);
+        }
+    }
+
+    /**
+     * The Finix connection helpers are synthetic. Java source cannot call them directly.
+     * Card data stays inside the SDK.
+     */
+    private static EasyLinkSdkManager easyLinkOf(MPOSFinixImpl impl) {
+        if (impl == null) return null;
+        try {
+            Method method = MPOSFinixImpl.class.getDeclaredMethod("access$getEasyLink$p", MPOSFinixImpl.class);
+            method.setAccessible(true);
+            Object value = method.invoke(null, impl);
+            if (value instanceof EasyLinkSdkManager) return (EasyLinkSdkManager) value;
+        } catch (Exception ignored) {
+            /* The process EasyLink instance is the fallback. */
+        }
+        return null;
+    }
+
+    private static boolean usbCommandOk(MPOSFinixImpl impl, int code) {
+        if (code == 0) return true;
+        if (impl == null) return false;
+        try {
+            Method method = MPOSFinixImpl.class.getDeclaredMethod(
+                "access$isCommandSuccessful",
+                MPOSFinixImpl.class,
+                int.class
+            );
+            method.setAccessible(true);
+            return Boolean.TRUE.equals(method.invoke(null, impl, code));
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static void markFinixUsbState(MPOSFinixImpl impl) {
+        if (impl == null) return;
+        try {
+            Class<?> state = Class.forName("com.finix.mpos.sdk.MPOSFinixImpl$ConnectionState");
+            @SuppressWarnings({ "unchecked", "rawtypes" })
+            Object connected = Enum.valueOf((Class) state, "CONNECTED");
+            Method method = MPOSFinixImpl.class.getDeclaredMethod(
+                "access$setConnectionState$p",
+                MPOSFinixImpl.class,
+                state
+            );
+            method.setAccessible(true);
+            method.invoke(null, impl, connected);
+        } catch (Exception ignored) {
+            /* EasyLink already accepted the USB device. */
+        }
+    }
+
+    private static Object configureUsbReader(MPOSFinixImpl impl, MPOSConnectionCallback callback) throws Exception {
+        Method method = MPOSFinixImpl.class.getDeclaredMethod(
+            "access$configureConnectedDevice",
+            MPOSFinixImpl.class,
+            MPOSConnectionCallback.class,
+            Continuation.class
+        );
+        method.setAccessible(true);
+        return method.invoke(null, impl, callback, usbContinuation());
+    }
+
+    private void markUsbReady(MPOSFinix next, String name) {
+        settingUp = false;
+        heldSettingUp = false;
+        connected = true;
+        heldReady = true;
+        heldUsb = true;
+        heldLink = "usb";
+        heldMpos = next;
+        heldName = name == null ? "" : name;
+        heldAddress = "usb";
+        mpos = next;
+    }
+
+    private void markUsbUnplugged() {
+        heldReady = false;
+        heldUsb = false;
+        connected = false;
+        settingUp = false;
+        heldSettingUp = false;
+        emit("disconnected", MSG_USB, serialOf(heldName), null);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static Continuation usbContinuation() {
+        return new Continuation() {
+            @Override
+            public CoroutineContext getContext() {
+                return EmptyCoroutineContext.INSTANCE;
+            }
+
+            @Override
+            public void resumeWith(Object result) {
+                /* The connection callback resolves the plugin call. */
+            }
+        };
+    }
+
+    private static MPOSFinixImpl implOf(MPOSFinix finix) {
+        if (finix == null) return null;
+        try {
+            java.lang.reflect.Field field = MPOSFinix.class.getDeclaredField("delegate");
+            field.setAccessible(true);
+            Object value = field.get(finix);
+            if (value instanceof MPOSFinixImpl) return (MPOSFinixImpl) value;
+        } catch (Exception ignored) {
+            /* EasyLink on the process instance is the fallback. */
+        }
+        return null;
+    }
+
+    private DeviceInfo pickUsbReader(EasyLinkSdkManager easy) {
+        if (easy != null) {
+            try {
+                java.util.List<DeviceInfo> found = easy.getUsbDevice();
+                if (found != null) {
+                    for (DeviceInfo info : found) {
+                        if (info == null || printerVendor(info.getVendorId())) continue;
+                        info.setCommType(DeviceInfo.CommType.USB);
+                        return info;
+                    }
+                }
+            } catch (Exception ignored) {
+                /* Fall through to the Android USB host list. */
+            }
+        }
+        UsbDevice dev = findCardReader(usbManager());
+        if (dev == null) return null;
+        String label = dev.getProductName() == null ? dev.getDeviceName() : dev.getProductName();
+        DeviceInfo info = new DeviceInfo(DeviceInfo.CommType.USB, label, dev.getDeviceName());
+        info.setVendorId(dev.getVendorId());
+        info.setProductId(dev.getProductId());
+        return info;
+    }
+
+    private boolean usbReaderAttached() {
+        Context ctx = getContext();
+        if (ctx == null) return false;
+        try {
+            EasyLinkSdkManager easy = EasyLinkSdkManager.getInstance(ctx);
+            java.util.List<DeviceInfo> found = easy == null ? null : easy.getUsbDevice();
+            if (found != null) {
+                for (DeviceInfo info : found) {
+                    if (info != null && !printerVendor(info.getVendorId())) return true;
+                }
+            }
+        } catch (Exception ignored) {
+            /* The host list below is enough to show the cable. */
+        }
+        return findCardReader(usbManager()) != null;
+    }
+
+    private UsbManager usbManager() {
+        Context ctx = getContext();
+        if (ctx == null) return null;
+        Object service = ctx.getSystemService(Context.USB_SERVICE);
+        return service instanceof UsbManager ? (UsbManager) service : null;
+    }
+
+    static boolean printerVendor(int vid) {
+        return vid == 0x04B8 || vid == 0x0519 || vid == 0x1504 || vid == 0x1D90 || vid == 0x0FE6;
+    }
+
+    static boolean isCardReader(UsbDevice dev) {
+        if (dev == null) return false;
+        int vid = dev.getVendorId();
+        if (printerVendor(vid)) return false;
+        if (dev.getDeviceClass() == UsbConstants.USB_CLASS_PRINTER) return false;
+        for (int i = 0; i < dev.getInterfaceCount(); i++) {
+            if (dev.getInterface(i).getInterfaceClass() == UsbConstants.USB_CLASS_PRINTER) return false;
+        }
+        if (vid == PAX_USB_VENDOR) return true;
+        String name = ((dev.getProductName() == null ? "" : dev.getProductName()) + " "
+            + (dev.getDeviceName() == null ? "" : dev.getDeviceName())).toLowerCase();
+        return name.contains("d135") || name.contains("pax") || name.contains("finix");
+    }
+
+    static UsbDevice findCardReader(UsbManager mgr) {
+        if (mgr == null) return null;
+        for (UsbDevice dev : mgr.getDeviceList().values()) {
+            if (isCardReader(dev)) return dev;
+        }
+        return null;
+    }
+
+    private boolean requestUsbPermission(UsbManager mgr, UsbDevice dev) {
+        Context ctx = getContext();
+        if (ctx == null || dev == null) return false;
+        if (mgr.hasPermission(dev)) return true;
+        CountDownLatch latch = new CountDownLatch(1);
+        boolean[] granted = new boolean[] { false };
+        String action = ctx.getPackageName() + ".USB_READER_PERMISSION";
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent intent) {
+                granted[0] = intent != null && intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
+                latch.countDown();
+            }
+        };
+        try {
+            IntentFilter filter = new IntentFilter(action);
+            if (Build.VERSION.SDK_INT >= 33) {
+                ctx.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                ctx.registerReceiver(receiver, filter);
+            }
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 31) flags |= PendingIntent.FLAG_MUTABLE;
+            Intent intent = new Intent(action);
+            intent.setPackage(ctx.getPackageName());
+            PendingIntent pi = PendingIntent.getBroadcast(ctx, 1, intent, flags);
+            Runnable ask = () -> mgr.requestPermission(dev, pi);
+            Activity activity = getActivity();
+            if (activity != null) activity.runOnUiThread(ask);
+            else ask.run();
+            latch.await(8, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            return false;
+        } finally {
+            try {
+                ctx.unregisterReceiver(receiver);
+            } catch (Exception ignored) {
+                /* already unregistered */
+            }
+        }
+        return granted[0];
+    }
+
+    private void watchUsb() {
+        if (usbWatchRegistered || getContext() == null) return;
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || !UsbManager.ACTION_USB_DEVICE_DETACHED.equals(intent.getAction())) return;
+                if (!"usb".equals(heldLink) || !heldReady) return;
+                UsbDevice dev = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+                if (dev != null && !isCardReader(dev) && printerVendor(dev.getVendorId())) return;
+                if (!usbReaderAttached()) markUsbUnplugged();
+            }
+        };
+        IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED);
+        try {
+            if (Build.VERSION.SDK_INT >= 33) {
+                getContext().registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                getContext().registerReceiver(receiver, filter);
+            }
+            usbWatchRegistered = true;
+        } catch (Exception ignored) {
+            /* the next sale still checks the cable */
         }
     }
 

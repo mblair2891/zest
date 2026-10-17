@@ -37,7 +37,19 @@ type PaxPlugin = {
     password: string;
     mid: string;
     env: "SB" | "LIVE";
+    link?: "bluetooth" | "network" | "usb";
   }) => Promise<PaxConnectResult>;
+  usbStatus: () => Promise<{ attached?: boolean; ready?: boolean }>;
+  capture: (input: { transferId: string; amountCents: number }) => Promise<{
+    ok: boolean;
+    message?: string;
+    skipped?: boolean;
+  }>;
+  voidSale: (input: { transferId: string; amountCents: number }) => Promise<{
+    ok: boolean;
+    message?: string;
+    skipped?: boolean;
+  }>;
   sale: (input: { amountCents: number; checkId: string; tipCents: number }) => Promise<{
     ok: boolean;
     code?: string;
@@ -60,6 +72,8 @@ export function paxReaderOnThisStation(): boolean {
 export function androidPaxBridge(): PaxBridge {
   return {
     sale: (input) => PaxD135.sale(input),
+    capture: (input) => PaxD135.capture(input),
+    voidSale: (input) => PaxD135.voidSale(input),
   };
 }
 
@@ -80,6 +94,7 @@ type PaxConnectInput = {
   password: string;
   mid: string;
   env: "SB" | "LIVE";
+  link?: "bluetooth" | "network" | "usb";
 };
 
 type PaxConnectResult = {
@@ -123,4 +138,24 @@ export async function connectForPaxReader(input: PaxConnectInput): Promise<PaxCo
   if (hook) return hook(input);
   if (scanHook()) return { ok: true, batteryPercent: null };
   return { ok: false, message: PAX_MSG.notConnected };
+}
+
+function usbHook(): (() => Promise<boolean>) | null {
+  const hook = (globalThis as { __summexPaxUsb?: unknown }).__summexPaxUsb;
+  return typeof hook === "function" ? (hook as () => Promise<boolean>) : null;
+}
+
+/**
+ * True when a USB card reader is plugged into this station.
+ * A browser with no station plugin reports the cable as out.
+ * The preview hook does not take a card.
+ */
+export async function usbReaderAttached(): Promise<boolean> {
+  if (paxReaderOnThisStation()) {
+    const status = await paxPlugin.usbStatus();
+    return status.attached === true;
+  }
+  const hook = usbHook();
+  if (hook) return hook();
+  return false;
 }

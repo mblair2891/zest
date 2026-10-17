@@ -34,6 +34,7 @@ import {
   sendGuestReceiptSmsFn,
 } from "@/lib/payments/api";
 import {
+  CARD_READER_USB_NOT_CONNECTED,
   PAX_MSG,
   checkAlreadyCaptured,
   checkEntityLabelForReader,
@@ -48,7 +49,9 @@ import {
   logFinixConnectDiagnostic,
   paxConnectActivityTrace,
   paxSdkConnectActivityResult,
+  normalizePaxLink,
   payEntityStatusText,
+  payReaderStatusText,
   paymentUsesConnectedReader,
   paxScanPresentation,
   paxScanRowLabel,
@@ -56,8 +59,11 @@ import {
   readerCheckEntityBanner,
   readerEntityLabel,
   readerForSerial,
+  runAndroidPaxCapture,
   runAndroidPaxSale,
+  runAndroidPaxVoid,
   runPaxConnect,
+  usbCardStep,
   type PaxReader,
   type PaxScanRow,
 } from "@/lib/payments/pax-d135";
@@ -245,7 +251,16 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const [manualZip, setManualZip] = useState("");
   const [manualError, setManualError] = useState<string | null>(null);
   const [usePax, setUsePax] = useState(false);
+  const [usbAttached, setUsbAttached] = useState<boolean | null>(null);
+  const usbConnectKey = useRef("");
   const pax = usePaxStationLink();
+  const assignedReader = useMemo(() => {
+    const serial = String(stationRow?.cardReaderId ?? "").replace(/\s+/g, "");
+    const pool = [...(settings.paxReaders ?? []), ...pax.readers];
+    const found = serial ? pool.find((row) => row.serial.replace(/\s+/g, "") === serial) : undefined;
+    return found ?? pax.reader ?? null;
+  }, [stationRow?.cardReaderId, settings.paxReaders, pax.readers, pax.reader]);
+  const cardLink = normalizePaxLink(assignedReader?.link);
   const [payEntityBanner, setPayEntityBanner] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cardHold, setCardHold] = useState<string | null>(null);
@@ -280,6 +295,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     ? Math.min(Math.max(0, amountCents), Math.max(0, balance))
     : Math.max(0, balance);
   const cardHoldAuth = order?.cardAuth ?? null;
+  const usbBlocksCard =
+    cardLink === "usb" &&
+    settings.cardProcessor !== "square" &&
+    (usbAttached !== true || (!cardHoldAuth && pax.phase !== "connected"));
   const tipBase = cardHoldAuth ? cardHoldAuth.amountCents : tenderBase;
   const payTip = method === "card" ? tipCentsForChoice(cardTip, tipBase) : tip;
   const cardDue = cardHoldAuth ? cardHoldAuth.amountCents : tenderBase;
@@ -352,6 +371,31 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       void listener.then((handle) => handle?.remove());
     };
   }, [open, usePax]);
+
+  useEffect(() => {
+    if (!open || cardLink !== "usb" || settings.cardProcessor === "square") {
+      setUsbAttached(null);
+      return;
+    }
+    let cancel = false;
+    const tick = () => {
+      void import("@/lib/payments/pax-d135-native").then(async (mod) => {
+        const attached = await mod.usbReaderAttached();
+        if (cancel) return;
+        setUsbAttached(attached);
+        const live = getPaxStationLink();
+        if (!attached && live.phase === "connected" && normalizePaxLink(live.reader?.link) === "usb") {
+          failPaxConnect(CARD_READER_USB_NOT_CONNECTED);
+        }
+      });
+    };
+    tick();
+    const id = window.setInterval(tick, 2000);
+    return () => {
+      cancel = true;
+      window.clearInterval(id);
+    };
+  }, [open, cardLink, settings.cardProcessor]);
 
   const openOrderId = order?.id;
   const cardAuthOn = Boolean(order?.cardAuth);
@@ -604,6 +648,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             password: creds.password,
             mid: creds.mid,
             env: creds.env,
+            link: normalizePaxLink(decision.reader.link),
           }),
         );
         const sdkTrace = finixSdkTraceFromConnect(connected);
@@ -642,6 +687,27 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       setBusy(false);
     })();
   };
+  const pickPaxRef = useRef(pickPax);
+  pickPaxRef.current = pickPax;
+
+  useEffect(() => {
+    if (cardLink !== "usb" || usbAttached !== true) {
+      usbConnectKey.current = "";
+      return;
+    }
+    if (!open || !order || settings.cardProcessor === "square") return;
+    if (pax.phase === "connected" || pax.phase === "connecting" || pax.phase === "setting_up") return;
+    if (!assignedReader) return;
+    if (usbConnectKey.current === assignedReader.serial) return;
+    usbConnectKey.current = assignedReader.serial;
+    pickPaxRef.current({
+      name: `PAX D135_${assignedReader.serial}`,
+      address: "usb",
+      serial: assignedReader.serial,
+      registered: true,
+      entityId: assignedReader.entityId,
+    });
+  }, [open, cardLink, usbAttached, pax.phase, assignedReader, order, settings.cardProcessor]);
 
   useEffect(() => {
     if (!wanOnline && method === "card") {
@@ -789,6 +855,43 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     })();
   };
 
+  const voidUsbCard = () => {
+    void (async () => {
+      if (!order) return;
+      const auth = order.cardAuth ?? readSessionCardAuth(order.id);
+      const gate = usbCardStep({ link: cardLink, usbAttached, step: "void" });
+      if (!gate.ok) {
+        setError(gate.message);
+        return;
+      }
+      if (!auth) return;
+      setBusy(true);
+      setError(null);
+      try {
+        const { androidPaxBridge } = await import("@/lib/payments/pax-d135-native");
+        const result = await runAndroidPaxVoid({
+          link: "usb",
+          usbAttached: true,
+          transferId: auth.finixTransferId || "",
+          amountCents: auth.amountCents,
+          bridge: androidPaxBridge(),
+        });
+        if (!result.ok) {
+          setError(result.message);
+          setBusy(false);
+          return;
+        }
+        usePosStore.getState().setCardAuth(order.id, null);
+        clearSessionCardAuth(order.id);
+        setCardHold(null);
+        setCardTip({ kind: "none" });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : CARD_READER_USB_NOT_CONNECTED);
+      }
+      setBusy(false);
+    })();
+  };
+
   const pay = (manualCard?: ManualCard) => {
     void (async () => {
     setError(null);
@@ -862,6 +965,17 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     let paxJournal: { readerId: string; merchantId: string; locationId: string; orgId: string } | null = null;
     const held =
       method === "card" ? (order?.cardAuth ?? readSessionCardAuth(order?.id) ?? null) : null;
+    if (method === "card" && cardLink === "usb" && settings.cardProcessor !== "square") {
+      const gate = usbCardStep({
+        link: "usb",
+        usbAttached,
+        step: held ? "capture" : "authorize",
+      });
+      if (!gate.ok) {
+        setError(gate.message);
+        return;
+      }
+    }
     if (method === "card" && held && stationClass === "handheld" && !signed) {
       setGuestFace(true);
       setError("Sign for the tip.");
@@ -1036,7 +1150,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         }
         setBusy(false);
         setError(null);
-      } else if (usePax || paymentUsesConnectedReader(getPaxStationLink())) {
+      } else if (cardLink !== "network" && (usePax || paymentUsesConnectedReader(getPaxStationLink()))) {
         if (!order) {
           setError("No order");
           return;
@@ -1066,7 +1180,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             }),
             settingUp: linkNow.phase === "setting_up",
             connected: linkNow.phase === "connected",
-            bluetoothOff: linkNow.phase === "bluetooth",
+            bluetoothOff: cardLink === "usb" ? false : linkNow.phase === "bluetooth",
+            link: cardLink,
+            usbAttached: usbAttached === true,
             bridge: androidPaxBridge(),
           });
           if (!sale.ok) {
@@ -1216,6 +1332,21 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           return;
         }
         setBusy(false);
+      }
+    }
+    if (method === "card" && held && cardLink === "usb" && settings.cardProcessor !== "square") {
+      const { androidPaxBridge } = await import("@/lib/payments/pax-d135-native");
+      const finished = await runAndroidPaxCapture({
+        link: "usb",
+        usbAttached: usbAttached === true,
+        transferId: held.finixTransferId || finixTransferId || "",
+        amountCents: held.amountCents + payTip,
+        bridge: androidPaxBridge(),
+      });
+      if (!finished.ok) {
+        setError(finished.message);
+        setBusy(false);
+        return;
       }
     }
     const closeCents = method === "card" && held ? held.amountCents : Math.min(amountCents, balance);
@@ -2046,21 +2177,31 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       not queued.
                     </p>
                   )}
-                  {(usePax || scanStandIn || payEntityBanner || pax.phase !== "idle" || pax.rows.length > 0) && (
+                  {(cardLink === "usb" || usePax || scanStandIn || payEntityBanner || pax.phase !== "idle" || pax.rows.length > 0) && (
                     <div className="space-y-2 rounded-lg border border-border p-3" data-pax-reader="">
                       <p
                         className="text-sm font-medium"
                         data-pax-status=""
                         data-pax-connected={pax.phase === "connected" ? pax.reader?.serial ?? "" : ""}
+                        data-pax-usb={cardLink === "usb" ? (usbAttached === true ? "ready" : "missing") : ""}
                       >
-                        {payEntityStatusText(pax, payEntityBanner)}
+                        {cardLink === "usb"
+                          ? payReaderStatusText({
+                              link: "usb",
+                              usbAttached,
+                              phase: pax.phase,
+                              message: pax.message,
+                            })
+                          : payEntityStatusText(pax, payEntityBanner)}
                         {pax.phase === "connected" && pax.battery != null ? ` · Battery ${pax.battery}%` : ""}
                       </p>
+                      {cardLink === "usb" ? null : (
                       <div className="flex flex-wrap gap-2">
                         <Button type="button" size="sm" variant="outline" disabled={busy} onClick={scanPax}>
                           Scan for reader
                         </Button>
                       </div>
+                      )}
                       {pax.rows.map((row) => (
                         <button
                           key={row.serial}
@@ -2247,7 +2388,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 }
                 pay();
               }}
-              disabled={busy}
+              disabled={busy || (method === "card" && usbBlocksCard)}
             >
               {busy && "Present card on Quantum reader…"}
               {!busy && method === "card" && !cardHoldAuth && "Run card"}
@@ -2260,6 +2401,18 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               {!busy && method === "house_account" && "Charge house account"}
               {!busy && method === "other" && `Take ${payCfg.otherLabel || "other"}`}
             </Button>
+            {method === "card" && cardHoldAuth && cardLink === "usb" ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                data-void-card=""
+                disabled={busy || usbAttached !== true}
+                onClick={voidUsbCard}
+              >
+                Void card
+              </Button>
+            ) : null}
           </div>
         )}
       </DialogContent>

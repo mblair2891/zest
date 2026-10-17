@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { saveLocationDeviceFn } from "@/lib/access/api";
 import { finixConnectAuthFn, getPaymentsStatusFn, listPaxReadersFn, paxReaderSessionFn } from "@/lib/payments/api";
 import {
+  CARD_READER_USB_NOT_CONNECTED,
   PAX_MSG,
   decideStationReaderConnect,
   finixConnectBanner,
@@ -13,15 +14,18 @@ import {
   logFinixConnectDiagnostic,
   paxConnectActivityTrace,
   paxSdkConnectActivityResult,
+  normalizePaxLink,
   paxLinkStatusText,
+  payReaderStatusText,
   paxScanPresentation,
   paxScanRowLabel,
   paxTabletCallback,
+  readerForSerial,
   runPaxConnect,
   type PaxReader,
   type PaxScanRow,
 } from "@/lib/payments/pax-d135";
-import { connectForPaxReader, paxReaderOnThisStation, scanForPaxReaders } from "@/lib/payments/pax-d135-native";
+import { connectForPaxReader, paxReaderOnThisStation, scanForPaxReaders, usbReaderAttached } from "@/lib/payments/pax-d135-native";
 import { noteStationActivity, paxReaderSessionData } from "@/lib/payments/station-activity";
 import {
   beginPaxConnect,
@@ -256,6 +260,31 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
   const stationId = stationIdNow();
   const station = devices.find((device) => device.id === stationId) ?? null;
   const connectedSerial = link.phase === "connected" ? link.reader?.serial ?? "" : "";
+  const assigned = readerForSerial(link.readers, String(station?.cardReaderId ?? ""));
+  const usbMode = assigned?.link === "usb";
+  const [usbAttached, setUsbAttached] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!usbMode) {
+      setUsbAttached(null);
+      return;
+    }
+    let cancel = false;
+    const tick = () => {
+      void usbReaderAttached().then((attached) => {
+        if (cancel) return;
+        setUsbAttached(attached);
+        if (!attached && getPaxStationLink().phase === "connected" && getPaxStationLink().reader?.link === "usb") {
+          failPaxConnect(CARD_READER_USB_NOT_CONNECTED);
+        }
+      });
+    };
+    tick();
+    const id = window.setInterval(tick, 2000);
+    return () => {
+      cancel = true;
+      window.clearInterval(id);
+    };
+  }, [usbMode]);
 
   const scan = () => {
     void (async () => {
@@ -437,6 +466,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
             password: creds.password,
             mid: creds.mid,
             env: creds.env,
+            link: normalizePaxLink(decision.reader.link),
           }),
         );
         const sdkTrace = finixSdkTraceFromConnect(connected);
@@ -502,7 +532,9 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
     })();
   };
 
-  const status = paxLinkStatusText(link);
+  const status = usbMode
+    ? payReaderStatusText({ link: "usb", usbAttached, phase: link.phase, message: link.message })
+    : paxLinkStatusText(link);
 
   return (
     <div

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_286_usb_card_reader",
+    date: "2026-10-17",
+    title: "USB card reader",
+    summary:
+      "A card reader can connect by USB. Pay shows Card reader not connected until it is plugged in.",
+    body: "On Devices, a card reader connection is Bluetooth, Network, or USB. USB plugs into the station. Pay shows the reader ready and takes the card on that connection. Unplug it and Pay shows Card reader not connected and does not take the card. Bluetooth and Network keep working when those are selected. Authorize, capture, and void use the reader that is plugged in.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["payments", "devices"],
+  },
+  {
     id: "upd_2026_10_285_usb_printer",
     date: "2026-10-17",
     title: "USB or Ethernet printer",

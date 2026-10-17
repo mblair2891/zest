@@ -9,8 +9,19 @@ export const PAX_MODEL = "PAX_D135" as const;
 /** Station activity text when the Finix connect callback succeeds. */
 export const PAX_ACTIVITY_CONNECTED = "Connected";
 export const PAX_SDK_ENV = "SB" as const;
+/** Pay status when the selected USB reader is unplugged. */
+export const CARD_READER_USB_NOT_CONNECTED = "Card reader not connected";
 
 export type PaxReaderEnv = "sandbox" | "live";
+/** How this station reaches the reader. A missing value stays Bluetooth. */
+export type PaxReaderLink = "bluetooth" | "network" | "usb";
+export type CardReaderStep = "authorize" | "capture" | "void";
+
+export const PAX_READER_LINKS: { id: PaxReaderLink; label: string }[] = [
+  { id: "bluetooth", label: "Bluetooth" },
+  { id: "network", label: "Network" },
+  { id: "usb", label: "USB" },
+];
 
 export type PaxReader = {
   id: string;
@@ -23,6 +34,8 @@ export type PaxReader = {
   finixMerchantId: string;
   model: typeof PAX_MODEL;
   env: PaxReaderEnv;
+  /** Absent on older rows. Those stay on the Bluetooth path. */
+  link?: PaxReaderLink;
 };
 
 export type PaxScanRow = {
@@ -67,7 +80,50 @@ export const PAX_MSG = {
   notSaved: "The reader was not registered.",
   /** New PAX D135, and when saving the id on an open reader. */
   deviceIdRequired: "Enter the Finix device ID.",
+  usbNotConnected: CARD_READER_USB_NOT_CONNECTED,
 } as const;
+
+/** Bluetooth when the saved row has no connection, or an unknown one. */
+export function normalizePaxLink(raw: unknown): PaxReaderLink {
+  const text = String(raw ?? "").trim().toLowerCase();
+  if (text === "usb" || text === "network") return text;
+  return "bluetooth";
+}
+
+export function readerLink(reader: { link?: PaxReaderLink | null } | null | undefined): PaxReaderLink {
+  return normalizePaxLink(reader?.link);
+}
+
+/**
+ * USB authorize, capture, and void wait for the cable.
+ * Bluetooth and Network ignore a missing USB cable.
+ */
+export function usbCardStep(input: {
+  link?: PaxReaderLink | null;
+  usbAttached?: boolean | null;
+  step: CardReaderStep;
+}): { ok: true; transport: "usb" | "existing" } | { ok: false; message: typeof CARD_READER_USB_NOT_CONNECTED } {
+  void input.step;
+  if (normalizePaxLink(input.link) !== "usb") return { ok: true, transport: "existing" };
+  if (input.usbAttached === true) return { ok: true, transport: "usb" };
+  return { ok: false, message: CARD_READER_USB_NOT_CONNECTED };
+}
+
+/**
+ * Pay line for the selected connection.
+ * USB unplugged is the fixed status. Bluetooth and Network keep their own lines.
+ */
+export function payReaderStatusText(input: {
+  link?: PaxReaderLink | null;
+  usbAttached?: boolean | null;
+  phase: string;
+  message: string;
+}): string {
+  if (normalizePaxLink(input.link) !== "usb") return paxLinkStatusText(input);
+  if (input.usbAttached !== true) return CARD_READER_USB_NOT_CONNECTED;
+  if (input.phase === "connected") return PAX_MSG.ready;
+  return paxLinkStatusText(input);
+}
 
 const capturedChecks = new Set<string>();
 
@@ -162,6 +218,7 @@ export function parsePaxReaders(raw: unknown): PaxReader[] {
       finixMerchantId,
       model: PAX_MODEL,
       env: o.env === "live" ? "live" : "sandbox",
+      link: normalizePaxLink(o.link),
     });
   }
   return out;
@@ -874,6 +931,7 @@ export function placePaxReader(input: {
   deviceId: string;
   merchantId: string;
   id: string;
+  link?: PaxReaderLink;
 }): { ok: true; readers: PaxReader[]; reader: PaxReader } | { ok: false; message: string } {
   if (input.locationLive) return { ok: false, message: PAX_MSG.liveRegister };
   const serial = normalizePaxSerial(input.serial);
@@ -903,8 +961,27 @@ export function placePaxReader(input: {
     finixMerchantId: input.merchantId,
     model: PAX_MODEL,
     env: "sandbox",
+    link: normalizePaxLink(input.link),
   };
   return { ok: true, readers: [...input.readers, reader], reader };
+}
+
+/** Change Bluetooth, Network, or USB. The serial and the Finix device id stay. */
+export function setPaxReaderLink(input: {
+  readers: PaxReader[];
+  id: string;
+  link: PaxReaderLink;
+}): { ok: true; readers: PaxReader[]; reader: PaxReader } | { ok: false; message: string } {
+  const current = input.readers.find((r) => r.id === input.id);
+  if (!current) return { ok: false, message: PAX_MSG.notRegistered };
+  const link = normalizePaxLink(input.link);
+  const reader: PaxReader = { ...current, link };
+  if (readerLink(current) === link) return { ok: true, readers: input.readers, reader };
+  return {
+    ok: true,
+    readers: input.readers.map((r) => (r.id === current.id ? reader : r)),
+    reader,
+  };
 }
 
 /**
@@ -1111,6 +1188,16 @@ export type PaxBridge = {
     last4?: string | null;
     message?: string;
   }>;
+  capture?: (input: { transferId: string; amountCents: number }) => Promise<{
+    ok: boolean;
+    message?: string;
+    skipped?: boolean;
+  }>;
+  voidSale?: (input: { transferId: string; amountCents: number }) => Promise<{
+    ok: boolean;
+    message?: string;
+    skipped?: boolean;
+  }>;
 };
 
 export async function runAndroidPaxSale(input: {
@@ -1125,6 +1212,10 @@ export async function runAndroidPaxSale(input: {
   settingUp: boolean;
   connected: boolean;
   bluetoothOff?: boolean;
+  /** Selected connection. A missing value follows the reader, then Bluetooth. */
+  link?: PaxReaderLink;
+  /** True only while the USB reader is plugged in. Bluetooth and Network ignore it. */
+  usbAttached?: boolean;
   bridge: PaxBridge;
 }): Promise<
   | { ok: true; transferId: string; last4: string | null }
@@ -1142,14 +1233,21 @@ export async function runAndroidPaxSale(input: {
   if (input.reader && input.reader.env === "live") {
     return { ok: false, message: PAX_MSG.liveOnSandbox, charged: false };
   }
-  if (input.bluetoothOff) {
+  const link = normalizePaxLink(input.link ?? input.reader?.link);
+  const usb = usbCardStep({ link, usbAttached: input.usbAttached, step: "authorize" });
+  if (!usb.ok) return { ok: false, message: usb.message, charged: false };
+  if (link !== "usb" && input.bluetoothOff) {
     return { ok: false, message: PAX_MSG.bluetooth, charged: false };
   }
   if (input.settingUp) {
     return { ok: false, message: PAX_MSG.stillSettingUp, charged: false };
   }
   if (!input.reader) {
-    return { ok: false, message: PAX_MSG.notConnected, charged: false };
+    return {
+      ok: false,
+      message: link === "usb" ? CARD_READER_USB_NOT_CONNECTED : PAX_MSG.notConnected,
+      charged: false,
+    };
   }
   if (
     !readerMatchesSellingEntities({
@@ -1161,7 +1259,11 @@ export async function runAndroidPaxSale(input: {
     return { ok: false, message: PAX_MSG.wrongEntity, charged: false };
   }
   if (!input.connected) {
-    return { ok: false, message: PAX_MSG.notConnected, charged: false };
+    return {
+      ok: false,
+      message: link === "usb" ? CARD_READER_USB_NOT_CONNECTED : PAX_MSG.notConnected,
+      charged: false,
+    };
   }
   const result = await input.bridge.sale({
     amountCents: input.amountCents,
@@ -1175,4 +1277,52 @@ export async function runAndroidPaxSale(input: {
   rememberCapturedCheck(input.checkId);
   const last4 = result.last4 ? String(result.last4).replace(/\D/g, "").slice(-4) || null : null;
   return { ok: true, transferId: result.transferId, last4 };
+}
+
+/**
+ * Capture after a USB authorization. The tip is not a second charge.
+ * Bluetooth and Network keep the closeout that is already on the check.
+ */
+export async function runAndroidPaxCapture(input: {
+  link?: PaxReaderLink | null;
+  usbAttached?: boolean | null;
+  transferId: string;
+  amountCents: number;
+  bridge?: PaxBridge;
+}): Promise<{ ok: true; skipped?: boolean } | { ok: false; message: string }> {
+  const step = usbCardStep({ link: input.link, usbAttached: input.usbAttached, step: "capture" });
+  if (!step.ok) return step;
+  if (step.transport !== "usb") return { ok: true, skipped: true };
+  const capture = input.bridge?.capture;
+  if (!capture) return { ok: false, message: CARD_READER_USB_NOT_CONNECTED };
+  const result = await capture({
+    transferId: input.transferId,
+    amountCents: input.amountCents,
+  });
+  if (!result.ok) return { ok: false, message: result.message || CARD_READER_USB_NOT_CONNECTED };
+  return { ok: true };
+}
+
+/**
+ * Void an authorized USB card. The check stays open and no second charge is sent.
+ * Bluetooth and Network do not require the USB cable.
+ */
+export async function runAndroidPaxVoid(input: {
+  link?: PaxReaderLink | null;
+  usbAttached?: boolean | null;
+  transferId: string;
+  amountCents: number;
+  bridge?: PaxBridge;
+}): Promise<{ ok: true; skipped?: boolean } | { ok: false; message: string }> {
+  const step = usbCardStep({ link: input.link, usbAttached: input.usbAttached, step: "void" });
+  if (!step.ok) return step;
+  if (step.transport !== "usb") return { ok: true, skipped: true };
+  const voidSale = input.bridge?.voidSale;
+  if (!voidSale) return { ok: false, message: CARD_READER_USB_NOT_CONNECTED };
+  const result = await voidSale({
+    transferId: input.transferId,
+    amountCents: input.amountCents,
+  });
+  if (!result.ok) return { ok: false, message: result.message || CARD_READER_USB_NOT_CONNECTED };
+  return { ok: true };
 }

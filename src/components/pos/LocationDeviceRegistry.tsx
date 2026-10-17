@@ -108,9 +108,18 @@ import {
   renamePaxReaderFn,
   replacePaxReaderFn,
   setPaxDeviceIdFn,
+  setPaxReaderLinkFn,
   listStationActivityFn,
 } from "@/lib/payments/api";
-import { readerAssignOptions, readerAssignmentBlock, type PaxReader } from "@/lib/payments/pax-d135";
+import {
+  PAX_READER_LINKS,
+  normalizePaxLink,
+  readerAssignOptions,
+  readerAssignmentBlock,
+  readerLink,
+  type PaxReader,
+  type PaxReaderLink,
+} from "@/lib/payments/pax-d135";
 import {
   formatStationActivityLine,
   type StationActivityEntry,
@@ -219,6 +228,7 @@ export function LocationDeviceRegistry({
   const [activity, setActivity] = useState<StationActivityEntry[]>([]);
   const [paxName, setPaxName] = useState("");
   const [paxSerial, setPaxSerial] = useState("");
+  const [paxLink, setPaxLink] = useState<PaxReaderLink>("bluetooth");
   const [paxDeviceId, setPaxDeviceId] = useState("");
   const [paxEntityId, setPaxEntityId] = useState("");
   const [paxMsg, setPaxMsg] = useState<string | null>(null);
@@ -1427,6 +1437,47 @@ export function LocationDeviceRegistry({
                       <span className="text-muted-foreground" data-pax-reader-entity={reader.entityId}>
                         · {reader.entityName || reader.entityId}
                       </span>
+                      <label className="text-xs text-muted-foreground">
+                        Connection
+                        <select
+                          className="ml-2 h-8 rounded-md border border-border bg-bg px-2 text-sm text-foreground"
+                          data-pax-connection={reader.serial}
+                          value={readerLink(reader)}
+                          disabled={busy}
+                          onChange={(e) => {
+                            const next = normalizePaxLink(e.target.value);
+                            void (async () => {
+                              if (!resolvedLocId) return;
+                              setBusy(true);
+                              setPaxMsg(null);
+                              try {
+                                const res = await setPaxReaderLinkFn({
+                                  data: { locationId: resolvedLocId, id: reader.id, link: next },
+                                });
+                                if (!res.ok) {
+                                  setPaxMsg(res.error);
+                                  return;
+                                }
+                                setCardReaders((rows) =>
+                                  rows.map((row) => (row.id === res.reader.id ? res.reader : row)),
+                                );
+                                setPaxMsg(`${res.reader.name} uses ${readerLink(res.reader)}.`);
+                                await load({ silent: true });
+                              } catch (err) {
+                                setPaxMsg(err instanceof Error ? err.message : "The connection was not saved.");
+                              } finally {
+                                setBusy(false);
+                              }
+                            })();
+                          }}
+                        >
+                          {PAX_READER_LINKS.map((choice) => (
+                            <option key={choice.id} value={choice.id}>
+                              {choice.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1669,6 +1720,21 @@ export function LocationDeviceRegistry({
                 onChange={(e) => setPaxDeviceId(e.target.value)}
               />
             </label>
+            <label className="min-w-[10rem] flex-1 text-xs text-muted-foreground">
+              Connection
+              <select
+                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm"
+                data-pax-connection=""
+                value={paxLink}
+                onChange={(e) => setPaxLink(normalizePaxLink(e.target.value))}
+              >
+                {PAX_READER_LINKS.map((choice) => (
+                  <option key={choice.id} value={choice.id}>
+                    {choice.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="min-w-[12rem] flex-1 text-xs text-muted-foreground">
               Selling entity
               <select
@@ -1716,6 +1782,7 @@ export function LocationDeviceRegistry({
                         entityId: paxEntityId,
                         entityName,
                         deviceId: paxDeviceId,
+                        link: paxLink,
                       },
                     });
                     if (!res.ok) {
@@ -1725,6 +1792,7 @@ export function LocationDeviceRegistry({
                     setPaxName("");
                     setPaxSerial("");
                     setPaxDeviceId("");
+                    setPaxLink("bluetooth");
                     setCardReaders((rows) => {
                       const rest = rows.filter((row) => row.serial !== res.reader.serial);
                       return [...rest, res.reader];

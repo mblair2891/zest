@@ -52,14 +52,20 @@ export const registerPaxReaderFn = createServerFn({ method: "POST" })
     entityId: string;
     entityName?: string;
     deviceId?: string;
-  }) => ({
-    locationId: loc(d.locationId),
-    name: String(d.name ?? "").replace(/\s+/g, " ").trim().slice(0, 40),
-    serial: String(d.serial ?? "").replace(/\s+/g, "").slice(0, 40),
-    entityId: String(d.entityId ?? "").trim().slice(0, 80),
-    entityName: String(d.entityName ?? "").trim().slice(0, 80),
-    deviceId: String(d.deviceId ?? "").replace(/\s+/g, "").slice(0, 80),
-  }))
+    link?: string;
+  }) => {
+    const link: "bluetooth" | "network" | "usb" =
+      d.link === "usb" ? "usb" : d.link === "network" ? "network" : "bluetooth";
+    return {
+      locationId: loc(d.locationId),
+      name: String(d.name ?? "").replace(/\s+/g, " ").trim().slice(0, 40),
+      serial: String(d.serial ?? "").replace(/\s+/g, "").slice(0, 40),
+      entityId: String(d.entityId ?? "").trim().slice(0, 80),
+      entityName: String(d.entityName ?? "").trim().slice(0, 80),
+      deviceId: String(d.deviceId ?? "").replace(/\s+/g, "").slice(0, 80),
+      link,
+    };
+  })
   .handler(async ({ context, data }) => {
     const { registerPaxReader } = await import("./pax-d135.server");
     return registerPaxReader(context.userId, data);
@@ -75,6 +81,22 @@ export const renamePaxReaderFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { renamePaxReaderRecord } = await import("./pax-d135.server");
     return renamePaxReaderRecord(context.userId, data);
+  });
+
+export const setPaxReaderLinkFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; id: string; link: string }) => {
+    const link: "bluetooth" | "network" | "usb" =
+      d.link === "usb" ? "usb" : d.link === "network" ? "network" : "bluetooth";
+    return {
+      locationId: loc(d.locationId),
+      id: String(d.id ?? "").trim().slice(0, 80),
+      link,
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { setPaxReaderLinkRecord } = await import("./pax-d135.server");
+    return setPaxReaderLinkRecord(context.userId, data);
   });
 
 export const setPaxDeviceIdFn = createServerFn({ method: "POST" })

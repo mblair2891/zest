@@ -142,6 +142,6 @@ test("guide states the remove and void rule", () => {
   assert.match(orders, /has not been sent can be removed/);
   assert.match(loss, /reason from the location list/);
   assert.doesNotMatch(loss, /void\/comp skip the gate/);
-  assert.match(types, /2026\.10\.285/);
-  assert.match(types, /USB or Ethernet printer connection/);
+  assert.match(types, /2026\.10\.286/);
+  assert.match(types, /USB card reader connection/);
 });

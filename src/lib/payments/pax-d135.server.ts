@@ -19,13 +19,16 @@ import {
   parsePaxReaders,
   finixStationEnv,
   paxSdkDeviceId,
+  normalizePaxLink,
   placePaxReader,
   readerForSerial,
   removePaxReader,
   renamePaxReader,
   replacePaxReader,
   setPaxDeviceId,
+  setPaxReaderLink,
   type PaxReader,
+  type PaxReaderLink,
 } from "./pax-d135";
 
 function setupOf(raw: unknown): LocationSetup {
@@ -68,6 +71,7 @@ export async function registerPaxReader(
     entityId: string;
     entityName: string;
     deviceId: string;
+    link?: PaxReaderLink;
   },
 ): Promise<{ ok: true; reader: PaxReader } | { ok: false; error: string }> {
   const loc = await loadLoc(input.locationId);
@@ -116,6 +120,7 @@ export async function registerPaxReader(
     deviceId,
     merchantId,
     id: newId("pax"),
+    link: normalizePaxLink(input.link),
   });
   if (!placed.ok) return { ok: false, error: placed.message };
 
@@ -149,6 +154,29 @@ export async function renamePaxReaderRecord(
     setup: { ...setup, paxReaders: renamed.readers },
   });
   return { ok: true, reader: renamed.reader };
+}
+
+/** Bluetooth, Network, or USB. Does not call Finix and does not change the serial. */
+export async function setPaxReaderLinkRecord(
+  userId: string,
+  input: { locationId: string; id: string; link: PaxReaderLink },
+): Promise<{ ok: true; reader: PaxReader } | { ok: false; error: string }> {
+  const loc = await loadLoc(input.locationId);
+  await requireMembership(userId, loc.org_id, undefined, input.locationId);
+  const setup = setupOf(loc.setup);
+  const saved = setPaxReaderLink({
+    readers: parsePaxReaders(setup.paxReaders),
+    id: input.id,
+    link: normalizePaxLink(input.link),
+  });
+  if (!saved.ok) return { ok: false, error: saved.message };
+  const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+  await updateLocationSetupForUser(userId, {
+    orgId: loc.org_id,
+    locationId: loc.id,
+    setup: { ...setup, paxReaders: saved.readers },
+  });
+  return { ok: true, reader: saved.reader };
 }
 
 /** Store the Finix device ID on an existing reader. Does not call Finix and does not change the serial. */
