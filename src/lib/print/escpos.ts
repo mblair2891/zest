@@ -80,8 +80,12 @@ const BOLD_ON = u8(0x1b, 0x45, 0x01);
 const BOLD_OFF = u8(0x1b, 0x45, 0x00);
 const DBL_ON = u8(0x1d, 0x21, 0x11);
 const DBL_OFF = u8(0x1d, 0x21, 0x00);
-/** Double height, normal width, so a tip line still spans the paper. */
-const TALL_ON = u8(0x1d, 0x21, 0x10);
+/**
+ * GS ! n: the low nibble is height, the high nibble is width.
+ * 0x01 is double height and normal width, so a tip row uses the full paper.
+ * 0x10 is double width and wraps a tip line in the middle of a word.
+ */
+const TALL_ON = u8(0x1d, 0x21, 0x01);
 const CUT_FULL = u8(0x1d, 0x56, 0x41, 0x10);
 const CUT_PARTIAL = u8(0x1d, 0x56, 0x42, 0x10);
 const CUT_STAR_LINE = u8(0x1b, 0x64, 0x03);
@@ -137,19 +141,72 @@ function writeInMarks(label: string, width: number): string {
   return "_".repeat(Math.max(12, width - label.length - 1));
 }
 
-/** One tall row: checkbox, percent, tip dollars, and the grand total with that tip. */
-export function tipChoiceLine(percent: number, authorizedCents: number, width: number): string {
+/** Break only on spaces. A word such as Total stays on one line. */
+function wrapWords(value: string, width: number): string[] {
+  const words = value.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (current && next.length > width) {
+      lines.push(current);
+      current = word;
+      continue;
+    }
+    current = next;
+  }
+  if (current) lines.push(current);
+  return lines.length ? lines : [""];
+}
+
+/**
+ * Checkbox, percent, tip, and grand total.
+ * One line when the paper can hold it. Otherwise the total moves to the next line.
+ */
+export function tipChoiceRows(percent: number, authorizedCents: number, width: number): string[] {
   const base = Math.max(0, Math.round(authorizedCents));
   const tip = tipCentsForPercent(base, percent);
   const grand = cardChargeCents(base, tip);
   const tipText = money(tip);
   const totalText = money(grand);
-  const paddedTip = tipText.padEnd(Math.max(6, tipText.length), " ");
-  const spaced = `[ ] ${percent}%  Tip ${paddedTip}  Total ${totalText}`;
-  if (spaced.length <= width) return spaced;
-  const tight = `[ ] ${percent}% Tip ${tipText} Total ${totalText}`;
-  if (tight.length <= width) return tight;
-  return `[ ] ${percent}% ${tipText} ${totalText}`.slice(0, width);
+  const cols = Math.max(16, width);
+  const candidates = [
+    `[ ] ${percent}%   Tip ${tipText}    Total ${totalText}`,
+    `[ ] ${percent}%  Tip ${tipText}  Total ${totalText}`,
+    `[ ] ${percent}% Tip ${tipText} Total ${totalText}`,
+  ];
+  for (const row of candidates) {
+    if (row.length <= cols) return [row];
+  }
+  const withTip = [
+    `[ ] ${percent}%   Tip ${tipText}`,
+    `[ ] ${percent}%  Tip ${tipText}`,
+    `[ ] ${percent}% Tip ${tipText}`,
+    `[ ] ${percent}%`,
+  ];
+  const totalLine = `Total ${totalText}`;
+  for (const head of withTip) {
+    if (head.length <= cols && totalLine.length <= cols) return [head, totalLine];
+  }
+  return [...wrapWords(`[ ] ${percent}% Tip ${tipText}`, cols), ...wrapWords(totalLine, cols)];
+}
+
+/** One tall row when it fits. A narrow slip keeps Total on its own line. */
+export function tipChoiceLine(percent: number, authorizedCents: number, width: number): string {
+  return tipChoiceRows(percent, authorizedCents, width).join("\n");
+}
+
+/** Drop the highest percent when a row still cannot fit the paper. */
+function tipPercentsForWidth(authorizedCents: number, width: number): number[] {
+  const percents = [...CARD_TIP_PERCENTS];
+  while (percents.length > 1) {
+    const fits = percents.every((pct) =>
+      tipChoiceRows(pct, authorizedCents, width).every((row) => row.length <= width),
+    );
+    if (fits) return percents;
+    percents.pop();
+  }
+  return percents;
 }
 
 function tallText(value: string): Uint8Array {
@@ -386,16 +443,21 @@ function buildTipSlipEscPos(
     ALIGN_LT,
     feeds(2),
   ];
-  for (const pct of CARD_TIP_PERCENTS) {
-    parts.push(tallText(tipChoiceLine(pct, authorized, width)));
-    parts.push(FEED);
+  const percents = tipPercentsForWidth(authorized, width);
+  for (const pct of percents) {
+    for (const row of tipChoiceRows(pct, authorized, width)) {
+      parts.push(tallText(row));
+    }
+    parts.push(feeds(2));
   }
   parts.push(FEED);
   parts.push(tallLine("Tip", writeInMarks("Tip", width), width));
-  parts.push(feeds(2));
+  parts.push(feeds(3));
   parts.push(tallLine("Total", writeInMarks("Total", width), width));
-  parts.push(feeds(2));
+  parts.push(feeds(3));
   parts.push(BOLD_ON, text("Signature"), FEED, BOLD_OFF);
+  parts.push(feeds(2));
+  parts.push(TALL_ON, text("_".repeat(width)), FEED, DBL_OFF);
   parts.push(FEED);
   parts.push(TALL_ON, text("_".repeat(width)), FEED, DBL_OFF);
   parts.push(feeds(2), ALIGN_CT, text("Quantum Payments | Summex"), FEED, cutBytes(emulation, cutter));

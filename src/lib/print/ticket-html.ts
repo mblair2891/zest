@@ -120,10 +120,11 @@ export function ticketHtml(job: PrintJob): string {
           ${CARD_TIP_PERCENTS.map(
             (pct) => `<div class="tip-row">${esc(tipChoiceLine(pct, authorized, 42))}</div>`,
           ).join("")}
-          <div class="row tip-row"><span>Tip</span><span>________________</span></div>
-          <div class="row tip-row"><span>Total</span><span>________________</span></div>
+          <div class="row tip-write"><span>Tip</span><span>______________________________</span></div>
+          <div class="row tip-write"><span>Total</span><span>______________________________</span></div>
           <div class="sign-label">Signature</div>
           <div class="sign-line"></div>
+          <div class="sign-line sign-line-2"></div>
         </div>`
       : "";
   const totals = job.kind === "tip_slip" ? "" : job.totals
@@ -174,9 +175,11 @@ export function ticketHtml(job: PrintJob): string {
   .rule { border-top: 1px dashed #333; margin: 8px 0; }
   .total { font-weight: 700; font-size: 15px; }
   .muted { text-align: center; color: #444; margin-top: 10px; font-size: 11px; }
-  .tip-slip .tip-row { font-size: 22px; font-weight: 700; margin: 16px 0; }
-  .tip-slip .sign-label { margin-top: 28px; font-size: 16px; font-weight: 700; }
-  .tip-slip .sign-line { margin-top: 18px; border-bottom: 3px solid #111; height: 42px; }
+  .tip-slip .tip-row { font-size: 20px; font-weight: 700; margin: 22px 0; white-space: pre; line-height: 1.45; }
+  .tip-slip .tip-write { font-size: 20px; font-weight: 700; margin: 28px 0; }
+  .tip-slip .sign-label { margin-top: 36px; font-size: 16px; font-weight: 700; }
+  .tip-slip .sign-line { margin-top: 28px; border-bottom: 3px solid #111; height: 36px; }
+  .tip-slip .sign-line-2 { margin-top: 22px; height: 28px; }
 </style>
 </head>
 <body>

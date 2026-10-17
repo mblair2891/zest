@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_279_tip_slip_lines",
+    date: "2026-10-16",
+    title: "Tip slips stay readable",
+    summary:
+      "Each suggested tip on the merchant and guest copies stays on one line. The signature line runs across the paper.",
+    body: "After the card is authorized, the merchant copy and the guest copy print 18%, 20%, and 25% as a complete line: the checkbox, the percent, the tip, and the total. A line that does not fit moves the total to the next line so no word splits. Extra space sits between the tip choices, the blank Tip line, the blank Total line, and the signature. The signature line runs the width of the paper. Card authorized - tip not yet applied stays on the slip.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "receipts"],
+  },
+  {
     id: "upd_2026_10_278_entity_cash_price",
     date: "2026-10-16",
     title: "Menu prices follow each entity",
