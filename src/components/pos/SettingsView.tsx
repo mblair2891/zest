@@ -33,6 +33,7 @@ import {
   confirmCashDiscountRecalc,
   persistCashDiscount,
   persistPrintPayQr,
+  persistTipSlipCopy,
   persistTaxRates,
   persistStationUpdates,
   persistJurisdiction,
@@ -875,6 +876,27 @@ export function SettingsView() {
         </label>
         <p className="text-xs text-muted-foreground">
           Payments / Receipts. Off by default. The QR prints only on the guest check before payment.
+        </p>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Tip slip</span>
+          <select
+            className="h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm"
+            data-tip-slip-copy=""
+            disabled={!write}
+            value={settings.tipSlipCopy === "merchant" ? "merchant" : "guest"}
+            onChange={(e) => {
+              updateSettings({
+                tipSlipCopy: e.target.value === "merchant" ? "merchant" : "guest",
+              });
+              persistTipSlipCopy();
+            }}
+          >
+            <option value="guest">Guest copy</option>
+            <option value="merchant">Merchant copy</option>
+          </select>
+        </label>
+        <p className="text-xs text-muted-foreground">
+          After the card is authorized, one tip slip prints. Choose the guest copy or the merchant copy.
         </p>
         <label className="flex items-center gap-2 text-sm">
           <input

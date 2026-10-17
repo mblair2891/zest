@@ -224,6 +224,10 @@ test("card closeout source authorizes before the tip and gates the guest-check Q
   assert.match(pay, /printCardTipSlips/);
   assert.match(pay, /Enter card manually/);
   assert.match(pay, /Apply tip and close/);
+  assert.match(pay, /Does the customer want a receipt\?/);
+  assert.match(pay, /data-card-receipt-yes/);
+  assert.match(pay, /data-card-receipt-no/);
+  assert.doesNotMatch(pay, /printGuestReceipt\(paidId/);
   assert.match(pay, /data-receipt-print/);
   assert.match(pay, /data-receipt-text/);
   assert.match(pay, /data-receipt-email/);
@@ -236,4 +240,14 @@ test("card closeout source authorizes before the tip and gates the guest-check Q
   assert.match(from, /printPayQrOnGuestCheck === true/);
   const receiptFn = from.slice(from.indexOf("export async function printGuestReceipt"));
   assert.doesNotMatch(receiptFn.slice(0, 1800), /payQrForCheck/);
+  assert.match(receiptFn.slice(0, 1800), /tipCents: totals\.tipCents/);
+  const tipFn = from.slice(
+    from.indexOf("export async function printCardTipSlips"),
+    from.indexOf("export async function printGuestCheck"),
+  );
+  assert.match(tipFn, /configuredTipSlipCopy/);
+  assert.doesNotMatch(tipFn, /\["merchant", "guest"\]/);
+  const orderPad = readFileSync("src/components/pos/OrderView.tsx", "utf8");
+  assert.match(orderPad, /Print receipt/);
+  assert.match(orderPad, /printGuestReceipt/);
 });

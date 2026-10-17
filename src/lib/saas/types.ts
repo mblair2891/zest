@@ -105,6 +105,8 @@ export type LocationSetup = {
   qrPolicy?: import("@/lib/pos/qr-policy").QrPolicy;
   /** Guest-check pay QR. Default off. Paid receipts never print it. */
   printPayQrOnGuestCheck?: boolean;
+  /** One tip slip after card authorization. Default guest. */
+  tipSlipCopy?: "guest" | "merchant";
   /** When true, Open POS does not hash in the training PIN roster. Add staff in the UI. */
   skipTrainingRoster?: boolean;
   /** inherit = platform default (sandbox unless Platform → Payments is live). */

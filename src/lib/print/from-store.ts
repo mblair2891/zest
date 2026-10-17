@@ -594,7 +594,12 @@ export async function printGuestReceipt(
   return deliverReceiptJob(job);
 }
 
-/** Tip-option slips after card auth, before the tip is entered. No pay QR. */
+/** Guest copy unless Payments / Receipts is set to the merchant copy. */
+export function configuredTipSlipCopy(value: unknown): "guest" | "merchant" {
+  return value === "merchant" ? "merchant" : "guest";
+}
+
+/** One tip-option slip after card auth, before the tip is entered. No pay QR. */
 export async function printCardTipSlips(
   orderId: string,
   auth: { amountCents: number; last4?: string },
@@ -626,20 +631,12 @@ export async function printCardTipSlips(
     },
     at: venueNowMs(),
   };
-  let last: { ok: boolean; error?: string; printerLabel?: string } = {
-    ok: false,
-    error: ADD_RECEIPT_PRINTER,
-  };
-  for (const copy of ["merchant", "guest"] as const) {
-    last = await deliverReceiptJob({
-      ...base,
-      id: uid("tip"),
-      kind: "tip_slip",
-      copy,
-    });
-    if (!last.ok) return last;
-  }
-  return last;
+  return deliverReceiptJob({
+    ...base,
+    id: uid("tip"),
+    kind: "tip_slip",
+    copy: configuredTipSlipCopy(s.settings.tipSlipCopy),
+  });
 }
 
 /** Pre-pay guest check on the section receipt printer. Never kitchen. Never a Star. */

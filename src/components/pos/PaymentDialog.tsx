@@ -263,6 +263,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const [checkPrintBusy, setCheckPrintBusy] = useState(false);
   const [guestFace, setGuestFace] = useState(false);
   const [signed, setSigned] = useState(false);
+  const [cardReceiptAsk, setCardReceiptAsk] = useState(false);
 
   useEffect(() => {
     const cfg = payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor);
@@ -1238,16 +1239,6 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     }
     if (method === "card" && order) {
       clearSessionCardAuth(order.id);
-      const paidId = order.id;
-      const handheld = stationClass === "handheld";
-      if (handheld && receiptChoice === "print") setReceiptChoice("choose");
-      void (async () => {
-        const merchant = await printGuestReceipt(paidId, "merchant");
-        if (!handheld || receiptChoice === "print") await printGuestReceipt(paidId, "guest");
-        if (!merchant.ok && merchant.error && merchant.error !== ADD_RECEIPT_PRINTER) {
-          toast.error(merchant.error);
-        }
-      })();
     }
     if (finixTransferId && paxJournal && order) {
       try {
@@ -1281,6 +1272,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     const o = usePosStore.getState().getActiveOrder();
     if (!o || o.status === "closed") {
       setDone(true);
+      if (method === "card") setCardReceiptAsk(true);
     } else {
       setTip(0);
       setCardTip({ kind: "none" });
@@ -1316,10 +1308,35 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     setCardTip({ kind: "none" });
     setAmount("");
     setReceiptChoice("choose");
+    setCardReceiptAsk(false);
     setReceiptMsg(null);
     setReceiptEmail("");
     onOpenChange(false);
     setView("floor");
+  };
+
+  const answerCardReceipt = async (yes: boolean) => {
+    if (!yes) {
+      setCardReceiptAsk(false);
+      setReceiptMsg(null);
+      return;
+    }
+    if (!order || receiptBusy) return;
+    setReceiptBusy(true);
+    setReceiptMsg(null);
+    try {
+      const res = await printGuestReceipt(order.id, "guest");
+      if (!res.ok) {
+        setReceiptMsg(res.error || "Print failed");
+        setReceiptBusy(false);
+        return;
+      }
+      setCardReceiptAsk(false);
+      setReceiptBusy(false);
+    } catch {
+      setReceiptMsg("Print failed. Check the mapped receipt printer.");
+      setReceiptBusy(false);
+    }
   };
 
   const runPrintReceipt = async () => {
@@ -1429,6 +1446,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           setReceiptEmail("");
           setReceiptMsg(null);
           setReceiptChoice("choose");
+          setCardReceiptAsk(false);
           setCheckPrintMsg(null);
         }
         onOpenChange(o);
@@ -1525,8 +1543,39 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 Cash {formatCurrency(dual.cash.totalCents)} · Cash discount applied
               </p>
             )}
-            <p className="text-sm font-medium">Receipt</p>
-            {receiptChoice === "choose" && (
+            {cardReceiptAsk ? (
+              <div
+                className="space-y-3 rounded-xl border border-border bg-bg p-4"
+                data-card-receipt-ask
+                role="dialog"
+                aria-label="Does the customer want a receipt?"
+              >
+                <p className="text-lg font-semibold">Does the customer want a receipt?</p>
+                <Button
+                  size="lg"
+                  className="station-touch min-h-12 w-full"
+                  disabled={receiptBusy}
+                  data-card-receipt-yes=""
+                  onClick={() => void answerCardReceipt(true)}
+                >
+                  <Printer className="h-5 w-5" />
+                  Yes
+                </Button>
+                <Button
+                  size="lg"
+                  className="station-touch min-h-12 w-full"
+                  variant="outline"
+                  disabled={receiptBusy}
+                  data-card-receipt-no=""
+                  onClick={() => answerCardReceipt(false)}
+                >
+                  No
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm font-medium">Receipt</p>
+            )}
+            {!cardReceiptAsk && receiptChoice === "choose" && (
               <div className="grid gap-2">
                 <Button
                   size="lg"
@@ -1699,33 +1748,6 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               onSigned={() => setSigned(true)}
               onCleared={() => setSigned(false)}
             />
-            <p className="text-center text-sm font-medium">Customer copy</p>
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                type="button"
-                variant={receiptChoice === "print" ? "default" : "outline"}
-                data-receipt-print=""
-                onClick={() => setReceiptChoice("print")}
-              >
-                Print
-              </Button>
-              <Button
-                type="button"
-                variant={receiptChoice === "sms" ? "default" : "outline"}
-                data-receipt-text=""
-                onClick={() => setReceiptChoice("sms")}
-              >
-                Text
-              </Button>
-              <Button
-                type="button"
-                variant={receiptChoice === "email" ? "default" : "outline"}
-                data-receipt-email=""
-                onClick={() => setReceiptChoice("email")}
-              >
-                Email
-              </Button>
-            </div>
             {cardHold && (
               <p className="text-center text-sm text-ivory" data-quantum-hold>
                 {cardHold}

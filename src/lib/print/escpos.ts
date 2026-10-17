@@ -409,7 +409,7 @@ function buildGuestCheckEscPos(
 
 const TIP_AUTH_NOTE = "Card authorized - tip not yet applied.";
 
-/** Merchant and guest copies after the card is authorized and before the tip is applied. */
+/** One tip slip after the card is authorized and before the tip is applied. */
 function buildTipSlipEscPos(
   job: PrintJob,
   width: number,

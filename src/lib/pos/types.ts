@@ -231,6 +231,8 @@ export interface RestaurantSettings {
    * Paid receipts never print it, even when this is on.
    */
   printPayQrOnGuestCheck?: boolean;
+  /** Which single tip slip prints after card authorization. Default guest. */
+  tipSlipCopy?: "guest" | "merchant";
   managerPin: string;
   /** When on, host / server / bartender need a manager PIN to combine or separate. Default off. */
   combineRequiresManager?: boolean;

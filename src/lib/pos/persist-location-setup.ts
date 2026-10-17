@@ -182,6 +182,28 @@ export function persistEntityKyc(): void {
   );
 }
 
+export function persistTipSlipCopy(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("tip-slip-copy");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "tip-slip-copy",
+    setTimeout(() => {
+      timers.delete("tip-slip-copy");
+      const copy =
+        usePosStore.getState().settings.tipSlipCopy === "merchant" ? "merchant" : "guest";
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: { tipSlipCopy: copy, configVersion: bumpConfigVersion() },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
 export function persistPrintPayQr(): void {
   const ctx = ids();
   if (!ctx) return;

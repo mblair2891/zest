@@ -272,6 +272,7 @@ function parseSetup(raw: unknown): LocationSetup {
     qrMode: typeof o.qrMode === "string" ? o.qrMode : undefined,
     qrPolicy: o.qrPolicy != null ? parseQrPolicy(o.qrPolicy, o.qrMode) : undefined,
     printPayQrOnGuestCheck: o.printPayQrOnGuestCheck === true,
+    tipSlipCopy: o.tipSlipCopy === "merchant" || o.tipSlipCopy === "guest" ? o.tipSlipCopy : undefined,
     skipTrainingRoster: "skipTrainingRoster" in o ? Boolean(o.skipTrainingRoster) : undefined,
     operatingModel: o.operatingModel != null ? parseLocationOperatingModel(o.operatingModel) : undefined,
     peerVenue: "peerVenue" in o ? Boolean(o.peerVenue) : undefined,

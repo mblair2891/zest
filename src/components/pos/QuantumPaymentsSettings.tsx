@@ -11,7 +11,7 @@ import {
 import type { LocationPaymentsMode, PaymentsStatus } from "@/lib/payments/types";
 import { isProspectDemo } from "@/lib/demo/session";
 import { usePosStore } from "@/lib/pos/store";
-import { persistPrintPayQr } from "@/lib/pos/persist-location-setup";
+import { persistPrintPayQr, persistTipSlipCopy } from "@/lib/pos/persist-location-setup";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
 import {
@@ -50,6 +50,9 @@ export function QuantumPaymentsSettings({
   const vendors = usePosStore((s) => s.vendors);
   const entityKyc = usePosStore((s) => s.settings.entityKyc);
   const printPayQrOnGuestCheck = usePosStore((s) => s.settings.printPayQrOnGuestCheck === true);
+  const tipSlipCopy = usePosStore((s) =>
+    s.settings.tipSlipCopy === "merchant" ? "merchant" : "guest",
+  );
   const updateSettings = usePosStore((s) => s.updateSettings);
   const paymentMethods = usePosStore((s) => s.settings.paymentMethods);
   const giftSettings = usePosStore((s) => s.settings);
@@ -184,6 +187,26 @@ export function QuantumPaymentsSettings({
         </label>
         <p className="mt-1 text-xs text-muted-foreground">
           Off by default. When on, the QR and Scan to pay print only on the guest check before payment. Paid receipts never include them.
+        </p>
+        <label className="mt-3 block text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">Tip slip</span>
+          <select
+            className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+            data-tip-slip-copy=""
+            disabled={!write}
+            value={tipSlipCopy}
+            onChange={(e) => {
+              const next = e.target.value === "merchant" ? "merchant" : "guest";
+              updateSettings({ tipSlipCopy: next });
+              persistTipSlipCopy();
+            }}
+          >
+            <option value="guest">Guest copy</option>
+            <option value="merchant">Merchant copy</option>
+          </select>
+        </label>
+        <p className="mt-1 text-xs text-muted-foreground">
+          After the card is authorized, one tip slip prints. Choose the guest copy or the merchant copy.
         </p>
       </div>
       <label className="block text-sm">

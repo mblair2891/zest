@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_280_tip_then_receipt",
+    date: "2026-10-16",
+    title: "One tip slip, then a receipt question",
+    summary:
+      "Card authorization prints one tip slip. After the tip, staff ask whether the customer wants a receipt.",
+    body: "Run card prints one tip slip. Payments / Receipts chooses the guest copy or the merchant copy. After the tip is entered and the card is finalized, the station asks Does the customer want a receipt? Yes prints the paid receipt once. The total on that receipt includes the tip. No prints nothing else. Print receipt on the check still prints a copy later.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "receipts"],
+  },
+  {
     id: "upd_2026_10_279_tip_slip_lines",
     date: "2026-10-16",
     title: "Tip slips stay readable",

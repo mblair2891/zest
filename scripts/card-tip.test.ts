@@ -102,8 +102,8 @@ test("payments and tipping guides describe the card tip buttons", () => {
   const types = read("src/lib/guide/types.ts");
   assert.match(payments, /18%, 20%, 25%, and Custom/);
   assert.match(payments, /Sandbox keys send the charge to the Finix sandbox/);
-  assert.match(payments, /matches Guide v2026\.10\.279/);
+  assert.match(payments, /matches Guide v2026\.10\.280/);
   assert.match(tipping, /18%, 20%, 25%, and Custom/);
-  assert.match(types, /GUIDE_VERSION = "2026\.10\.279"/);
-  assert.match(types, /Tip slips stay on one line/);
+  assert.match(types, /GUIDE_VERSION = "2026\.10\.280"/);
+  assert.match(types, /One tip slip, then optional receipt/);
 });
