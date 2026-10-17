@@ -1,12 +1,12 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.10.282";
+export const GUIDE_VERSION = "2026.10.283";
 export const GUIDE_EDITION = "Operators Guide · training week";
 export const GUIDE_TITLE = "Operators Guide";
 /** Short public revision line (date + what changed). Keep in lockstep with the white paper. */
 export const GUIDE_REVISION =
-  "17 Oct 2026 — Open items skip cash discount";
+  "17 Oct 2026 — Remove unsent items, void or comp sent items";
 /**
  * Audience tabs in the guide. Distinct from POS PIN roles:
  * host_operator = food-hall / pod host (not the FOH host stand).

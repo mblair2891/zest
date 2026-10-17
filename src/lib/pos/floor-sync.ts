@@ -18,6 +18,7 @@ import type {
 } from "./floor-types";
 import {
   addCheckLinesFn,
+  deleteUnsentCheckFn,
   listOpenFloorFn,
   listStationTicketsFn,
   odsBumpFn,
@@ -81,6 +82,7 @@ export function orderLineToFloor(line: OrderLine, tickets: KitchenTicket[]): Flo
     openPrice: line.openPrice === true,
     modifiers: line.modifiers ?? [],
     note: line.note ?? null,
+    actionReason: line.actionReason ?? null,
     seat: line.seat ?? null,
     course: line.course,
     station: line.station,
@@ -156,6 +158,7 @@ function floorLineToOrder(line: FloorLine): OrderLine {
     openPrice: line.openPrice === true ? true : undefined,
     modifiers: line.modifiers ?? [],
     note: line.note ?? undefined,
+    actionReason: line.actionReason ?? undefined,
     seat: line.seat ?? undefined,
     course: line.course,
     station: line.station,
@@ -468,6 +471,26 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
             vendorId: item.vendorId ?? null,
             actor: who,
           }),
+        });
+      },
+    );
+    return;
+  }
+
+  if (kind === "check-delete" && id) {
+    const pending = lineDebounce.get(id);
+    if (pending) {
+      clearTimeout(pending);
+      lineDebounce.delete(id);
+    }
+    await runOrQueue(
+      "order_upsert",
+      `Delete check · ${id.slice(-6)}`,
+      "Unsent check removed for every device at this location",
+      { locationId, checkId: id, actor: who },
+      async () => {
+        await deleteUnsentCheckFn({
+          data: withStation({ locationId, checkId: id, actor: who }),
         });
       },
     );

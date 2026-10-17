@@ -6,6 +6,7 @@ import { parseStationQuery } from "@/lib/pos/device-roles";
 import type { TicketStation } from "./types";
 import type {
   AddLinesInput,
+  DeleteUnsentCheckInput,
   FloorActor,
   FloorCheck,
   FloorLine,
@@ -133,6 +134,20 @@ export const addCheckLinesFn = createServerFn({ method: "POST" })
     assertFloorActor(data.actor, "orders.create");
     const { addCheckLines } = await import("./floor.server");
     return addCheckLines(context.userId, data);
+  });
+
+export const deleteUnsentCheckFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: DeleteUnsentCheckInput) => ({
+    locationId: loc(d.locationId),
+    checkId: clip(d.checkId, 80),
+    clientMutationId: d.clientMutationId ? clip(d.clientMutationId, 80) : undefined,
+    actor: d.actor,
+  }))
+  .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "orders.create");
+    const { deleteUnsentCheck } = await import("./floor.server");
+    return deleteUnsentCheck(context.userId, data);
   });
 
 export const sendToStationsFn = createServerFn({ method: "POST" })

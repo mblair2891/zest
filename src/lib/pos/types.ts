@@ -567,6 +567,8 @@ export interface OrderLine {
   openPrice?: boolean;
   modifiers: SelectedModifier[];
   note?: string;
+  /** Listed void or comp reason. A guest note stays on note. */
+  actionReason?: string;
   seat?: number;
   course: Course;
   station: TicketStation;

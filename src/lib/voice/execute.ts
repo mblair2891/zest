@@ -216,11 +216,14 @@ export function commitVoicePending(pending: NonNullable<VoiceExecuteResult["pend
 
   if (pending.kind === "void_line") {
     const order = s.getActiveOrder();
-    const line = [...(order?.lines ?? [])].reverse().find((l) => !l.voided);
+    const line = [...(order?.lines ?? [])].reverse().find((l) => !l.voided && !l.comped);
     if (!line) return { ok: false, message: "No line to void", intent };
-    s.voidLine(line.id, "voice");
-    s.audit("voice_command", `void ${line.name}`);
-    return { ok: true, message: `Voided ${line.name}`, intent };
+    if (!line.sent) {
+      const res = s.removeUnsentLine(line.id);
+      if (res && res.ok === false) return { ok: false, message: res.error || "Could not remove", intent };
+      return { ok: true, message: `Removed ${line.name}`, intent };
+    }
+    return { ok: false, message: "Sent items are voided or comped with a listed reason.", intent };
   }
 
   return { ok: false, message: "Nothing to do", intent };

@@ -106,6 +106,7 @@ type ItemRow = {
   open_price?: boolean | null;
   modifiers: unknown;
   note: string | null;
+  action_reason?: string | null;
   seat: number | null;
   course: string;
   station: string;
@@ -307,6 +308,10 @@ function assertTicketOperator(ctx: EntityWriteContext, operatorId: string | null
   assertLineOperator(ctx, operatorId);
 }
 
+function dbSent(value: unknown): boolean {
+  return value === true || value === "t" || value === "true" || value === 1 || value === "1";
+}
+
 function lineToRowStatus(line: FloorLine): FloorLineStatus {
   if (line.itemStatus && LINE_STATUSES.has(line.itemStatus)) return line.itemStatus;
   if (!line.sent) return "draft";
@@ -325,6 +330,7 @@ function mapLine(row: ItemRow): FloorLine {
     openPrice: row.open_price === true,
     modifiers: parseModifiers(row.modifiers),
     note: row.note,
+    actionReason: row.action_reason ? String(row.action_reason) : null,
     seat: row.seat == null ? null : n(row.seat),
     course: asCourse(row.course),
     station: asStation(row.station),
@@ -589,7 +595,7 @@ async function upsertLines(
     await sql`
       insert into pos_check_items (
         id, check_id, location_id, menu_item_id, name, operator_id, vendor_name,
-        quantity, unit_price_cents, open_price, modifiers, note, seat, course, station,
+        quantity, unit_price_cents, open_price, modifiers, note, action_reason, seat, course, station,
         item_status, sent, held, voided, comped, discount_cents, tax_exempt,
         ticket_id, created_at_ms, updated_at_ms, fired_at_ms
       ) values (
@@ -605,6 +611,7 @@ async function upsertLines(
         ${line.openPrice === true},
         ${JSON.stringify(line.modifiers ?? [])}::jsonb,
         ${line.note},
+        ${line.actionReason ?? null},
         ${line.seat},
         ${line.course},
         ${line.station},
@@ -629,6 +636,7 @@ async function upsertLines(
         open_price = excluded.open_price,
         modifiers = excluded.modifiers,
         note = excluded.note,
+        action_reason = excluded.action_reason,
         seat = excluded.seat,
         course = excluded.course,
         station = excluded.station,
@@ -804,7 +812,71 @@ export async function upsertCheck(
   for (const line of check.lines) assertLineOperator(ctx, line.operatorId);
   await upsertCheckRow(sql, ctx, check, input.clientMutationId ?? null, now);
   if (check.lines.length) await upsertLines(sql, ctx, check.id, check.lines, now);
+  if (check.status === "voided") {
+    await sql`
+      update pos_tickets set status = ${"voided"}
+      where check_id = ${check.id}
+        and location_id = ${ctx.locationId}
+        and status <> ${"voided"}
+    `;
+  }
   return { ok: true, checkId: check.id };
+}
+
+async function pruneUnsentLines(
+  sql: Sql,
+  ctx: EntityWriteContext,
+  checkId: string,
+  keepIds: string[],
+): Promise<void> {
+  const rows = await sql<{ id: string; sent: boolean | string | null }>`
+    select id, sent from pos_check_items
+    where check_id = ${checkId} and location_id = ${ctx.locationId}
+  `;
+  const keep = new Set(keepIds);
+  for (const row of rows) {
+    if (dbSent(row.sent) || keep.has(row.id)) continue;
+    await sql`
+      delete from pos_check_items
+      where id = ${row.id}
+        and check_id = ${checkId}
+        and location_id = ${ctx.locationId}
+        and sent = false
+    `;
+  }
+}
+
+export async function deleteUnsentCheck(
+  userId: string,
+  input: { locationId: string; checkId: string },
+): Promise<{ ok: true }> {
+  const ctx = await loadFloorContext(userId, input.locationId);
+  const sql = await getSql();
+  const existing = await sql<{ id: string; status: string }>`
+    select id, status from pos_checks
+    where id = ${input.checkId} and location_id = ${ctx.locationId}
+    limit 1
+  `;
+  if (!existing[0]) return { ok: true };
+  if (existing[0].status !== "open") throw new ForbiddenError("This check cannot be deleted.");
+  const items = await sql<{ sent: boolean | string | null }>`
+    select sent from pos_check_items
+    where check_id = ${input.checkId} and location_id = ${ctx.locationId}
+  `;
+  if (items.some((row) => dbSent(row.sent))) {
+    throw new ForbiddenError("Sent items stay on the check. Void or comp the check.");
+  }
+  const pays = await sql<{ id: string }>`
+    select id from pos_check_payments
+    where check_id = ${input.checkId} and location_id = ${ctx.locationId}
+    limit 1
+  `;
+  if (pays[0]) throw new ForbiddenError("This check has a payment.");
+  await sql`
+    delete from pos_checks
+    where id = ${input.checkId} and location_id = ${ctx.locationId}
+  `;
+  return { ok: true };
 }
 
 export async function addCheckLines(
@@ -821,6 +893,7 @@ export async function addCheckLines(
   `;
   if (!existing[0]) throw new ForbiddenError("Check not found");
   await upsertLines(sql, ctx, input.checkId, input.lines, now);
+  await pruneUnsentLines(sql, ctx, input.checkId, input.lines.map((line) => line.id));
   await sql`
     update pos_checks set updated_at_ms = ${now}
     where id = ${input.checkId} and location_id = ${ctx.locationId}

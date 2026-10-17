@@ -352,6 +352,18 @@ export interface PosStore {
     reason: string,
     opts?: { skipGate?: boolean; path?: ApprovalPath; approval?: PendingApproval; orderId?: string },
   ) => ActionResult;
+  /** Delete an unsent line. No audit row. */
+  removeUnsentLine: (lineId: string, opts?: { orderId?: string }) => ActionResult;
+  /** Delete a check that has no sent items. No audit row. */
+  deleteUnsentCheck: (orderId?: string) => ActionResult;
+  voidCheck: (
+    reason: string,
+    opts?: { skipGate?: boolean; path?: ApprovalPath; approval?: PendingApproval; orderId?: string },
+  ) => ActionResult;
+  compCheck: (
+    reason: string,
+    opts?: { skipGate?: boolean; path?: ApprovalPath; approval?: PendingApproval; orderId?: string },
+  ) => ActionResult;
   holdLine: (lineId: string, held: boolean) => void;
   sendOrder: (opts?: object) => ActionResult;
   fireCourse: (course: string) => void;

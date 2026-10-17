@@ -31,6 +31,8 @@ export type FloorLine = {
   openPrice?: boolean;
   modifiers: SelectedModifier[];
   note: string | null;
+  /** Listed void or comp reason. Guest notes stay on note. */
+  actionReason?: string | null;
   seat: number | null;
   course: Course;
   station: TicketStation;
@@ -178,6 +180,13 @@ export type AddLinesInput = {
   locationId: string;
   checkId: string;
   lines: FloorLine[];
+  clientMutationId?: string;
+  actor?: FloorActor;
+};
+
+export type DeleteUnsentCheckInput = {
+  locationId: string;
+  checkId: string;
   clientMutationId?: string;
   actor?: FloorActor;
 };

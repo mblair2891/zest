@@ -1,6 +1,7 @@
 import { entityMarksForPrint } from "@/lib/brand/logos";
 import { partyHeader } from "@/lib/pos/table-combine";
 import { computeDualTotals, computeTotals, lineCardCents, lineCashCents, linePrintedCents, policyForLine } from "@/lib/pos/calculations";
+import { lineActionReason, linePrintName } from "@/lib/pos/check-actions";
 import { usePosStore } from "@/lib/pos/store";
 import type { KitchenTicket, Order, RestaurantSettings } from "@/lib/pos/types";
 import { uid } from "@/lib/utils";
@@ -37,21 +38,29 @@ function linesFromTicket(t: KitchenTicket): PrintLine[] {
   }));
 }
 
+function printLineNote(line: Order["lines"][number]): string | undefined {
+  const reason = lineActionReason(line);
+  const guest = line.note && line.note !== reason ? line.note : undefined;
+  if (line.voided || line.comped) {
+    const parts = [guest, reason].filter(Boolean);
+    return parts.length ? parts.join(" · ") : undefined;
+  }
+  return line.note;
+}
+
 function receiptLines(order: Order, settings: RestaurantSettings): PrintLine[] {
   const last = order.payments[order.payments.length - 1];
   const tender = last?.method === "cash" ? "cash" : "card";
-  return order.lines
-    .filter((l) => !l.voided)
-    .map((l) => ({
-      qty: l.quantity,
-      name: l.name,
-      mods: l.modifiers.map((m) => m.optionName),
-      note: l.note,
-      seat: l.seat,
-      vendorId: l.vendorId,
-      vendorName: l.vendorName,
-      amountCents: linePrintedCents(l, policyForLine(settings, l, tender)),
-    }));
+  return order.lines.map((l) => ({
+    qty: l.quantity,
+    name: linePrintName(l.name, l),
+    mods: l.modifiers.map((m) => m.optionName),
+    note: printLineNote(l),
+    seat: l.seat,
+    vendorId: l.vendorId,
+    vendorName: l.vendorName,
+    amountCents: linePrintedCents(l, policyForLine(settings, l, tender)),
+  }));
 }
 
 export const NO_SECTION_RECEIPT =
@@ -147,17 +156,15 @@ function guestCheckJob(
 ): PrintJob {
   const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
   const dual = computeDualTotals(order, s.settings);
-  const items: PrintLine[] = order.lines
-    .filter((l) => !l.voided)
-    .map((l) => {
+  const items: PrintLine[] = order.lines.map((l) => {
       const vendorId = l.vendorId || l.entityId;
       const vendor = vendorId ? s.vendors.find((v) => v.id === vendorId) : undefined;
       const cardPolicy = policyForLine(s.settings, l, "card");
       return {
       qty: l.quantity,
-      name: l.name,
+      name: linePrintName(l.name, l),
       mods: l.modifiers.map((m) => m.optionName),
-      note: l.note,
+      note: printLineNote(l),
       seat: l.seat,
       vendorId,
       vendorName: l.vendorName || vendor?.name,

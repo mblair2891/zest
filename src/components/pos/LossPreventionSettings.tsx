@@ -74,6 +74,30 @@ export function LossPreventionSettings({ write }: { write: boolean }) {
         disabled={!write}
         onChange={(v) => patch({ voidAfterBump: v })}
       />
+      <label className="block text-sm">
+        Void reasons
+        <textarea
+          className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
+          rows={6}
+          disabled={!write}
+          defaultValue={cfg.voidReasons.join("\n")}
+          key={cfg.voidReasons.join("\n")}
+          onBlur={(e) => patch({ voidReasons: e.target.value.split("\n") })}
+        />
+        <span className="mt-1 block text-xs text-muted-foreground">One reason per line. The check uses this list.</span>
+      </label>
+      <label className="block text-sm">
+        Comp reasons
+        <textarea
+          className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
+          rows={5}
+          disabled={!write}
+          defaultValue={cfg.compReasons.join("\n")}
+          key={cfg.compReasons.join("\n")}
+          onBlur={(e) => patch({ compReasons: e.target.value.split("\n") })}
+        />
+        <span className="mt-1 block text-xs text-muted-foreground">One reason per line. The check uses this list.</span>
+      </label>
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"

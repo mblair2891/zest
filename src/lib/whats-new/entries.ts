@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_283_check_void_rules",
+    date: "2026-10-17",
+    title: "Remove unsent items, void or comp sent items",
+    summary:
+      "An item that has not been sent can be removed. A sent item is voided or comped with a listed reason.",
+    body: "An item that has not been sent can be removed and leaves the check. A sent item can only be voided or comped, and the reason comes from the location list. A check with no sent items can be deleted. Once any item has been sent, the check is voided or comped as a whole. Voided and comped items stay on the check with the reason and are not in the total.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor", "orders"],
+  },
+  {
     id: "upd_2026_10_282_open_item_price",
     date: "2026-10-17",
     title: "Open items skip cash discount",

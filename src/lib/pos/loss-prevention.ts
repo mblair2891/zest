@@ -1,3 +1,4 @@
+import { normalizeReasonList } from "./check-actions";
 import type { DeviceRole } from "./device-roles";
 import type {
   Employee,
@@ -59,6 +60,8 @@ export type PendingApprovalPayload = {
   giftStatus?: string;
   deltaCents?: number;
   drawerId?: string;
+  /** Whole-check void or comp. A line action leaves this unset. */
+  scope?: "line" | "check";
 };
 
 export type PendingApproval = {
@@ -126,6 +129,10 @@ export type LossPreventionConfig = {
   integrityEmptyTable: "auto_hold" | "require_lead";
   /** House Z / night close: must clear issues, or manager ack with reason. */
   nightCloseMode: "hard_block" | "ack";
+  /** Listed void reasons. The check picker uses this list. */
+  voidReasons: string[];
+  /** Listed comp reasons. The check picker uses this list. */
+  compReasons: string[];
 };
 
 export const VOID_REASONS = [
@@ -133,6 +140,7 @@ export const VOID_REASONS = [
   "Guest changed mind",
   "86 / unavailable",
   "Wrong item / modifier",
+  "Kitchen error",
   "Quality / remake",
   "Walkout",
   "Manager approved",
@@ -277,6 +285,8 @@ export const DEFAULT_LOSS_PREVENTION: LossPreventionConfig = {
   integrityIdleMinutes: 45,
   integrityEmptyTable: "auto_hold",
   nightCloseMode: "ack",
+  voidReasons: [...VOID_REASONS],
+  compReasons: [...COMP_REASONS],
 };
 
 function asGate(raw: unknown, fallback: GateMode): GateMode {
@@ -341,6 +351,8 @@ export function parseLossPrevention(raw: unknown): LossPreventionConfig {
       discountCaps: { ...DEFAULT_DISCOUNT_CAPS },
       shiftLeadGrants: DEFAULT_SHIFT_LEAD_GRANTS.map((g) => ({ ...g, gates: [...g.gates] })),
       onCallList: [],
+      voidReasons: [...VOID_REASONS],
+      compReasons: [...COMP_REASONS],
     };
   }
   const o = raw as Record<string, unknown>;
@@ -382,7 +394,17 @@ export function parseLossPrevention(raw: unknown): LossPreventionConfig {
     integrityIdleMinutes: Math.min(24 * 60, Math.max(10, Math.round(Number(o.integrityIdleMinutes) || base.integrityIdleMinutes))),
     integrityEmptyTable: o.integrityEmptyTable === "require_lead" ? "require_lead" : "auto_hold",
     nightCloseMode: o.nightCloseMode === "hard_block" ? "hard_block" : "ack",
+    voidReasons: normalizeReasonList(o.voidReasons, VOID_REASONS),
+    compReasons: normalizeReasonList(o.compReasons, COMP_REASONS),
   };
+}
+
+export function voidReasonsFor(cfg: LossPreventionConfig): readonly string[] {
+  return cfg.voidReasons.length ? cfg.voidReasons : VOID_REASONS;
+}
+
+export function compReasonsFor(cfg: LossPreventionConfig): readonly string[] {
+  return cfg.compReasons.length ? cfg.compReasons : COMP_REASONS;
 }
 
 export function isGatedAuditAction(action: string): action is GatedAuditAction {
@@ -440,12 +462,12 @@ export function underVoidCompThreshold(
   return !sent && amountCents <= cfg.voidCompBeforeSendCents;
 }
 
-export function reasonsForGate(kind: ApprovalGateKind): readonly string[] {
+export function reasonsForGate(kind: ApprovalGateKind, cfg?: LossPreventionConfig): readonly string[] {
   switch (kind) {
     case "void":
-      return VOID_REASONS;
+      return cfg ? voidReasonsFor(cfg) : VOID_REASONS;
     case "comp":
-      return COMP_REASONS;
+      return cfg ? compReasonsFor(cfg) : COMP_REASONS;
     case "discount":
       return DISCOUNT_REASONS;
     case "no_sale":

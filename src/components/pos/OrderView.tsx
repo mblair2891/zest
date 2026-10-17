@@ -59,17 +59,22 @@ import { Split } from "lucide-react";
 import { canEmployee } from "@/lib/access/permissions";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import {
-  COMP_REASONS,
   DISCOUNT_REASONS,
   REOPEN_REASONS,
   TENDER_SWAP_REASONS,
-  VOID_REASONS,
+  compReasonsFor,
   discountNeedsManager,
   isLateWindowComp,
-  lineIsOnBumpedTicket,
   parseLossPrevention,
-  voidNeedsManager,
+  voidReasonsFor,
 } from "@/lib/pos/loss-prevention";
+import {
+  canDeleteCheck,
+  canRemoveLine,
+  canVoidOrCompCheck,
+  canVoidOrCompLine,
+  lineActionReason,
+} from "@/lib/pos/check-actions";
 import {
   deviceRoleFromSessionMode,
   parseStationQuery,
@@ -113,6 +118,10 @@ export function OrderView({
   const setActiveSeat = usePosStore((s) => s.setActiveSeat);
   const voidLine = usePosStore((s) => s.voidLine);
   const compLine = usePosStore((s) => s.compLine);
+  const voidCheck = usePosStore((s) => s.voidCheck);
+  const compCheck = usePosStore((s) => s.compCheck);
+  const removeUnsentLine = usePosStore((s) => s.removeUnsentLine);
+  const deleteUnsentCheck = usePosStore((s) => s.deleteUnsentCheck);
   const holdLine = usePosStore((s) => s.holdLine);
   const sendOrder = usePosStore((s) => s.sendOrder);
   const printCheck = usePosStore((s) => s.printCheck);
@@ -143,6 +152,8 @@ export function OrderView({
     };
   }, [payOpen]);
   const [mgrOpen, setMgrOpen] = useState(false);
+  const [mgrScope, setMgrScope] = useState<"line" | "check">("line");
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [mgrAction, setMgrAction] = useState<
     null | "void" | "comp" | "discount" | "reopen" | "tender_swap"
   >(null);
@@ -480,9 +491,23 @@ export function OrderView({
   };
 
   const lp = parseLossPrevention(settings.lossPrevention);
+  const voidReasons = voidReasonsFor(lp);
+  const compReasons = compReasonsFor(lp);
   const frozen = order.status !== "open";
   const odsNoPay = stationRole === "ods";
-  const compAmt = mgrAction === "comp" ? lineUnit(selectedLineId ?? "") : 0;
+  const checkActionCents = order.lines
+    .filter((l) => !l.voided && !l.comped)
+    .reduce(
+      (sum, line) =>
+        sum + (line.unitPriceCents + line.modifiers.reduce((s, m) => s + m.priceCents, 0)) * line.quantity,
+      0,
+    );
+  const compAmt =
+    mgrAction === "comp"
+      ? mgrScope === "check"
+        ? checkActionCents
+        : lineUnit(selectedLineId ?? "")
+      : 0;
   const lateCompDual =
     mgrAction === "comp" &&
     lp.lateCompDualControl &&
@@ -520,13 +545,25 @@ export function OrderView({
       setMgrAction(null);
       return;
     }
+    if (mgrScope === "check") {
+      if (mgrAction === "void") {
+        const res = voidCheck(reason, { path, orderId: order.id });
+        if (res && res.ok === false) setGateError(res.error ?? "Void failed");
+      }
+      if (mgrAction === "comp") {
+        const res = compCheck(reason, { path, orderId: order.id });
+        if (res && res.ok === false) setGateError(res.error ?? "Comp failed");
+      }
+      setMgrAction(null);
+      return;
+    }
     if (!selectedLineId) return;
     if (mgrAction === "void") {
-      const res = voidLine(selectedLineId, reason || "Manager approved", { path });
+      const res = voidLine(selectedLineId, reason, { path });
       if (res && res.ok === false) setGateError(res.error ?? "Void failed");
     }
     if (mgrAction === "comp") {
-      const res = compLine(selectedLineId, reason || "Manager approved", { path });
+      const res = compLine(selectedLineId, reason, { path });
       if (res && res.ok === false) setGateError(res.error ?? "Comp failed");
     }
     setMgrAction(null);
@@ -536,9 +573,11 @@ export function OrderView({
     if (!mgrAction) return;
     const line = selectedLineId ? order.lines.find((l) => l.id === selectedLineId) : undefined;
     const amt =
-      mgrAction === "void" || mgrAction === "comp"
-        ? lineUnit(selectedLineId ?? "")
-        : mgrAction === "discount"
+      mgrScope === "check" && (mgrAction === "void" || mgrAction === "comp")
+        ? checkActionCents
+        : mgrAction === "void" || mgrAction === "comp"
+          ? lineUnit(selectedLineId ?? "")
+          : mgrAction === "discount"
           ? Math.round(((order.lines.filter((l) => !l.voided && !l.comped).reduce((s, l) => s + l.unitPriceCents * l.quantity, 0) * (parseFloat(discPct) || 0)) / 100))
           : 0;
     const fired = line
@@ -550,12 +589,13 @@ export function OrderView({
       amountCents: amt,
       orderId: order.id,
       orderNumber: order.number,
-      lineId: line?.id,
+      lineId: mgrScope === "check" ? undefined : line?.id,
       ticketId: line ? tickets.find((t) => t.items.some((i) => i.lineId === line.id))?.id : undefined,
-      lineWasSent: line?.sent,
+      lineWasSent: mgrScope === "check" ? true : line?.sent,
       ticketFired: fired,
       payload: {
-        lineId: line?.id,
+        scope: mgrScope,
+        lineId: mgrScope === "check" ? undefined : line?.id,
         percent: mgrAction === "discount" ? parseFloat(discPct) || 0 : undefined,
         paymentId: mgrAction === "tender_swap" ? order.payments[order.payments.length - 1]?.id : undefined,
         method: mgrAction === "tender_swap"
@@ -567,16 +607,87 @@ export function OrderView({
     setMgrAction(null);
   };
 
-  const askVoid = () => {
-    const line = order.lines.find((l) => l.id === selectedLineId);
-    const need = voidNeedsManager(line, tickets, lp);
-    if (!need && !lineIsOnBumpedTicket(selectedLineId ?? "", tickets)) {
-      setMgrAction("void");
-      setMgrOpen(true);
-      return;
-    }
+  const askLineVoid = (lineId: string) => {
+    setSelectedLine(lineId);
+    setMgrScope("line");
     setMgrAction("void");
     setMgrOpen(true);
+  };
+  const askLineComp = (lineId: string) => {
+    setSelectedLine(lineId);
+    setMgrScope("line");
+    setMgrAction("comp");
+    setMgrOpen(true);
+  };
+  const askCheckVoid = () => {
+    setMgrScope("check");
+    setMgrAction("void");
+    setMgrOpen(true);
+  };
+  const askCheckComp = () => {
+    setMgrScope("check");
+    setMgrAction("comp");
+    setMgrOpen(true);
+  };
+  const removeLine = (lineId: string) => {
+    setGateError(null);
+    const res = removeUnsentLine(lineId, { orderId: order.id });
+    if (res && res.ok === false) setGateError(res.error ?? "Could not remove");
+  };
+  const confirmDeleteCheck = () => {
+    setDeleteOpen(false);
+    const res = deleteUnsentCheck(order.id);
+    if (res && res.ok === false) setGateError(res.error ?? "Could not delete");
+  };
+  const lineActionButtons = (line: (typeof order.lines)[number]) => {
+    if (frozen) return null;
+    if (canRemoveLine(line)) {
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          className="station-touch h-8 px-2 text-xs"
+          data-remove-line
+          onClick={(e) => {
+            e.stopPropagation();
+            removeLine(line.id);
+          }}
+        >
+          Remove
+        </Button>
+      );
+    }
+    if (canVoidOrCompLine(line)) {
+      return (
+        <span className="flex shrink-0 gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            className="station-touch h-8 px-2 text-xs"
+            data-void-line
+            onClick={(e) => {
+              e.stopPropagation();
+              askLineVoid(line.id);
+            }}
+          >
+            Void
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="station-touch h-8 px-2 text-xs"
+            data-comp-line
+            onClick={(e) => {
+              e.stopPropagation();
+              askLineComp(line.id);
+            }}
+          >
+            Comp
+          </Button>
+        </span>
+      );
+    }
+    return null;
   };
 
   const checkOverlay = !layout.twoCol;
@@ -601,7 +712,32 @@ export function OrderView({
       .catch(() => setPrintMsg("Print failed"));
   };
 
-  const liveLines = order.lines.filter((l) => !l.voided);
+  const liveLines = order.lines;
+  const checkLevelActions = !frozen && (canDeleteCheck(order) || canVoidOrCompCheck(order)) ? (
+    <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
+      {canDeleteCheck(order) && (
+        <Button
+          variant="outline"
+          className="station-touch col-span-full"
+          data-delete-check
+          onClick={() => setDeleteOpen(true)}
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete check
+        </Button>
+      )}
+      {canVoidOrCompCheck(order) && (
+        <>
+          <Button variant="outline" className="station-touch" data-void-check onClick={askCheckVoid}>
+            Void check
+          </Button>
+          <Button variant="outline" className="station-touch" data-comp-check onClick={askCheckComp}>
+            Comp check
+          </Button>
+        </>
+      )}
+    </div>
+  ) : null;
   const liveCheckList = (
     <ul className="space-y-1" data-live-check>
       {liveLines.length === 0 && (
@@ -615,10 +751,16 @@ export function OrderView({
             {group.displayName}
           </p>
           <ul className="space-y-0.5">
-            {group.lines.map((line) => (
+            {group.lines.map((line) => {
+              const reason = lineActionReason(line);
+              return (
               <li
                 key={line.id}
-                className="flex items-start justify-between gap-2 rounded-lg px-1 py-0.5 text-sm"
+                className={cn(
+                  "flex items-start justify-between gap-2 rounded-lg px-1 py-0.5 text-sm",
+                  line.voided && "line-through opacity-60",
+                  line.comped && "opacity-70",
+                )}
               >
                 <span className="min-w-0">
                   <span className="font-medium">
@@ -626,17 +768,105 @@ export function OrderView({
                   </span>
                   <span className="ml-1 text-[10px] text-muted-foreground">
                     {line.vendorName || group.displayName}
+                    {line.voided ? " · VOID" : ""}
+                    {line.comped ? " · COMP" : ""}
+                    {reason && (line.voided || line.comped) ? ` · ${reason}` : ""}
                   </span>
                 </span>
-                <span className="shrink-0 text-right tabular text-xs">
-                  {formatCurrency(linePrintedCents(line, policyForLine(settings, line, "card")))}
+                <span className="flex shrink-0 items-center gap-1">
+                  {lineActionButtons(line)}
+                  <span className="text-right tabular text-xs">
+                    {formatCurrency(linePrintedCents(line, policyForLine(settings, line, "card")))}
+                  </span>
                 </span>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </li>
       ))}
     </ul>
+  );
+
+  const checkActionDialogs = (
+    <>
+      <ManagerPinDialog
+        open={mgrOpen}
+        onOpenChange={setMgrOpen}
+        onVerified={runMgr}
+        title={
+          mgrScope === "check" && mgrAction === "void"
+            ? "Void check"
+            : mgrScope === "check" && mgrAction === "comp"
+              ? "Comp check"
+              : mgrAction === "reopen"
+                ? "Reopen paid check"
+                : mgrAction === "tender_swap"
+                  ? "Change tender"
+                  : mgrAction === "void"
+                    ? "Void"
+                    : mgrAction === "comp"
+                      ? "Comp"
+                      : "Manager authorization"
+        }
+        description={
+          lateCompDual
+            ? "This check has been open a long time. A shift lead or pending/remote approval is required — the stand manager PIN is not enough."
+            : "Manager or shift-lead PIN, or request approval if no one is on the floor. Logged."
+        }
+        skipIfAuthed={!lateCompDual}
+        gate={
+          mgrAction === "tender_swap"
+            ? "tender_swap"
+            : mgrAction === "reopen"
+              ? "reopen"
+              : mgrAction === "discount"
+                ? "discount"
+                : mgrAction === "comp"
+                  ? "comp"
+                  : mgrAction === "void"
+                    ? "void"
+                    : undefined
+        }
+        amountCents={
+          mgrAction === "void" || mgrAction === "comp"
+            ? mgrScope === "check"
+              ? checkActionCents
+              : lineUnit(selectedLineId ?? "")
+            : 0
+        }
+        onRequestPending={submitPending}
+        reasons={
+          mgrAction === "void"
+            ? voidReasons
+            : mgrAction === "comp"
+              ? compReasons
+              : mgrAction === "discount"
+                ? DISCOUNT_REASONS
+                : mgrAction === "reopen"
+                  ? REOPEN_REASONS
+                  : mgrAction === "tender_swap"
+                    ? TENDER_SWAP_REASONS
+                    : undefined
+        }
+      />
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete check</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Items that have not been sent are removed. This check is deleted.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmDeleteCheck}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 
   if (busyNight) {
@@ -720,6 +950,7 @@ export function OrderView({
               <span>{formatCurrency(dual.enabled ? dual.card.totalCents : dual.cash.totalCents)}</span>
             </p>
           )}
+          {checkLevelActions}
           <div className="p-2">
             <Button
               className="station-touch h-16 w-full text-xl font-semibold"
@@ -740,6 +971,7 @@ export function OrderView({
         />
         {openAmountDialog}
         {wellPopup}
+        {checkActionDialogs}
       </div>
     );
   }
@@ -869,7 +1101,7 @@ export function OrderView({
                           {line.modifiers.map((m) => m.optionName).join(", ")}
                         </span>
                       )}
-                      {line.note && (
+                      {line.note && line.note !== lineActionReason(line) && (
                         <span className="mt-0.5 block text-[11px] text-warn">
                           {line.note}
                         </span>
@@ -878,14 +1110,19 @@ export function OrderView({
                         {line.sent ? "Sent → vendor" : "On check"}
                         {line.held ? " · fire later" : ""}
                         {line.seat ? ` · seat ${line.seat}` : ""}
+                        {line.voided ? " · VOID" : ""}
                         {line.comped ? " · COMP" : ""}
+                        {(line.voided || line.comped) && lineActionReason(line)
+                          ? ` · ${lineActionReason(line)}`
+                          : ""}
                         {line.pendingAction ? ` · ${line.pendingAction} pending` : ""}
                       </span>
                     </span>
-                    <span className="shrink-0 text-right tabular text-sm">
+                    <span className="flex shrink-0 flex-col items-end gap-1 text-right tabular text-sm">
                       <span className="block">
                         {formatCurrency(linePrintedCents(line, policyForLine(settings, line, "card")))}
                       </span>
+                      {lineActionButtons(line)}
                     </span>
                   </div>
                 </button>
@@ -963,7 +1200,13 @@ export function OrderView({
             </div>
           )}
 
-        {frozen && (
+        {order.status === "voided" && (
+          <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+            This check is voided. Voided items stay on the check with the reason and are left out of
+            the total.
+          </div>
+        )}
+        {frozen && order.status !== "voided" && (
           <div className="border-t border-warn/40 bg-warn/10 px-3 py-2 text-xs">
             Paid check is frozen. Reopen or swap a tender only with a manager PIN and a listed
             reason. Before/after is stored.
@@ -995,30 +1238,53 @@ export function OrderView({
         {gateError && (
           <p className="px-3 py-1 text-xs text-danger">{gateError}</p>
         )}
+        {checkLevelActions}
         <div className="grid grid-cols-2 gap-2 border-t border-border p-2 sm:grid-cols-4">
-          <Button
-            size="sm"
-            variant="outline"
-            className="station-touch"
-            disabled={!selectedLineId || frozen}
-            onClick={askVoid}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Void
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="station-touch"
-            disabled={!selectedLineId || frozen}
-            onClick={() => {
-              setMgrAction("comp");
-              setMgrOpen(true);
-            }}
-          >
-            <Gift className="h-3.5 w-3.5" />
-            Comp
-          </Button>
+          {(() => {
+            const selected = selectedLineId
+              ? order.lines.find((l) => l.id === selectedLineId)
+              : undefined;
+            if (selected && canRemoveLine(selected) && !frozen) {
+              return (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="station-touch"
+                  data-remove-line
+                  onClick={() => removeLine(selected.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Remove
+                </Button>
+              );
+            }
+            return (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="station-touch"
+                  data-void-line
+                  disabled={!selected || !canVoidOrCompLine(selected) || frozen}
+                  onClick={() => selected && askLineVoid(selected.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Void
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="station-touch"
+                  data-comp-line
+                  disabled={!selected || !canVoidOrCompLine(selected) || frozen}
+                  onClick={() => selected && askLineComp(selected.id)}
+                >
+                  <Gift className="h-3.5 w-3.5" />
+                  Comp
+                </Button>
+              </>
+            );
+          })()}
           <Button
             size="sm"
             variant="outline"
@@ -1405,58 +1671,7 @@ export function OrderView({
       {openAmountDialog}
       {wellPopup}
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} />
-      <ManagerPinDialog
-        open={mgrOpen}
-        onOpenChange={setMgrOpen}
-        onVerified={runMgr}
-        title={
-          mgrAction === "reopen"
-            ? "Reopen paid check"
-            : mgrAction === "tender_swap"
-              ? "Change tender"
-              : mgrAction === "void"
-                ? "Void"
-                : mgrAction === "comp"
-                  ? "Comp"
-                  : "Manager authorization"
-        }
-        description={
-          lateCompDual
-            ? "This check has been open a long time. A shift lead or pending/remote approval is required — the stand manager PIN is not enough."
-            : "Manager or shift-lead PIN, or request approval if no one is on the floor. Logged."
-        }
-        skipIfAuthed={!lateCompDual}
-        gate={
-          mgrAction === "tender_swap"
-            ? "tender_swap"
-            : mgrAction === "reopen"
-              ? "reopen"
-              : mgrAction === "discount"
-                ? "discount"
-                : mgrAction === "comp"
-                  ? "comp"
-                  : mgrAction === "void"
-                    ? "void"
-                    : undefined
-        }
-        amountCents={
-          mgrAction === "void" || mgrAction === "comp" ? lineUnit(selectedLineId ?? "") : 0
-        }
-        onRequestPending={submitPending}
-        reasons={
-          mgrAction === "void"
-            ? VOID_REASONS
-            : mgrAction === "comp"
-              ? COMP_REASONS
-              : mgrAction === "discount"
-                ? DISCOUNT_REASONS
-                : mgrAction === "reopen"
-                  ? REOPEN_REASONS
-                  : mgrAction === "tender_swap"
-                    ? TENDER_SWAP_REASONS
-                    : undefined
-        }
-      />
+      {checkActionDialogs}
       <Dialog open={discountOpen} onOpenChange={setDiscountOpen}>
         <DialogContent>
           <DialogHeader>

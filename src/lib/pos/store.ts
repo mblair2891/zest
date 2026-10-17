@@ -219,11 +219,19 @@ import {
   snapshotPayments,
   underVoidCompThreshold,
   voidNeedsManager,
+  voidReasonsFor,
+  compReasonsFor,
   findLateCompCashEvents,
   isLateWindowComp,
   stackedCompCents,
   wouldFlagLateCompCashClose,
 } from "./loss-prevention";
+import {
+  applyOpenCheckAction,
+  applySentLineAction,
+  canDeleteCheck,
+  removeUnsentLine as dropUnsentLine,
+} from "./check-actions";
 import {
   makeClaimCode,
   type LocationDevice,
@@ -360,6 +368,35 @@ function tableStatusFromOrder(order: any) {
 	if (order.payments.length > 0 && (cardBal <= 0 || cashBal <= 0)) return paidTableStatus(cfg);
 	const tickets = usePosStore.getState().tickets ?? [];
 	return deriveTableStatus(order, tickets, cfg);
+}
+function releaseTableAfterGone(get: any, order: any, nextOrders: any[]) {
+	if (!order?.tableId) return get().tables;
+	const table = get().tables.find((t: any) => t.id === order.tableId);
+	const remaining = table
+		? openChecksOnTable(table, nextOrders).filter((o: any) => o.id !== order.id)
+		: [];
+	const childIds = order.mergedTableIds ?? [];
+	if (remaining.length) {
+		const primary = remaining[0];
+		return get().tables.map((t: any) => t.id === order.tableId ? {
+			...t,
+			orderId: primary.id,
+			status: tableStatusFromOrder(primary),
+			statusSince: Date.now(),
+			flashNotified: false,
+		} : t);
+	}
+	return get().tables.map((t: any) =>
+		t.id === order.tableId || childIds.includes(t.id) || t.orderId === order.id
+			? {
+				...t,
+				orderId: undefined,
+				status: "empty",
+				statusSince: Date.now(),
+				flashNotified: false,
+			}
+			: t,
+	);
 }
 function stampStatus(t: any, status: any, opts?: { force?: boolean }) {
 	const cfg = floorCfg();
@@ -1080,6 +1117,14 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		const prevEmp = get().currentEmployeeId;
 		const apply = () => {
+			if (row.kind === "void" && row.payload?.scope === "check" && row.orderId) {
+				set({ activeOrderId: row.orderId });
+				return get().voidCheck(row.reason, { skipGate: true, approval: row, orderId: row.orderId });
+			}
+			if (row.kind === "comp" && row.payload?.scope === "check" && row.orderId) {
+				set({ activeOrderId: row.orderId });
+				return get().compCheck(row.reason, { skipGate: true, approval: row, orderId: row.orderId });
+			}
 			if (row.kind === "void" && row.lineId) {
 				if (row.orderId) set({ activeOrderId: row.orderId });
 				return get().voidLine(row.lineId, row.reason, { skipGate: true, approval: row });
@@ -2582,6 +2627,51 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}) });
 		floorSync("lines", order.id);
 	},
+	removeUnsentLine: (lineId, opts) => {
+		const order = opts?.orderId
+			? get().orders.find((o: any) => o.id === opts.orderId)
+			: get().getActiveOrder();
+		if (!order) return { ok: false, error: "No order" };
+		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
+		const dropped = dropUnsentLine(order.lines, lineId);
+		if (!dropped.ok) return dropped;
+		const nextOrders = get().orders.map((o: any) => o.id !== order.id ? o : { ...o, lines: dropped.lines });
+		const next = nextOrders.find((o: any) => o.id === order.id);
+		set({
+			orders: nextOrders,
+			selectedLineId: get().selectedLineId === lineId ? null : get().selectedLineId,
+			tables: order.tableId
+				? get().tables.map((t: any) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(next)) : t)
+				: get().tables,
+		});
+		floorSync("lines", order.id);
+		return { ok: true };
+	},
+	deleteUnsentCheck: (orderId) => {
+		const order = orderId
+			? get().orders.find((o: any) => o.id === orderId)
+			: get().getActiveOrder();
+		if (!order) return { ok: false, error: "No order" };
+		if (!canDeleteCheck(order)) {
+			if (order.lines.some((l: any) => l.sent)) {
+				return { ok: false, error: "This check has a sent item. Void or comp the check." };
+			}
+			if ((order.payments?.length ?? 0) > 0 || order.cardAuth) {
+				return { ok: false, error: "This check has a payment." };
+			}
+			return { ok: false, error: "This check cannot be deleted." };
+		}
+		const nextOrders = get().orders.filter((o: any) => o.id !== order.id);
+		set({
+			orders: nextOrders,
+			tables: releaseTableAfterGone(get, order, nextOrders),
+			activeOrderId: get().activeOrderId === order.id ? null : get().activeOrderId,
+			selectedLineId: null,
+		});
+		floorSync("check-delete", order.id);
+		if (order.tableId) floorSync("table", order.tableId);
+		return { ok: true };
+	},
 	voidLine: (lineId, reason, opts) => {
 		const order = opts?.orderId
 			? get().orders.find((o: any) => o.id === opts.orderId)
@@ -2590,6 +2680,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
 		const line = order.lines.find((l: any) => l.id === lineId);
 		if (!line || line.voided) return { ok: false, error: "Nothing to void" };
+		if (!line.sent) return { ok: false, error: "Unsent items are removed. Sent items are voided or comped." };
 		const cfg = lpCfg(get);
 		const tickets = get().tickets;
 		const bumped = lineIsOnBumpedTicket(lineId, tickets);
@@ -2603,7 +2694,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				return { ok: false, error: bumped ? "Void after bump needs a manager or shift lead." : "Void needs a manager, shift lead, or pending approval." };
 			}
 		}
-		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
+		const applied = applySentLineAction(order.lines, lineId, "void", reason, voidReasonsFor(cfg));
+		if (!applied.ok) return applied;
 		const nextTickets = bumped
 			? tickets.map((t: any) =>
 				t.items.some((i: any) => i.lineId === lineId) && t.status === "bumped"
@@ -2614,12 +2706,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		set({
 			orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 				...o,
-				lines: o.lines.map((l: any) => l.id === lineId ? {
-					...l,
-					voided: true,
-					pendingAction: undefined,
-					note: reason
-				} : l)
+				lines: applied.lines,
 			}),
 			tickets: nextTickets,
 			shift: {
@@ -2627,12 +2714,12 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				voidsCents: get().shift.voidsCents + amt
 			}
 		});
-		get().audit("void", reason, {
+		get().audit("void", applied.reason, {
 			orderId: order.id,
 			orderNumber: order.number,
 			ticketId: tickets.find((t: any) => t.items.some((i: any) => i.lineId === lineId))?.id,
 			amountCents: amt,
-			reason,
+			reason: applied.reason,
 			before: "open",
 			after: path === "break_glass" ? "break_glass" : bumped ? "VOID" : "voided",
 			...gateMeta(opts?.approval, path),
@@ -2648,6 +2735,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
 		const line = order.lines.find((l: any) => l.id === lineId);
 		if (!line || line.voided || line.comped) return { ok: false, error: "Nothing to comp" };
+		if (!line.sent) return { ok: false, error: "Unsent items are removed. Sent items are voided or comped." };
 		const cfg = lpCfg(get);
 		const amt = lineUnitTotal(line) * line.quantity;
 		const under = underVoidCompThreshold(!!line.sent, amt, cfg);
@@ -2668,14 +2756,10 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				error: "Late-window comp on a long-open check needs a shift lead or pending/remote approval — stand manager PIN is not enough.",
 			};
 		}
-		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
+		const applied = applySentLineAction(order.lines, lineId, "comp", reason, compReasonsFor(cfg));
+		if (!applied.ok) return applied;
 		const approver = get().managerAuthEmployeeName || opts?.approval?.approverName || get().getCurrentEmployee()?.name;
-		const nextLines = order.lines.map((l: any) => l.id === lineId ? {
-			...l,
-			comped: true,
-			pendingAction: undefined,
-			note: reason
-		} : l);
+		const nextLines = applied.lines;
 		const nextOrder = { ...order, lines: nextLines };
 		const stacked = stackedCompCents(nextOrder);
 		const late = isLateWindowComp(order, amt, cfg);
@@ -2698,11 +2782,117 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				compsCents: get().shift.compsCents + amt
 			}
 		});
-		get().audit("comp", reason, {
+		get().audit("comp", applied.reason, {
 			orderId: order.id,
 			orderNumber: order.number,
 			amountCents: amt,
-			reason,
+			reason: applied.reason,
+			...gateMeta(opts?.approval, opts?.path),
+		});
+		floorSync("lines", order.id);
+		return { ok: true };
+	},
+	voidCheck: (reason, opts) => {
+		const order = opts?.orderId
+			? get().orders.find((o: any) => o.id === opts.orderId)
+			: get().getActiveOrder();
+		if (!order) return { ok: false, error: "No order" };
+		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
+		if (!order.lines.some((l: any) => l.sent)) {
+			return { ok: false, error: "Unsent checks are deleted. Sent checks are voided or comped." };
+		}
+		const cfg = lpCfg(get);
+		const tickets = get().tickets;
+		const active = order.lines.filter((l: any) => !l.voided && !l.comped);
+		let needs = false;
+		let amt = 0;
+		for (const line of active) {
+			const lineAmt = lineUnitTotal(line) * line.quantity;
+			amt += lineAmt;
+			if (line.sent && voidNeedsManager(line, tickets, cfg, lineAmt)) needs = true;
+		}
+		const skip = Boolean(opts?.skipGate);
+		const path = opts?.path;
+		if (!skip && needs && !get().canAuthorizeGate("void", amt) && path !== "break_glass") {
+			return { ok: false, error: "Void needs a manager, shift lead, or pending approval." };
+		}
+		const applied = applyOpenCheckAction(order.lines, "void", reason, voidReasonsFor(cfg));
+		if (!applied.ok) return applied;
+		const nextOrder = { ...order, status: "voided", lines: applied.lines, closedAt: Date.now() };
+		const nextOrders = get().orders.map((o: any) => o.id === order.id ? nextOrder : o);
+		const nextTickets = tickets.map((t: any) =>
+			t.orderId === order.id && t.status !== "voided" ? { ...t, status: "voided" } : t,
+		);
+		set({
+			orders: nextOrders,
+			tickets: nextTickets,
+			tables: releaseTableAfterGone(get, order, nextOrders),
+			shift: { ...get().shift, voidsCents: get().shift.voidsCents + amt },
+		});
+		get().audit("void", applied.reason, {
+			orderId: order.id,
+			orderNumber: order.number,
+			amountCents: amt,
+			reason: applied.reason,
+			before: "open",
+			after: path === "break_glass" ? "break_glass" : "voided",
+			...gateMeta(opts?.approval, path),
+		});
+		floorSync("check", order.id);
+		if (order.tableId) floorSync("table", order.tableId);
+		return { ok: true };
+	},
+	compCheck: (reason, opts) => {
+		const order = opts?.orderId
+			? get().orders.find((o: any) => o.id === opts.orderId)
+			: get().getActiveOrder();
+		if (!order) return { ok: false, error: "No order" };
+		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
+		if (!order.lines.some((l: any) => l.sent)) {
+			return { ok: false, error: "Unsent checks are deleted. Sent checks are voided or comped." };
+		}
+		const cfg = lpCfg(get);
+		const active = order.lines.filter((l: any) => !l.voided && !l.comped);
+		const amt = active.reduce((sum: number, line: any) => sum + lineUnitTotal(line) * line.quantity, 0);
+		const needsMgr = cfg.compAlwaysManager || active.some((line: any) => line.sent && cfg.voidAfterSend === "manager");
+		if (!opts?.skipGate && needsMgr && !get().canAuthorizeGate("comp", amt) && opts?.path !== "break_glass") {
+			return { ok: false, error: "Comp needs a manager, shift lead, or pending approval." };
+		}
+		if (
+			cfg.lateCompDualControl &&
+			isLateWindowComp(order, amt, cfg) &&
+			!opts?.skipGate &&
+			opts?.path !== "break_glass" &&
+			opts?.path !== "shift_lead" &&
+			get().managerAuthKind !== "shift_lead"
+		) {
+			return {
+				ok: false,
+				error: "Late-window comp on a long-open check needs a shift lead or pending/remote approval — stand manager PIN is not enough.",
+			};
+		}
+		const applied = applyOpenCheckAction(order.lines, "comp", reason, compReasonsFor(cfg));
+		if (!applied.ok) return applied;
+		const approver = get().managerAuthEmployeeName || opts?.approval?.approverName || get().getCurrentEmployee()?.name;
+		const nextOrder = { ...order, lines: applied.lines };
+		const stacked = stackedCompCents(nextOrder);
+		const late = isLateWindowComp(order, amt, cfg);
+		const sentAt = Math.max(0, ...order.lines.map((l: any) => l.firedAt || (l.sent ? l.createdAt : 0)));
+		const stale = sentAt > 0 && Date.now() - sentAt >= cfg.lateCompStaleSendHours * 3_600_000;
+		set({
+			orders: get().orders.map((o: any) => o.id !== order.id ? o : {
+				...nextOrder,
+				...(late || stale
+					? { lateCompAt: Date.now(), lateCompCents: stacked, lateCompApprover: approver }
+					: {}),
+			}),
+			shift: { ...get().shift, compsCents: get().shift.compsCents + amt },
+		});
+		get().audit("comp", applied.reason, {
+			orderId: order.id,
+			orderNumber: order.number,
+			amountCents: amt,
+			reason: applied.reason,
 			...gateMeta(opts?.approval, opts?.path),
 		});
 		floorSync("lines", order.id);
