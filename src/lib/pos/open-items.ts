@@ -30,12 +30,25 @@ export function isOpenMenuId(id: string | null | undefined): boolean {
 /**
  * Open Food, Open Liquor, and any line flagged open price.
  * The typed amount is the cash price and the card price.
+ * A stored card unit, or the Open Food / Open Liquor name, keeps that amount
+ * when a reload drops the flag.
  */
 export function lineSkipsCashDiscount(line: {
   menuItemId?: string | null;
   openPrice?: boolean | null;
+  cardPriceCents?: number | null;
+  name?: string | null;
 }): boolean {
-  return line.openPrice === true || isOpenMenuId(line.menuItemId);
+  if (line.openPrice === true || isOpenMenuId(line.menuItemId)) return true;
+  if (
+    typeof line.cardPriceCents === "number" &&
+    Number.isFinite(line.cardPriceCents) &&
+    line.cardPriceCents > 0
+  ) {
+    return true;
+  }
+  const name = String(line.name ?? "").trim().toLowerCase();
+  return name === "open food" || name === "open liquor";
 }
 
 export function openKindOf(item: { id?: string; openKind?: string | null }): OpenKind | null {

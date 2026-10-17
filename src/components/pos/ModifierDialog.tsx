@@ -13,6 +13,7 @@ import type { MenuItem, SelectedModifier } from "@/lib/pos/types";
 import { cn, formatCurrency } from "@/lib/utils";
 import { isHappyHour, policyForLine } from "@/lib/pos/calculations";
 import { cardPriceCents } from "@/lib/pos/cash-discount";
+import { needsOpenAmount } from "@/lib/pos/open-items";
 
 interface Props {
   item: MenuItem | null;
@@ -92,6 +93,7 @@ export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Pro
   }
 
   const menuCents = (cents: number) => {
+    if (needsOpenAmount(item)) return cents;
     const policy = policyForLine(settings, { vendorId: item.vendorId }, "card");
     return policy ? cardPriceCents(cents, policy) : cents;
   };

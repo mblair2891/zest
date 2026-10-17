@@ -27,6 +27,8 @@ export type FloorLine = {
   vendorName: string | null;
   quantity: number;
   unitPriceCents: number;
+  /** Typed open amount stored as the card unit. Null on a regular menu item. */
+  cardPriceCents?: number | null;
   /** Typed open amount. Cash and card both stay at unitPriceCents. */
   openPrice?: boolean;
   modifiers: SelectedModifier[];

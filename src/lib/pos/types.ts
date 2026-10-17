@@ -563,6 +563,11 @@ export interface OrderLine {
   vendorName?: string;
   quantity: number;
   unitPriceCents: number;
+  /**
+   * Stored card unit for an open line. Same cents as the typed amount.
+   * Regular menu items leave this unset and keep live cash-discount rounding.
+   */
+  cardPriceCents?: number;
   /** Typed open amount. Cash and card both use unitPriceCents. */
   openPrice?: boolean;
   modifiers: SelectedModifier[];

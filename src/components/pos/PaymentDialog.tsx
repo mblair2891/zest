@@ -13,7 +13,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { useMarketingStore } from "@/lib/pos/marketing-store";
 import { CardTipRow } from "@/components/pos/CardTipRow";
-import { computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
+import { cardAuthorizationCents, cardPayDueCents, computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { tipCentsForChoice, type CardTipChoice } from "@/lib/pos/card-tip";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { CardAuthHold, PaymentMethod } from "@/lib/pos/types";
@@ -223,9 +223,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   );
   const totals = dual?.card ?? null;
   const cashOn = Boolean(dual?.enabled && method === "cash");
-  const balance = cashOn
-    ? (dual?.cash.balanceCents ?? 0)
-    : (totals?.balanceCents ?? 0);
+  const cardPayDue = order ? cardPayDueCents(order, settings) : 0;
+  const balance = cashOn ? (dual?.cash.balanceCents ?? 0) : cardPayDue;
   const [amount, setAmount] = useState("");
   const [tip, setTip] = useState(0);
   const [cardTip, setCardTip] = useState<CardTipChoice>({ kind: "none" });
@@ -1140,7 +1139,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       }
     }
     if (method === "card" && !held) {
-      const authAmount = Math.min(amountCents, balance);
+      const authAmount = order
+        ? cardAuthorizationCents(order, settings, amount ? amountCents : null)
+        : Math.min(amountCents, balance);
       const auth: CardAuthHold = {
         last4: cardLast4,
         finixTransferId,

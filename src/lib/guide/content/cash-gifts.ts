@@ -39,6 +39,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Menu add/edit: enter Cash price only. Menu price is the calculated card price, read-only. The list shows that card price.",
         "The menu, the order pad, and the printed guest check show the card price.",
         "Pay → Cash shows the cash price and charges cash. Pay → Card charges the card price.",
+        "Open Food, Open Liquor, and an item marked Open price store the typed amount as the cash price and the card price. The order screen, the card pay screen, the receipt, and the amount authorized use that exact amount. Cash discount and rounding do not change it. A check of those items charges the sum of the typed amounts. A mixed check rounds the regular menu items and leaves the open items at the typed amount.",
         "Two entities on one check each use their own percent and rounding.",
       ),
       warn(

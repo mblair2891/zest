@@ -102,8 +102,8 @@ test("payments and tipping guides describe the card tip buttons", () => {
   const types = read("src/lib/guide/types.ts");
   assert.match(payments, /18%, 20%, 25%, and Custom/);
   assert.match(payments, /Sandbox keys send the charge to the Finix sandbox/);
-  assert.match(payments, /matches Guide v2026\.10\.283/);
+  assert.match(payments, /matches Guide v2026\.10\.284/);
   assert.match(tipping, /18%, 20%, 25%, and Custom/);
-  assert.match(types, /GUIDE_VERSION = "2026\.10\.283"/);
-  assert.match(types, /Remove unsent items, void or comp sent items/);
+  assert.match(types, /GUIDE_VERSION = "2026\.10\.284"/);
+  assert.match(types, /Open items stay exact on card pay/);
 });

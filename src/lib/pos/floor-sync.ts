@@ -79,6 +79,12 @@ export function orderLineToFloor(line: OrderLine, tickets: KitchenTicket[]): Flo
     vendorName: line.vendorName ?? null,
     quantity: line.quantity,
     unitPriceCents: line.unitPriceCents,
+    cardPriceCents:
+      typeof line.cardPriceCents === "number" &&
+      Number.isFinite(line.cardPriceCents) &&
+      line.cardPriceCents > 0
+        ? Math.round(line.cardPriceCents)
+        : null,
     openPrice: line.openPrice === true,
     modifiers: line.modifiers ?? [],
     note: line.note ?? null,
@@ -155,6 +161,12 @@ function floorLineToOrder(line: FloorLine): OrderLine {
     vendorName: line.vendorName ?? undefined,
     quantity: line.quantity,
     unitPriceCents: line.unitPriceCents,
+    cardPriceCents:
+      typeof line.cardPriceCents === "number" &&
+      Number.isFinite(line.cardPriceCents) &&
+      line.cardPriceCents > 0
+        ? Math.round(line.cardPriceCents)
+        : undefined,
     openPrice: line.openPrice === true ? true : undefined,
     modifiers: line.modifiers ?? [],
     note: line.note ?? undefined,

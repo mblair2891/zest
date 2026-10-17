@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_284_open_card_exact",
+    date: "2026-10-17",
+    title: "Open items stay exact on card pay",
+    summary:
+      "An open food or open liquor amount stays exact on the card pay screen and the amount authorized.",
+    body: "When staff enter an Open Food or Open Liquor amount, that amount is stored as the cash price and the card price. The order screen, the card pay screen, the receipt, and the amount authorized use that exact amount. Cash discount and rounding do not change it. A check of open items charges the sum of those amounts. A mixed check rounds the regular menu items. A regular menu item still uses that entity’s cash discount and rounding.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "cash-discount",
+    tags: ["payments", "floor"],
+  },
+  {
     id: "upd_2026_10_283_check_void_rules",
     date: "2026-10-17",
     title: "Remove unsent items, void or comp sent items",

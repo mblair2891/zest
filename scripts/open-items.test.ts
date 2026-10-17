@@ -225,6 +225,10 @@ test("open items survive archive and a well book, and the amount is typed", () =
   assert.equal(lineSkipsCashDiscount({ menuItemId: "soup", openPrice: true }), true);
   assert.equal(lineSkipsCashDiscount({ menuItemId: "soup" }), false);
   assert.equal(lineSkipsCashDiscount({ menuItemId: "gift_load" }), false);
+  assert.equal(lineSkipsCashDiscount({ menuItemId: "pour", cardPriceCents: 102 }), true);
+  assert.equal(lineSkipsCashDiscount({ menuItemId: "x", name: "Open Liquor" }), true);
+  assert.equal(lineSkipsCashDiscount({ menuItemId: "x", name: "Open Food" }), true);
+  assert.equal(lineSkipsCashDiscount({ menuItemId: "x", name: "Burger" }), false);
 
   const view = readFileSync(new URL("../src/components/pos/OrderView.tsx", import.meta.url), "utf8");
   const busy = view.slice(view.indexOf("if (busyNight)"), view.indexOf("const checkPane"));

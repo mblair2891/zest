@@ -1,7 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { cardPriceCents, cashPolicyFromEntity } from "../src/lib/pos/cash-discount.ts";
-import { computeTotals, lineCardCents, lineCashCents } from "../src/lib/pos/calculations.ts";
+import {
+  cardAuthorizationCents,
+  cardPayDueCents,
+  computeTotals,
+  lineCardCents,
+  lineCashCents,
+} from "../src/lib/pos/calculations.ts";
 import { lineSkipsCashDiscount } from "../src/lib/pos/open-items.ts";
 import type { Order, OrderLine, RestaurantSettings } from "../src/lib/pos/types.ts";
 
@@ -12,6 +19,7 @@ function line(partial: Partial<OrderLine> & { name: string; unitPriceCents: numb
     name: partial.name,
     quantity: partial.quantity ?? 1,
     unitPriceCents: partial.unitPriceCents,
+    cardPriceCents: partial.cardPriceCents,
     openPrice: partial.openPrice,
     modifiers: partial.modifiers ?? [],
     course: "entree",
@@ -164,4 +172,100 @@ test("open liquor $12.37 and open food $8.50 stay exact on cash and card", () =>
   assert.equal(card.subtotalCents, 1237 + 850 + 1099 + 1050);
   assert.equal(card.totalCents, card.subtotalCents);
   assert.equal(cash.totalCents, cash.subtotalCents);
+});
+
+test("open liquor $1.02 stays exact on the card pay screen and the authorization", () => {
+  const bar = cashPolicyFromEntity({ percent: 5, increment: 0.5 });
+  const kitchen = cashPolicyFromEntity({ percent: 5, increment: 0.99 });
+  assert.ok(bar && kitchen);
+  assert.equal(cardPriceCents(102, bar), 150);
+
+  const house = settings();
+  const liquor = line({
+    name: "Open Liquor",
+    unitPriceCents: 102,
+    cardPriceCents: 102,
+    vendorId: "bar",
+    station: "bar",
+    menuItemId: "open-liquor",
+    openPrice: true,
+    taxExempt: false,
+  });
+  const only = order([liquor]);
+  assert.equal(cardPayDueCents(only, house), 102);
+  assert.equal(cardAuthorizationCents(only, house), 102);
+  assert.equal(computeTotals(only, house, { tender: "card" }).totalCents, 102);
+  assert.equal(computeTotals(only, house, { tender: "cash" }).totalCents, 102);
+  assert.equal(computeTotals(only, house, { tender: "card" }).balanceCents, 102);
+
+  const storedOnly = line({
+    name: "Pour",
+    unitPriceCents: 102,
+    cardPriceCents: 102,
+    vendorId: "bar",
+    station: "bar",
+    menuItemId: "custom-pour",
+    taxExempt: false,
+  });
+  assert.equal(lineSkipsCashDiscount(storedOnly), true);
+  assert.equal(lineCardCents(storedOnly, bar), 102);
+  assert.equal(cardPayDueCents(order([storedOnly]), house), 102);
+  assert.equal(cardAuthorizationCents(order([storedOnly]), house), 102);
+
+  const named = line({
+    name: "Open Liquor",
+    unitPriceCents: 102,
+    vendorId: "bar",
+    station: "bar",
+    menuItemId: "lost-id",
+    taxExempt: false,
+  });
+  assert.equal(cardAuthorizationCents(order([named]), house), 102);
+
+  const two = line({
+    ...liquor,
+    id: "lq2",
+    quantity: 2,
+  });
+  assert.equal(cardPayDueCents(order([two]), house), 204);
+
+  const food = line({
+    name: "Open Food",
+    unitPriceCents: 850,
+    cardPriceCents: 850,
+    vendorId: "kitchen",
+    menuItemId: "open-food",
+    openPrice: true,
+  });
+  assert.equal(cardPayDueCents(order([liquor, food]), house), 102 + 850);
+  assert.equal(computeTotals(order([liquor, food]), house, { tender: "cash" }).totalCents, 102 + 850);
+
+  const burger = line({ name: "Burger", unitPriceCents: 1000, vendorId: "kitchen" });
+  const regular = order([burger]);
+  assert.equal(cardPayDueCents(regular, house), 1099);
+  assert.equal(cardAuthorizationCents(regular, house), 1099);
+  assert.equal(computeTotals(regular, house, { tender: "cash" }).totalCents, 1000);
+  assert.equal(lineCardCents(burger, kitchen), 1099);
+
+  const martini = line({
+    name: "Martini",
+    unitPriceCents: 1000,
+    vendorId: "bar",
+    station: "bar",
+  });
+  assert.equal(cardAuthorizationCents(order([martini]), house), 1050);
+
+  const mixed = order([liquor, burger]);
+  assert.equal(computeTotals(mixed, house, { tender: "card" }).subtotalCents, 102 + 1099);
+  assert.equal(computeTotals(mixed, house, { tender: "cash" }).subtotalCents, 102 + 1000);
+  assert.equal(cardAuthorizationCents(mixed, house), 102 + 1099);
+
+  const pay = readFileSync(new URL("../src/components/pos/PaymentDialog.tsx", import.meta.url), "utf8");
+  assert.match(pay, /cardPayDueCents/);
+  assert.match(pay, /cardAuthorizationCents/);
+  assert.match(pay, /data-card-charge-total/);
+  const store = readFileSync(new URL("../src/lib/pos/store.ts", import.meta.url), "utf8");
+  assert.match(store, /cardPriceCents: openLine \? entered : undefined/);
+  const mods = readFileSync(new URL("../src/components/pos/ModifierDialog.tsx", import.meta.url), "utf8");
+  assert.match(mods, /needsOpenAmount\(item\)/);
 });

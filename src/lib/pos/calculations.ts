@@ -46,7 +46,7 @@ export function lineCashCents(
 
 /**
  * Card merchandise: markup then round per line when the policy is on.
- * An open amount is the typed price for cash and card.
+ * An open amount is the typed price for cash and card. No percent and no rounding.
  */
 export function lineCardCents(
   line: OrderLine,
@@ -208,6 +208,25 @@ export function computeDualTotals(
     cash: computeTotals(order, settings, { tender: "cash" }),
     enabled,
   };
+}
+
+/** Balance shown on the card pay screen. Open lines stay at the typed amount. */
+export function cardPayDueCents(order: Order, settings: RestaurantSettings): number {
+  return computeDualTotals(order, settings).card.balanceCents;
+}
+
+/**
+ * Amount authorized before the tip. A blank entry authorizes the card due.
+ * A typed entry cannot exceed that due.
+ */
+export function cardAuthorizationCents(
+  order: Order,
+  settings: RestaurantSettings,
+  enteredCents?: number | null,
+): number {
+  const due = Math.max(0, cardPayDueCents(order, settings));
+  if (enteredCents == null || !Number.isFinite(enteredCents)) return due;
+  return Math.min(Math.max(0, Math.round(enteredCents)), due);
 }
 
 export function isHappyHour(settings: RestaurantSettings, now = new Date()): boolean {

@@ -104,6 +104,7 @@ type ItemRow = {
   quantity: number;
   unit_price_cents: number;
   open_price?: boolean | null;
+  card_price_cents?: number | string | null;
   modifiers: unknown;
   note: string | null;
   action_reason?: string | null;
@@ -312,6 +313,21 @@ function dbSent(value: unknown): boolean {
   return value === true || value === "t" || value === "true" || value === 1 || value === "1";
 }
 
+function dbTrue(value: unknown): boolean {
+  return dbSent(value);
+}
+
+function readCardCents(value: unknown): number | undefined {
+  if (value == null || value === "") return undefined;
+  const cents = Number(value);
+  if (!Number.isFinite(cents) || cents <= 0) return undefined;
+  return Math.round(cents);
+}
+
+function storedCardCents(line: { cardPriceCents?: number | null }): number | null {
+  return readCardCents(line.cardPriceCents) ?? null;
+}
+
 function lineToRowStatus(line: FloorLine): FloorLineStatus {
   if (line.itemStatus && LINE_STATUSES.has(line.itemStatus)) return line.itemStatus;
   if (!line.sent) return "draft";
@@ -327,7 +343,8 @@ function mapLine(row: ItemRow): FloorLine {
     vendorName: row.vendor_name,
     quantity: n(row.quantity, 1),
     unitPriceCents: n(row.unit_price_cents),
-    openPrice: row.open_price === true,
+    cardPriceCents: readCardCents(row.card_price_cents),
+    openPrice: dbTrue(row.open_price),
     modifiers: parseModifiers(row.modifiers),
     note: row.note,
     actionReason: row.action_reason ? String(row.action_reason) : null,
@@ -595,7 +612,7 @@ async function upsertLines(
     await sql`
       insert into pos_check_items (
         id, check_id, location_id, menu_item_id, name, operator_id, vendor_name,
-        quantity, unit_price_cents, open_price, modifiers, note, action_reason, seat, course, station,
+        quantity, unit_price_cents, open_price, card_price_cents, modifiers, note, action_reason, seat, course, station,
         item_status, sent, held, voided, comped, discount_cents, tax_exempt,
         ticket_id, created_at_ms, updated_at_ms, fired_at_ms
       ) values (
@@ -609,6 +626,7 @@ async function upsertLines(
         ${line.quantity},
         ${line.unitPriceCents},
         ${line.openPrice === true},
+        ${storedCardCents(line)},
         ${JSON.stringify(line.modifiers ?? [])}::jsonb,
         ${line.note},
         ${line.actionReason ?? null},
@@ -634,6 +652,7 @@ async function upsertLines(
         quantity = excluded.quantity,
         unit_price_cents = excluded.unit_price_cents,
         open_price = excluded.open_price,
+        card_price_cents = excluded.card_price_cents,
         modifiers = excluded.modifiers,
         note = excluded.note,
         action_reason = excluded.action_reason,
