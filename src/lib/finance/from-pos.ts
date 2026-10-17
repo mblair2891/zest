@@ -6,6 +6,7 @@ import type { CostInvoice } from "@/lib/costs/types";
 import { useCostStore } from "@/lib/costs/store";
 import { cardPriceCents } from "@/lib/pos/cash-discount";
 import { computeTotals, policyForLine } from "@/lib/pos/calculations";
+import { lineSkipsCashDiscount } from "@/lib/pos/open-items";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import {
   isDrinkLine,
@@ -242,7 +243,10 @@ export function postBooksForBusinessDate(date = businessDateNow()): void {
           at: order.closedAt ?? order.createdAt,
           live,
           cashPriceCents: cashUnit,
-          cardPriceCents: linePolicy ? cardPriceCents(cashUnit, linePolicy) : cashUnit,
+          cardPriceCents:
+            linePolicy && !lineSkipsCashDiscount(line)
+              ? cardPriceCents(cashUnit, linePolicy)
+              : cashUnit,
           locationId,
           key: `sale:${order.id}:${line.id}`,
         });

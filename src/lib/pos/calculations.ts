@@ -13,6 +13,7 @@ import {
   ratesForEntity,
   type ComputedTaxLine,
 } from "./tax-rates";
+import { lineSkipsCashDiscount } from "./open-items";
 import { venueClockParts } from "./venue-time";
 
 export interface OrderTotals {
@@ -43,13 +44,16 @@ export function lineCashCents(
   return Math.max(0, lineUnitTotal(line) * line.quantity - line.discountCents);
 }
 
-/** Card merchandise: markup then round up per line when the policy is on. */
+/**
+ * Card merchandise: markup then round per line when the policy is on.
+ * An open amount is the typed price for cash and card.
+ */
 export function lineCardCents(
   line: OrderLine,
   policy: CashDiscountPolicy | null,
 ): number {
   if (line.voided || line.comped) return 0;
-  if (!policy) return lineCashCents(line);
+  if (!policy || lineSkipsCashDiscount(line)) return lineCashCents(line);
   const unitCard = cardPriceCents(lineUnitTotal(line), policy);
   return Math.max(0, unitCard * line.quantity - line.discountCents);
 }

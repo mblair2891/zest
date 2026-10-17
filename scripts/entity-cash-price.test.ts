@@ -1,25 +1,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cardPriceCents, cashPolicyFromEntity } from "../src/lib/pos/cash-discount.ts";
-import { computeTotals } from "../src/lib/pos/calculations.ts";
+import { computeTotals, lineCardCents, lineCashCents } from "../src/lib/pos/calculations.ts";
+import { lineSkipsCashDiscount } from "../src/lib/pos/open-items.ts";
 import type { Order, OrderLine, RestaurantSettings } from "../src/lib/pos/types.ts";
 
 function line(partial: Partial<OrderLine> & { name: string; unitPriceCents: number; vendorId: string }): OrderLine {
   return {
     id: partial.id ?? partial.vendorId,
-    menuItemId: "m1",
+    menuItemId: partial.menuItemId ?? "m1",
     name: partial.name,
-    quantity: 1,
+    quantity: partial.quantity ?? 1,
     unitPriceCents: partial.unitPriceCents,
-    modifiers: [],
+    openPrice: partial.openPrice,
+    modifiers: partial.modifiers ?? [],
     course: "entree",
-    station: "kitchen",
+    station: partial.station ?? "kitchen",
     sent: true,
     held: false,
     voided: false,
     comped: false,
-    discountCents: 0,
-    taxExempt: true,
+    discountCents: partial.discountCents ?? 0,
+    taxExempt: partial.taxExempt ?? true,
     createdAt: 1,
     vendorId: partial.vendorId,
   };
@@ -106,4 +108,60 @@ test("a peer location uses each entity rule, not the location round-up", () => {
   assert.equal(card.subtotalCents, 1099 + 1050);
   assert.equal(cash.subtotalCents, 2000);
   assert.notEqual(card.subtotalCents, cash.subtotalCents);
+});
+
+test("open liquor $12.37 and open food $8.50 stay exact on cash and card", () => {
+  const bar = cashPolicyFromEntity({ percent: 5, increment: 0.5 });
+  const kitchen = cashPolicyFromEntity({ percent: 5, increment: 0.99 });
+  assert.ok(bar && kitchen);
+  assert.equal(cardPriceCents(1237, bar), 1300);
+  assert.equal(cardPriceCents(850, kitchen), 899);
+  assert.equal(cardPriceCents(1000, kitchen), 1099);
+  assert.equal(cardPriceCents(1000, bar), 1050);
+
+  const liquor = line({
+    name: "Open Liquor",
+    unitPriceCents: 1237,
+    vendorId: "bar",
+    station: "bar",
+    menuItemId: "open-liquor",
+  });
+  const food = line({
+    name: "Open Food",
+    unitPriceCents: 850,
+    vendorId: "kitchen",
+    menuItemId: "open-food",
+  });
+  const custom = line({
+    name: "Market special",
+    unitPriceCents: 1237,
+    vendorId: "bar",
+    station: "bar",
+    menuItemId: "m-special",
+    openPrice: true,
+  });
+  const burger = line({ name: "Burger", unitPriceCents: 1000, vendorId: "kitchen" });
+  const martini = line({
+    name: "Martini",
+    unitPriceCents: 1000,
+    vendorId: "bar",
+    station: "bar",
+  });
+
+  for (const open of [liquor, food, custom]) {
+    assert.equal(lineSkipsCashDiscount(open), true);
+    assert.equal(lineCashCents(open), open.unitPriceCents);
+    assert.equal(lineCardCents(open, open.vendorId === "kitchen" ? kitchen : bar), open.unitPriceCents);
+  }
+  assert.equal(lineSkipsCashDiscount(burger), false);
+  assert.equal(lineCardCents(burger, kitchen), 1099);
+  assert.equal(lineCardCents(martini, bar), 1050);
+
+  const check = order([liquor, food, burger, martini]);
+  const card = computeTotals(check, settings(), { tender: "card" });
+  const cash = computeTotals(check, settings(), { tender: "cash" });
+  assert.equal(cash.subtotalCents, 1237 + 850 + 1000 + 1000);
+  assert.equal(card.subtotalCents, 1237 + 850 + 1099 + 1050);
+  assert.equal(card.totalCents, card.subtotalCents);
+  assert.equal(cash.totalCents, cash.subtotalCents);
 });

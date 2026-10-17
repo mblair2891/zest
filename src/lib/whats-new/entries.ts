@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_282_open_item_price",
+    date: "2026-10-17",
+    title: "Open items skip cash discount",
+    summary:
+      "An Open Food or Open Liquor amount is the cash price and the card price.",
+    body: "When staff enter an Open Food or Open Liquor amount, that amount is the cash price and the card price. Cash discount and rounding do not change it. The same rule covers any menu item marked Open price. A regular menu item still uses that entity’s cash discount and rounding. Receipts and reports show the open amount as entered.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu", "payments"],
+  },
+  {
     id: "upd_2026_10_281_readable_slips",
     date: "2026-10-16",
     title: "Larger receipt and tip slip type",

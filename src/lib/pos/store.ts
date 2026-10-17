@@ -2509,6 +2509,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			vendorName,
 			quantity: opts.quantity ?? 1,
 			unitPriceCents: unit,
+			openPrice: openLine ? true : undefined,
 			modifiers: opts.modifiers ?? [],
 			note: opts.note,
 			seat: opts.seat ?? get().activeSeat ?? void 0,

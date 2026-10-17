@@ -563,6 +563,8 @@ export interface OrderLine {
   vendorName?: string;
   quantity: number;
   unitPriceCents: number;
+  /** Typed open amount. Cash and card both use unitPriceCents. */
+  openPrice?: boolean;
   modifiers: SelectedModifier[];
   note?: string;
   seat?: number;

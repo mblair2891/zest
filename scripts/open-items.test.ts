@@ -14,6 +14,7 @@ import {
   OPEN_LIQUOR_ID,
   OPEN_LIQUOR_NAME,
   appendOpenAmountKey,
+  lineSkipsCashDiscount,
   needsOpenAmount,
   parseOpenAmountCents,
   resolveOpenEntities,
@@ -219,6 +220,11 @@ test("open items survive archive and a well book, and the amount is typed", () =
   assert.equal(needsOpenAmount({ id: OPEN_LIQUOR_ID }), true);
   assert.equal(needsOpenAmount({ id: "soup", openPrice: true }), true);
   assert.equal(needsOpenAmount({ id: "soup" }), false);
+  assert.equal(lineSkipsCashDiscount({ menuItemId: OPEN_LIQUOR_ID }), true);
+  assert.equal(lineSkipsCashDiscount({ menuItemId: OPEN_FOOD_ID }), true);
+  assert.equal(lineSkipsCashDiscount({ menuItemId: "soup", openPrice: true }), true);
+  assert.equal(lineSkipsCashDiscount({ menuItemId: "soup" }), false);
+  assert.equal(lineSkipsCashDiscount({ menuItemId: "gift_load" }), false);
 
   const view = readFileSync(new URL("../src/components/pos/OrderView.tsx", import.meta.url), "utf8");
   const busy = view.slice(view.indexOf("if (busyNight)"), view.indexOf("const checkPane"));

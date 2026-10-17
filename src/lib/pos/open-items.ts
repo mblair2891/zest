@@ -27,6 +27,17 @@ export function isOpenMenuId(id: string | null | undefined): boolean {
   return id === OPEN_FOOD_ID || id === OPEN_LIQUOR_ID;
 }
 
+/**
+ * Open Food, Open Liquor, and any line flagged open price.
+ * The typed amount is the cash price and the card price.
+ */
+export function lineSkipsCashDiscount(line: {
+  menuItemId?: string | null;
+  openPrice?: boolean | null;
+}): boolean {
+  return line.openPrice === true || isOpenMenuId(line.menuItemId);
+}
+
 export function openKindOf(item: { id?: string; openKind?: string | null }): OpenKind | null {
   if (item.openKind === "food" || item.openKind === "liquor") return item.openKind;
   if (item.id === OPEN_FOOD_ID) return "food";
