@@ -56,6 +56,44 @@ function job(partial: Partial<PrintJob>): PrintJob {
   };
 }
 
+test("guest check and paid receipt use larger type and section spacing", () => {
+  const guest = buildEscPos(
+    job({
+      kind: "guest_check",
+      guestCheckNote: "Not a receipt - pay server",
+      items: [
+        { qty: 1, name: "Cafe Burger", vendorName: "Hearth", mods: ["no onions"], amountCents: 1000 },
+        { qty: 1, name: "Fries", vendorName: "Hearth", amountCents: 400 },
+      ],
+    }),
+    { modelPreset: "epson_tm_t20" },
+  );
+  const guestTxt = asText(guest);
+  assert.match(guestTxt, /GUEST CHECK/);
+  assert.ok(guestTxt.includes("\x1d\x21\x01"));
+  assert.equal(guestTxt.includes("\x1d\x21\x10"), false);
+  assert.match(guestTxt, /1 Cafe Burger\s+\$10\.00/);
+  assert.match(guestTxt, /1 Fries\s+\$4\.00/);
+  const guestMid = guestTxt.slice(guestTxt.indexOf("GUEST CHECK"), guestTxt.indexOf("Cafe Burger"));
+  assert.ok(guestMid.includes("\n\n"));
+  const betweenItems = guestTxt.slice(guestTxt.indexOf("Cafe Burger"), guestTxt.indexOf("Fries"));
+  assert.ok(betweenItems.includes("\n\n"));
+  const beforeTotal = guestTxt.slice(guestTxt.indexOf("Fries"), guestTxt.indexOf("TOTAL"));
+  assert.ok(beforeTotal.includes("\n\n"));
+
+  const bytes = buildEscPos(job({}), { modelPreset: "epson_tm_t20" });
+  const txt = asText(bytes);
+  assert.match(txt, /RECEIPT/);
+  assert.ok(txt.includes("\x1d\x21\x01"));
+  assert.equal(txt.includes("\x1d\x21\x10"), false);
+  assert.match(txt, /1x Cafe Burger \| House\s+\$10\.00/);
+  const headerGap = txt.slice(txt.indexOf("RECEIPT"), txt.indexOf("Cafe Burger"));
+  assert.ok(headerGap.includes("\n\n"));
+  const totalsGap = txt.slice(txt.indexOf("Cafe Burger"), txt.indexOf("Subtotal"));
+  assert.ok(totalsGap.includes("\n\n"));
+  assert.match(txt, /\$12\.88/);
+});
+
 test("paid receipt total includes the tip and never a pay QR", () => {
   assert.equal(
     printedReceiptTotalCents({ subtotalCents: 1000, taxCents: 88, tipCents: 200, totalCents: 1088 }),
@@ -99,9 +137,10 @@ test("tip slip has suggested tips, a signature line, and no pay QR", () => {
   assert.match(txt, /Total \$12\.84/);
   assert.match(txt, /\[ \] 18% {3}Tip \$1\.96 {4}Total \$12\.84/);
   assert.match(txt, /Signature/);
-  assert.ok((txt.match(/_{42}/g) ?? []).length >= 2);
+  assert.ok((txt.match(/_{42}/g) ?? []).length >= 3);
   assert.ok(txt.includes("\x1d\x21\x01"));
   assert.equal(txt.includes("\x1d\x21\x10"), false);
+  assert.equal(txt.includes("\x1d\x21\x11"), true);
   const suggestions = txt.slice(txt.indexOf("[ ] 18%"), txt.indexOf("[ ] 20%"));
   assert.ok((suggestions.match(/\n/g) ?? []).length >= 3);
   assert.equal(tipLinesSplitTotal(txt), false);
@@ -132,12 +171,12 @@ test("merchant tip slip prints tall tips and a full-width signature", () => {
   assert.match(txt, /\[ \] 25% {3}Tip \$2\.72 {4}Total \$13\.60/);
   assert.match(txt, /Tip +_{20,}/);
   assert.match(txt, /Total +_{20,}/);
-  assert.ok((txt.match(/_{42}/g) ?? []).length >= 2);
+  assert.ok((txt.match(/_{42}/g) ?? []).length >= 3);
   const beforeTips = txt.slice(txt.indexOf("Amount authorized"), txt.indexOf("[ ] 18%"));
   assert.ok((beforeTips.match(/\n/g) ?? []).length >= 4);
   const signAt = txt.indexOf("Signature");
   const beforeSign = txt.slice(txt.lastIndexOf("Total", signAt), signAt);
-  assert.ok((beforeSign.match(/\n/g) ?? []).length >= 3);
+  assert.ok((beforeSign.match(/\n/g) ?? []).length >= 5);
   assert.equal(tipLinesSplitTotal(txt), false);
 });
 
@@ -163,7 +202,7 @@ test("a $45 check prints the sample checkbox tip totals", () => {
   assert.equal(tipLinesSplitTotal(txt), false);
   assert.match(txt, /GUEST COPY/);
   assert.match(txt, /Card authorized - tip not yet applied/);
-  assert.ok((txt.match(/_{42}/g) ?? []).length >= 2);
+  assert.ok((txt.match(/_{42}/g) ?? []).length >= 3);
 });
 
 test("a narrow slip keeps Total whole on the guest copy", () => {

@@ -896,7 +896,7 @@ export function SettingsView() {
           </select>
         </label>
         <p className="text-xs text-muted-foreground">
-          After the card is authorized, one tip slip prints. Choose the guest copy or the merchant copy.
+          After the card is authorized, one tip slip prints in larger type. Choose the guest copy or the merchant copy.
         </p>
         <label className="flex items-center gap-2 text-sm">
           <input

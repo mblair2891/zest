@@ -132,9 +132,42 @@ function feeds(count: number): Uint8Array {
   return concat(parts);
 }
 
+/**
+ * Blank lines between header, items, totals, tip choices, and signature.
+ * Do not shrink this to fit more on the page.
+ */
+const SECTION_FEEDS = 2;
+
+/** Double height and double width, cut so the header stays one centered line. */
+function centeredDbl(value: string, width: number): Uint8Array {
+  const cols = Math.max(1, Math.floor(width / 2));
+  return concat([BOLD_ON, DBL_ON, text(value.slice(0, cols)), FEED, DBL_OFF, BOLD_OFF]);
+}
+
+/** Double height, normal width. Prices stay on the same line as the item. */
+function tallPlain(left: string, right = "", width = 42): Uint8Array {
+  return concat([TALL_ON, line(left, right, width), DBL_OFF]);
+}
+
 /** Tall tip row. The write-in uses the rest of the paper, not a short blank. */
 function tallLine(left: string, right: string, width: number): Uint8Array {
   return concat([TALL_ON, BOLD_ON, line(left, right, width), BOLD_OFF, DBL_OFF]);
+}
+
+/** Three full-width rules with room above them. Normal width, so the line is not cut. */
+function signatureBand(width: number): Uint8Array {
+  const row = concat([TALL_ON, text("_".repeat(width)), FEED, DBL_OFF, FEED]);
+  return concat([
+    feeds(SECTION_FEEDS + 3),
+    BOLD_ON,
+    text("Signature"),
+    FEED,
+    BOLD_OFF,
+    feeds(SECTION_FEEDS + 2),
+    row,
+    row,
+    row,
+  ]);
 }
 
 function writeInMarks(label: string, width: number): string {
@@ -342,21 +375,22 @@ function buildGuestCheckEscPos(
   const parts: Uint8Array[] = [
     INIT,
     ALIGN_CT,
+    centeredDbl(header.text, width),
+    centeredDbl(String(job.checkNumber), width),
+    ALIGN_CT,
     BOLD_ON,
-    DBL_ON,
-    text(header.text.slice(0, width)),
-    FEED,
-    text(String(job.checkNumber)),
-    FEED,
-    DBL_OFF,
+    TALL_ON,
     text("GUEST CHECK"),
     FEED,
+    DBL_OFF,
     BOLD_OFF,
+    feeds(SECTION_FEEDS),
     ALIGN_LT,
-    line(job.tableLabel || "", String(job.checkNumber), width),
-    line(job.serverName, formatVenueTime(job.at, job.timezone || "America/Los_Angeles"), width),
+    tallPlain(job.tableLabel || "", String(job.checkNumber), width),
+    tallPlain(job.serverName, formatVenueTime(job.at, job.timezone || "America/Los_Angeles"), width),
     text("-".repeat(width)),
     FEED,
+    feeds(SECTION_FEEDS),
   ];
   const groups = groupLinesByEntity(job.items, job.locationName);
   for (const g of groups) {
@@ -365,7 +399,7 @@ function buildGuestCheckEscPos(
       const raster = escposRasterBytes(mark.raster);
       if (raster) parts.push(ALIGN_CT, raster, FEED, ALIGN_LT);
     }
-    parts.push(BOLD_ON, line(mark.name.toUpperCase(), "", width), BOLD_OFF);
+    parts.push(tallLine(mark.name.toUpperCase(), "", width));
     let cashSub = 0;
     let cardSub = 0;
     for (let i = 0; i < g.lines.length; i += 1) {
@@ -375,30 +409,34 @@ function buildGuestCheckEscPos(
       cashSub += cash;
       cardSub += card;
       const item = `${it.qty} ${it.name}`;
-      parts.push(line(item, money(dual ? card : cash), width));
-      for (const m of it.mods ?? []) parts.push(line(`  ${m}`, "", width));
-      if (i < g.lines.length - 1) parts.push(FEED);
+      parts.push(tallPlain(item, money(dual ? card : cash), width));
+      for (const m of it.mods ?? []) parts.push(tallPlain(`  ${m}`, "", width));
+      if (i < g.lines.length - 1) parts.push(feeds(SECTION_FEEDS));
     }
-    parts.push(line(`${g.displayName}`, money(dual ? cardSub : cashSub), width));
+    parts.push(feeds(1));
+    parts.push(tallLine(g.displayName, money(dual ? cardSub : cashSub), width));
+    parts.push(feeds(SECTION_FEEDS));
   }
-  parts.push(text("-".repeat(width)), FEED);
+  parts.push(text("-".repeat(width)), FEED, feeds(SECTION_FEEDS));
   const taxLines = job.totals?.taxLines?.filter((t) => t.cents > 0) ?? [];
   for (const t of taxLines) {
-    parts.push(line(t.name, money(t.cents), width));
+    parts.push(tallPlain(t.name, money(t.cents), width));
   }
   const cashTotal = job.totals?.cashTotalCents ?? job.totals?.totalCents ?? 0;
   const cardTotal = job.totals?.cardTotalCents ?? job.totals?.totalCents ?? cashTotal;
   if (dual) {
-    parts.push(BOLD_ON, line("CASH TOTAL", money(cashTotal), width), BOLD_OFF);
-    parts.push(BOLD_ON, line("CARD TOTAL", money(cardTotal), width), BOLD_OFF);
+    parts.push(tallLine("CASH TOTAL", money(cashTotal), width));
+    parts.push(tallLine("CARD TOTAL", money(cardTotal), width));
   } else {
-    parts.push(BOLD_ON, line("TOTAL", money(cashTotal), width), BOLD_OFF);
+    parts.push(tallLine("TOTAL", money(cashTotal), width));
   }
   parts.push(
-    FEED,
+    feeds(SECTION_FEEDS),
     ALIGN_CT,
+    TALL_ON,
     text(job.guestCheckNote || "Not a receipt - pay server"),
     FEED,
+    DBL_OFF,
     ALIGN_LT,
   );
   parts.push(...payQrBlock(job));
@@ -422,45 +460,47 @@ function buildTipSlipEscPos(
   const parts: Uint8Array[] = [
     INIT,
     ALIGN_CT,
+    centeredDbl("CARD AUTHORIZED", width),
+    feeds(1),
+    ALIGN_CT,
     BOLD_ON,
-    text("CARD AUTHORIZED"),
-    FEED,
+    TALL_ON,
     text(copy),
     FEED,
-    BOLD_OFF,
     text(job.locationName.slice(0, width)),
     FEED,
+    DBL_OFF,
+    BOLD_OFF,
+    feeds(SECTION_FEEDS),
     ALIGN_LT,
-    line(String(job.checkNumber), job.tableLabel, width),
-    line(job.serverName, formatVenueTime(job.at, job.timezone || "America/Los_Angeles"), width),
+    tallPlain(String(job.checkNumber), job.tableLabel, width),
+    tallPlain(job.serverName, formatVenueTime(job.at, job.timezone || "America/Los_Angeles"), width),
     text("-".repeat(width)),
     FEED,
-    line("Amount authorized", money(authorized), width),
-    feeds(2),
+    feeds(SECTION_FEEDS),
+    tallPlain("Amount authorized", money(authorized), width),
+    feeds(SECTION_FEEDS),
     ALIGN_CT,
+    TALL_ON,
     text(TIP_AUTH_NOTE),
     FEED,
+    DBL_OFF,
     ALIGN_LT,
-    feeds(2),
+    feeds(SECTION_FEEDS),
   ];
   const percents = tipPercentsForWidth(authorized, width);
   for (const pct of percents) {
     for (const row of tipChoiceRows(pct, authorized, width)) {
       parts.push(tallText(row));
     }
-    parts.push(feeds(2));
+    parts.push(feeds(SECTION_FEEDS + 1));
   }
-  parts.push(FEED);
+  parts.push(feeds(SECTION_FEEDS));
   parts.push(tallLine("Tip", writeInMarks("Tip", width), width));
-  parts.push(feeds(3));
+  parts.push(feeds(SECTION_FEEDS + 1));
   parts.push(tallLine("Total", writeInMarks("Total", width), width));
-  parts.push(feeds(3));
-  parts.push(BOLD_ON, text("Signature"), FEED, BOLD_OFF);
-  parts.push(feeds(2));
-  parts.push(TALL_ON, text("_".repeat(width)), FEED, DBL_OFF);
-  parts.push(FEED);
-  parts.push(TALL_ON, text("_".repeat(width)), FEED, DBL_OFF);
-  parts.push(feeds(2), ALIGN_CT, text("Quantum Payments | Summex"), FEED, cutBytes(emulation, cutter));
+  parts.push(signatureBand(width));
+  parts.push(feeds(SECTION_FEEDS), ALIGN_CT, text("Quantum Payments | Summex"), FEED, cutBytes(emulation, cutter));
   return concat(parts);
 }
 
@@ -508,29 +548,45 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
           : job.station === "expo"
             ? "EXPO"
             : "KITCHEN";
-  const parts: Uint8Array[] = [
-    INIT,
-    ALIGN_CT,
-    BOLD_ON,
-    DBL_ON,
-    text(job.locationName.slice(0, 20)),
-    FEED,
-    DBL_OFF,
-    text(title + (job.copy === "merchant" ? " MERCH" : "")),
-    FEED,
-    BOLD_OFF,
-    ALIGN_LT,
-    line(String(job.checkNumber), job.tableLabel, width),
-    line(job.serverName, formatVenueTime(job.at, job.timezone), width),
-  ];
-  if (job.diningOption) parts.push(line(job.diningOption, "", width));
-  if (job.guestName) parts.push(line(job.guestName, "", width));
-  if (job.guestPhone) parts.push(line(job.guestPhone, "", width));
-  if (job.channelOrderId) parts.push(line(job.channelOrderId, "", width));
-  if (job.dueAt) parts.push(line(job.dueAt, "", width));
-  if (job.specialInstructions) parts.push(line(job.specialInstructions, "", width));
-  if (job.operatorName) parts.push(line(job.operatorName, "", width));
+  const roomy = job.kind === "receipt";
+  const parts: Uint8Array[] = [INIT, ALIGN_CT];
+  const slipTitle = title + (job.copy === "merchant" ? " MERCH" : "");
+  if (roomy) {
+    parts.push(centeredDbl(job.locationName, width));
+    parts.push(ALIGN_CT, BOLD_ON, TALL_ON, text(slipTitle), FEED, DBL_OFF, BOLD_OFF, feeds(SECTION_FEEDS));
+  } else {
+    parts.push(
+      BOLD_ON,
+      DBL_ON,
+      text(job.locationName.slice(0, 20)),
+      FEED,
+      DBL_OFF,
+      text(slipTitle),
+      FEED,
+      BOLD_OFF,
+    );
+  }
+  parts.push(ALIGN_LT);
+  const pushSlip = (left: string, right = "", bold = false) => {
+    if (roomy) {
+      parts.push(bold ? tallLine(left, right, width) : tallPlain(left, right, width));
+      return;
+    }
+    if (bold) parts.push(BOLD_ON);
+    parts.push(line(left, right, width));
+    if (bold) parts.push(BOLD_OFF);
+  };
+  pushSlip(String(job.checkNumber), job.tableLabel);
+  pushSlip(job.serverName, formatVenueTime(job.at, job.timezone));
+  if (job.diningOption) pushSlip(job.diningOption, "");
+  if (job.guestName) pushSlip(job.guestName, "");
+  if (job.guestPhone) pushSlip(job.guestPhone, "");
+  if (job.channelOrderId) pushSlip(job.channelOrderId, "");
+  if (job.dueAt) pushSlip(job.dueAt, "");
+  if (job.specialInstructions) pushSlip(job.specialInstructions, "");
+  if (job.operatorName) pushSlip(job.operatorName, "");
   parts.push(text("-".repeat(width)), FEED);
+  if (roomy) parts.push(feeds(SECTION_FEEDS));
   const groups = groupLinesByEntity(job.items, job.locationName);
   for (const g of groups) {
     if (job.kind === "receipt") {
@@ -539,54 +595,60 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
         const raster = escposRasterBytes(mark.raster);
         if (raster) parts.push(ALIGN_CT, raster, FEED, ALIGN_LT);
       }
-      parts.push(BOLD_ON, line(mark.name.toUpperCase(), "", width), BOLD_OFF);
+      pushSlip(mark.name.toUpperCase(), "", true);
     } else if (groups.length > 1) {
       parts.push(BOLD_ON, line(g.displayName.toUpperCase(), "", width), BOLD_OFF);
     }
-    for (const it of g.lines) {
+    for (let i = 0; i < g.lines.length; i += 1) {
+      const it = g.lines[i]!;
       const amt =
         typeof it.amountCents === "number" ? formatCurrency(it.amountCents) : "";
       const item =
         job.kind === "receipt"
           ? receiptItemLine(it.qty, it.name, g.displayName)
           : `${it.qty}x ${it.name}`;
-      parts.push(BOLD_ON, line(item, amt, width), BOLD_OFF);
-      for (const m of it.mods ?? []) parts.push(line(`  ${m}`, "", width));
-      if (it.note) parts.push(line(`  * ${it.note}`, "", width));
-      if (it.seat != null) parts.push(line(`  seat ${it.seat}`, "", width));
+      pushSlip(item, amt, true);
+      for (const m of it.mods ?? []) pushSlip(`  ${m}`, "");
+      if (it.note) pushSlip(`  * ${it.note}`, "");
+      if (it.seat != null) pushSlip(`  seat ${it.seat}`, "");
+      if (roomy && i < g.lines.length - 1) parts.push(feeds(SECTION_FEEDS));
     }
+    if (roomy) parts.push(feeds(SECTION_FEEDS));
   }
   if (job.totals) {
     parts.push(text("-".repeat(width)), FEED);
-    parts.push(line("Subtotal", formatCurrency(job.totals.subtotalCents), width));
+    if (roomy) parts.push(feeds(SECTION_FEEDS));
+    pushSlip("Subtotal", formatCurrency(job.totals.subtotalCents));
     const named = job.totals.taxLines?.filter((t) => t.cents > 0) ?? [];
     if (named.length) {
-      for (const t of named) parts.push(line(t.name, formatCurrency(t.cents), width));
+      for (const t of named) pushSlip(t.name, formatCurrency(t.cents));
     } else if (job.totals.taxCents > 0) {
-      parts.push(line("Tax", formatCurrency(job.totals.taxCents), width));
+      pushSlip("Tax", formatCurrency(job.totals.taxCents));
     }
     const tipCents = job.totals.tipCents ?? 0;
     if (job.kind === "receipt" || tipCents) {
-      parts.push(line("Tip", formatCurrency(tipCents), width));
+      pushSlip("Tip", formatCurrency(tipCents));
     }
-    if (job.totals.giftCents) parts.push(line("Gift", formatCurrency(job.totals.giftCents), width));
+    if (job.totals.giftCents) pushSlip("Gift", formatCurrency(job.totals.giftCents));
     const grand =
       job.kind === "receipt" ? printedReceiptTotalCents(job.totals) : job.totals.totalCents;
-    parts.push(BOLD_ON, line("Total", formatCurrency(grand), width), BOLD_OFF);
-    if (job.totals.tender) parts.push(line(job.totals.tender, "", width));
+    pushSlip("Total", formatCurrency(grand), true);
+    if (job.totals.tender) pushSlip(job.totals.tender, "");
     if (job.copy === "guest" && groups.length > 1) {
-      parts.push(line("Card: one authorization, split to the vendors above", "", width));
+      pushSlip("Card: one authorization, split to the vendors above", "");
     }
     if (job.copy === "merchant" && job.allocations && job.allocations.length) {
       parts.push(text("-".repeat(width)), FEED);
-      parts.push(BOLD_ON, line((job.operatorName || "MERCHANT").toUpperCase() + " SHARE", "", width), BOLD_OFF);
+      if (roomy) parts.push(feeds(SECTION_FEEDS));
+      pushSlip((job.operatorName || "MERCHANT").toUpperCase() + " SHARE", "", true);
       for (const a of job.allocations) {
-        parts.push(line(a.name, formatCurrency(a.totalCents), width));
-        parts.push(line("  merch", formatCurrency(a.merchandiseCents), width));
-        parts.push(line("  tax/tip/svc", formatCurrency(a.feesCents), width));
+        pushSlip(a.name, formatCurrency(a.totalCents));
+        pushSlip("  merch", formatCurrency(a.merchandiseCents));
+        pushSlip("  tax/tip/svc", formatCurrency(a.feesCents));
       }
-      parts.push(line("Guest still paid once", "", width));
+      pushSlip("Guest still paid once", "");
     }
+    if (roomy) parts.push(feeds(SECTION_FEEDS));
   }
   if (job.kind === "test") {
     parts.push(

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_281_readable_slips",
+    date: "2026-10-16",
+    title: "Larger receipt and tip slip type",
+    summary:
+      "Guest checks, paid receipts, and tip slips use larger type and more space between sections.",
+    body: "Guest checks, paid receipts, and the merchant and guest tip slips print in larger type. A blank line sits between the header, the items, the totals, the tip choices, and the signature. Each suggested tip stays on one complete line, such as 18% with the tip and the total. A line that does not fit moves the total to the next line so no word splits. The signature line runs the width of the paper with extra space above it. Item names stay on the left and prices stay on the right. One tip slip still prints after the card is authorized. After the tip, the station still asks whether the customer wants a receipt.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "receipts"],
+  },
+  {
     id: "upd_2026_10_280_tip_then_receipt",
     date: "2026-10-16",
     title: "One tip slip, then a receipt question",

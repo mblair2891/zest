@@ -206,7 +206,7 @@ export function QuantumPaymentsSettings({
           </select>
         </label>
         <p className="mt-1 text-xs text-muted-foreground">
-          After the card is authorized, one tip slip prints. Choose the guest copy or the merchant copy.
+          After the card is authorized, one tip slip prints in larger type. Choose the guest copy or the merchant copy.
         </p>
       </div>
       <label className="block text-sm">

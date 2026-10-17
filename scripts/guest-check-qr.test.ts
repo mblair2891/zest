@@ -71,7 +71,7 @@ test("Epson guest check uses native QR not kitchen text dump", () => {
   assert.doesNotMatch(txt, /Not a receipt \? pay server/);
 });
 
-test("guest check clock is Pacific AM/PM and cash/card sit beside the item", () => {
+test("guest check clock is Pacific AM/PM and the card price sits beside the item", () => {
   const ts = Date.UTC(2026, 8, 19, 21, 30, 0);
   const bytes = buildEscPos(
     guestJob({
@@ -100,7 +100,7 @@ test("guest check clock is Pacific AM/PM and cash/card sit beside the item", () 
   const txt = asText(bytes);
   assert.match(txt, /2:30 PM/);
   assert.doesNotMatch(txt, /9:30 PM/);
-  assert.match(txt, /\$10\.00 \/ \$11\.00/);
+  assert.match(txt, /1 Burger\s+\$11\.00/);
   assert.match(txt, /CASH TOTAL/);
   assert.match(txt, /\$85\.00/);
   assert.match(txt, /CARD TOTAL/);
@@ -184,7 +184,7 @@ test("guest check QR is table public token plus check number, not a c. ticket to
   assert.equal(again.token, token);
 });
 
-test("three items have one price pair per line and a blank line between", () => {
+test("three items keep the card price on the item line and a blank line between", () => {
   const bytes = buildEscPos(
     guestJob({
       items: [
@@ -196,9 +196,9 @@ test("three items have one price pair per line and a blank line between", () => 
     { modelPreset: "epson_tm_t20" },
   );
   const txt = asText(bytes);
-  assert.match(txt, /1 Burger\s+\$10\.00 \/ \$11\.00/);
-  assert.match(txt, /1 Fries\s+\$4\.00 \/ \$4\.50/);
-  assert.match(txt, /1 Cola\s+\$3\.00 \/ \$3\.50/);
+  assert.match(txt, /1 Burger\s+\$11\.00/);
+  assert.match(txt, /1 Fries\s+\$4\.50/);
+  assert.match(txt, /1 Cola\s+\$3\.50/);
   assert.doesNotMatch(txt, /\$10\.00 cash/);
   const burger = txt.indexOf("Burger");
   const fries = txt.indexOf("Fries");

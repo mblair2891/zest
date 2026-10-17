@@ -125,8 +125,10 @@ export function ticketHtml(job: PrintJob): string {
           <div class="sign-label">Signature</div>
           <div class="sign-line"></div>
           <div class="sign-line sign-line-2"></div>
+          <div class="sign-line sign-line-3"></div>
         </div>`
       : "";
+  const roomy = job.kind === "guest_check" || job.kind === "receipt" || job.kind === "tip_slip";
   const totals = job.kind === "tip_slip" ? "" : job.totals
     ? `<div class="rule"></div>
        <div class="row"><span>Subtotal</span><span>${formatCurrency(job.totals.subtotalCents)}</span></div>
@@ -166,23 +168,35 @@ export function ticketHtml(job: PrintJob): string {
 <style>
   @page { size: 80mm auto; margin: 6mm; }
   body { font: 13px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; color: #111; }
-  h1 { font-size: 16px; text-align: center; margin: 0 0 4px; }
+  body.roomy { font: 17px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  h1 { font-size: 16px; text-align: center; margin: 0 0 4px; font-weight: 800; }
+  body.roomy h1 { font-size: 24px; margin: 0 0 14px; }
   h2 { font-size: 13px; text-align: center; margin: 0 0 10px; letter-spacing: .12em; text-transform: uppercase; }
-  .row { display: flex; justify-content: space-between; gap: 8px; }
+  body.roomy h2 { font-size: 16px; margin: 0 0 18px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; }
+  body.roomy .row { margin: 8px 0; }
   .item { margin: 6px 0; }
+  body.roomy .item { margin: 16px 0; font-size: 17px; }
+  .item .row { white-space: nowrap; }
   .mod { padding-left: 12px; font-size: 12px; }
+  body.roomy .mod { font-size: 15px; margin-top: 4px; }
   .vendor { font-weight: 700; margin-top: 8px; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+  body.roomy .vendor { font-size: 15px; margin-top: 18px; }
   .rule { border-top: 1px dashed #333; margin: 8px 0; }
+  body.roomy .rule { margin: 20px 0; }
   .total { font-weight: 700; font-size: 15px; }
+  body.roomy .total { font-size: 22px; margin-top: 16px; }
   .muted { text-align: center; color: #444; margin-top: 10px; font-size: 11px; }
-  .tip-slip .tip-row { font-size: 20px; font-weight: 700; margin: 22px 0; white-space: pre; line-height: 1.45; }
-  .tip-slip .tip-write { font-size: 20px; font-weight: 700; margin: 28px 0; }
-  .tip-slip .sign-label { margin-top: 36px; font-size: 16px; font-weight: 700; }
-  .tip-slip .sign-line { margin-top: 28px; border-bottom: 3px solid #111; height: 36px; }
-  .tip-slip .sign-line-2 { margin-top: 22px; height: 28px; }
+  body.roomy .muted { font-size: 14px; margin-top: 16px; }
+  .tip-slip .tip-row { font-size: 22px; font-weight: 700; margin: 28px 0; white-space: pre; line-height: 1.5; }
+  .tip-slip .tip-write { font-size: 22px; font-weight: 700; margin: 32px 0; }
+  .tip-slip .sign-label { margin-top: 48px; font-size: 18px; font-weight: 700; }
+  .tip-slip .sign-line { margin-top: 36px; border-bottom: 3px solid #111; height: 42px; }
+  .tip-slip .sign-line-2 { margin-top: 20px; height: 32px; }
+  .tip-slip .sign-line-3 { margin-top: 20px; height: 32px; }
 </style>
 </head>
-<body>
+<body class="${roomy ? "roomy" : ""}">
   <h1>${esc(job.locationName)}</h1>
   <h2>${esc(title)}${job.copy === "merchant" ? " | merchant" : ""}</h2>
   <div class="row"><span>#${esc(String(job.checkNumber))}</span><span>${esc(job.tableLabel)}</span></div>
