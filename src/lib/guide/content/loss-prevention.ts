@@ -51,7 +51,7 @@ export const LOSS_PREVENTION_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Settings → Loss prevention: lockout count, manager session minutes, which gates need a PIN, discount caps, outlier multiplier.",
-        "On a check: an item that has not been sent is removed and leaves the check. A sent item is voided or comped with a reason from the location list. After send or bump, the manager or shift-lead PIN dialog opens unless an approval session is still open. Disc still collects a listed reason. A check with no sent items can be deleted. Once any item has been sent, void or comp the whole check.",
+        "On a check: an item that has not been sent is removed and leaves the check. A sent item is voided or comped with a reason from the location list. After send or bump, the manager or shift-lead PIN dialog opens unless an approval session is still open. Disc still collects a listed reason. A check with no sent items can be deleted. Once any item has been sent, void or comp the whole check. Deleting an item or voiding an open check stays gone after refresh. A sent item sends a cancel ticket to that station. The table goes empty when the open check is voided.",
         "After pay, the check shows frozen. Reopen or Swap last tender only from that banner.",
         "Home (owner/manager) shows a live feed of gated actions and a queue of flags. Reports → Loss-prevention exceptions compares each employee to the house and to the same weekday.",
         "A flag (for example void % at least 3× the house) is queued for review. Tap Noted when you have looked at it. It is not an automatic write-up.",

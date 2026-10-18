@@ -252,6 +252,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Host seats / table assigned → Sat · no order. First drink fire (no food yet) → Drinks fired. Food fire → Food fired (keeps drinks if both). All fired food marked delivered (server/expo) → Food delivered. All items delivered and the check still open → Dining · unpaid. Check paid in full (staff or QR) → Closed · needs bus (or Empty if that step is off). Busser / staff table cleaned → Empty.",
         "Do not tap Set status when the event already happened. Manual Set status still overrides until a later event.",
         "Open checks paint the table from the check, not stored Empty. CHECK OPEN is the sheet heading — the map does not print it on the block.",
+        "Deleting an item or voiding an open check takes it off the open check and the floor map. An item that has not been sent is removed. A sent item is voided and that station gets a cancel ticket. Void check clears the open check and the table goes empty. Paid checks stay frozen. Refresh and the other stations keep it gone.",
         "Bar stools use those same colors. Empty is a hollow ring. Sat, drinks, food, delivered, dining unpaid, and closed · needs bus fill the stool. Picking one section, such as Bar, shows only that section and sizes the seats to the screen. The choice is per person and does not change the published floor.",
         "When minutes are exceeded the block flashes a thin outline. No SLA label on the map. A staff notice still fires. A status change clears the flash.",
       ),

@@ -35,11 +35,16 @@ test("an owner link opens Suppliers, and a staff pin does not see a screen they 
     label: "Payments",
   });
 
+  const entityRow = WHATS_NEW_ENTRIES.find((row) => row.id === "upd_2026_10_278_entity_cash_price");
+  assert.ok(entityRow);
+  assert.equal(screenForUpdate(entityRow)?.label, "Menu");
+  assert.equal(screenForUpdate(entityRow)?.view, "menu");
+
   const owner = updatesForAccess(WHATS_NEW_ENTRIES, () => true, 10);
   assert.equal(owner.length, 10);
-  const entityPrice = owner.find((row) => row.update.id === "upd_2026_10_278_entity_cash_price");
-  assert.equal(entityPrice?.screen?.label, "Menu");
-  assert.equal(entityPrice?.screen?.view, "menu");
+  assert.equal(owner[0]?.update.id, "upd_2026_10_288_open_check_void");
+  assert.equal(owner[0]?.screen?.view, "floor");
+  assert.equal(owner[0]?.screen?.label, "Floor");
 
   const staff = updatesForAccess(
     WHATS_NEW_ENTRIES,

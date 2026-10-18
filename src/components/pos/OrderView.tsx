@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { usePosStore } from "@/lib/pos/store";
 import type { MenuItem } from "@/lib/pos/types";
 import {
@@ -548,7 +549,11 @@ export function OrderView({
     if (mgrScope === "check") {
       if (mgrAction === "void") {
         const res = voidCheck(reason, { path, orderId: order.id });
-        if (res && res.ok === false) setGateError(res.error ?? "Void failed");
+        if (res && res.ok === false) {
+          const message = res.error ?? "Void failed";
+          setGateError(message);
+          toast.error(message);
+        }
       }
       if (mgrAction === "comp") {
         const res = compCheck(reason, { path, orderId: order.id });
@@ -560,7 +565,11 @@ export function OrderView({
     if (!selectedLineId) return;
     if (mgrAction === "void") {
       const res = voidLine(selectedLineId, reason, { path });
-      if (res && res.ok === false) setGateError(res.error ?? "Void failed");
+      if (res && res.ok === false) {
+        const message = res.error ?? "Void failed";
+        setGateError(message);
+        toast.error(message);
+      }
     }
     if (mgrAction === "comp") {
       const res = compLine(selectedLineId, reason, { path });
@@ -632,12 +641,20 @@ export function OrderView({
   const removeLine = (lineId: string) => {
     setGateError(null);
     const res = removeUnsentLine(lineId, { orderId: order.id });
-    if (res && res.ok === false) setGateError(res.error ?? "Could not remove");
+    if (res && res.ok === false) {
+      const message = res.error ?? "Could not remove";
+      setGateError(message);
+      toast.error(message);
+    }
   };
   const confirmDeleteCheck = () => {
     setDeleteOpen(false);
     const res = deleteUnsentCheck(order.id);
-    if (res && res.ok === false) setGateError(res.error ?? "Could not delete");
+    if (res && res.ok === false) {
+      const message = res.error ?? "Could not delete";
+      setGateError(message);
+      toast.error(message);
+    }
   };
   const lineActionButtons = (line: (typeof order.lines)[number]) => {
     if (frozen) return null;

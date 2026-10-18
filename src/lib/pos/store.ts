@@ -112,9 +112,35 @@ import {
 
 function floorSync(kind: string, id?: string) {
 	try {
-		void import("./floor-sync").then((m) => m.persistAfterLocalMutation(kind, id)).catch(() => {});
+		void import("./floor-sync").then((m) => {
+			if (id && (kind === "lines-flush" || kind === "check" || kind === "check-delete")) {
+				m.noteLineEdit(id);
+			}
+			return m.persistAfterLocalMutation(kind, id);
+		}).catch(() => {});
 	} catch {
 		/* optional — POS still runs locally */
+	}
+}
+
+function floorSnap(get: () => any): FloorSnap {
+	return {
+		orders: get().orders,
+		tickets: get().tickets,
+		tables: get().tables,
+		activeOrderId: get().activeOrderId ?? null,
+		selectedLineId: get().selectedLineId ?? null,
+	};
+}
+
+function printVoidChits(tickets: any[]) {
+	if (!tickets.length) return;
+	try {
+		void import("@/lib/print/from-store")
+			.then((m) => m.printFromPos("send", undefined, { source: "station", voidTickets: tickets }))
+			.catch(() => {});
+	} catch {
+		/* printing is best-effort */
 	}
 }
 
@@ -227,11 +253,22 @@ import {
   wouldFlagLateCompCashClose,
 } from "./loss-prevention";
 import {
+  actingEntityOperator,
   applyOpenCheckAction,
   applySentLineAction,
   canDeleteCheck,
+  lineInEntityScope,
   removeUnsentLine as dropUnsentLine,
 } from "./check-actions";
+import {
+  applyTicketVoids,
+  rememberCheckDeleted,
+  rememberCheckVoided,
+  rememberFloorSnapshot,
+  rememberLineRemoved,
+  rememberLineVoid,
+  type FloorSnap,
+} from "./floor-merge";
 import {
   makeClaimCode,
   type LocationDevice,
@@ -2634,8 +2671,15 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			: get().getActiveOrder();
 		if (!order) return { ok: false, error: "No order" };
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
+		const entityId = actingEntityOperator(get().getCurrentEmployee?.());
+		const line = order.lines.find((l: any) => l.id === lineId);
+		if (line && !lineInEntityScope(line, entityId)) {
+			return { ok: false, error: "Not permitted for this operator" };
+		}
 		const dropped = dropUnsentLine(order.lines, lineId);
 		if (!dropped.ok) return dropped;
+		rememberFloorSnapshot(order.id, floorSnap(get));
+		rememberLineRemoved(order.id, lineId);
 		const nextOrders = get().orders.map((o: any) => o.id !== order.id ? o : { ...o, lines: dropped.lines });
 		const next = nextOrders.find((o: any) => o.id === order.id);
 		set({
@@ -2645,7 +2689,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				? get().tables.map((t: any) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(next)) : t)
 				: get().tables,
 		});
-		floorSync("lines", order.id);
+		floorSync("lines-flush", order.id);
 		return { ok: true };
 	},
 	deleteUnsentCheck: (orderId) => {
@@ -2653,6 +2697,32 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			? get().orders.find((o: any) => o.id === orderId)
 			: get().getActiveOrder();
 		if (!order) return { ok: false, error: "No order" };
+		const entityId = actingEntityOperator(get().getCurrentEmployee?.());
+		if (entityId && order.lines.some((l: any) => !lineInEntityScope(l, entityId))) {
+			let lines = order.lines;
+			const removed: string[] = [];
+			for (const line of order.lines) {
+				if (!lineInEntityScope(line, entityId) || line.sent || line.voided || line.comped) continue;
+				const dropped = dropUnsentLine(lines, line.id);
+				if (!dropped.ok) continue;
+				lines = dropped.lines;
+				removed.push(line.id);
+			}
+			if (!removed.length) return { ok: false, error: "Not permitted for this operator" };
+			rememberFloorSnapshot(order.id, floorSnap(get));
+			for (const id of removed) rememberLineRemoved(order.id, id);
+			const nextOrders = get().orders.map((o: any) => o.id !== order.id ? o : { ...o, lines });
+			const next = nextOrders.find((o: any) => o.id === order.id);
+			set({
+				orders: nextOrders,
+				selectedLineId: null,
+				tables: order.tableId
+					? get().tables.map((t: any) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(next)) : t)
+					: get().tables,
+			});
+			floorSync("lines-flush", order.id);
+			return { ok: true };
+		}
 		if (!canDeleteCheck(order)) {
 			if (order.lines.some((l: any) => l.sent)) {
 				return { ok: false, error: "This check has a sent item. Void or comp the check." };
@@ -2662,6 +2732,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			}
 			return { ok: false, error: "This check cannot be deleted." };
 		}
+		const tableIds = [order.tableId, ...(order.mergedTableIds ?? [])].filter(Boolean);
+		rememberFloorSnapshot(order.id, floorSnap(get));
+		rememberCheckDeleted(order.id, tableIds);
 		const nextOrders = get().orders.filter((o: any) => o.id !== order.id);
 		set({
 			orders: nextOrders,
@@ -2681,6 +2754,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
 		const line = order.lines.find((l: any) => l.id === lineId);
 		if (!line || line.voided) return { ok: false, error: "Nothing to void" };
+		if (!lineInEntityScope(line, actingEntityOperator(get().getCurrentEmployee?.()))) {
+			return { ok: false, error: "Not permitted for this operator" };
+		}
 		if (!line.sent) return { ok: false, error: "Unsent items are removed. Sent items are voided or comped." };
 		const cfg = lpCfg(get);
 		const tickets = get().tickets;
@@ -2697,19 +2773,15 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		const applied = applySentLineAction(order.lines, lineId, "void", reason, voidReasonsFor(cfg));
 		if (!applied.ok) return applied;
-		const nextTickets = bumped
-			? tickets.map((t: any) =>
-				t.items.some((i: any) => i.lineId === lineId) && t.status === "bumped"
-					? { ...t, status: "voided" }
-					: t,
-			)
-			: tickets;
+		const planned = applyTicketVoids(tickets, order.id, [lineId]);
+		rememberFloorSnapshot(order.id, floorSnap(get));
+		rememberLineVoid(order.id, lineId, { voided: true, actionReason: applied.reason });
 		set({
 			orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 				...o,
 				lines: applied.lines,
 			}),
-			tickets: nextTickets,
+			tickets: planned.tickets,
 			shift: {
 				...get().shift,
 				voidsCents: get().shift.voidsCents + amt
@@ -2725,7 +2797,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			after: path === "break_glass" ? "break_glass" : bumped ? "VOID" : "voided",
 			...gateMeta(opts?.approval, path),
 		});
-		floorSync("lines", order.id);
+		floorSync("lines-flush", order.id);
+		printVoidChits(planned.chits);
 		return { ok: true };
 	},
 	compLine: (lineId, reason, opts) => {
@@ -2736,6 +2809,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
 		const line = order.lines.find((l: any) => l.id === lineId);
 		if (!line || line.voided || line.comped) return { ok: false, error: "Nothing to comp" };
+		if (!lineInEntityScope(line, actingEntityOperator(get().getCurrentEmployee?.()))) {
+			return { ok: false, error: "Not permitted for this operator" };
+		}
 		if (!line.sent) return { ok: false, error: "Unsent items are removed. Sent items are voided or comped." };
 		const cfg = lpCfg(get);
 		const amt = lineUnitTotal(line) * line.quantity;
@@ -2766,6 +2842,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const late = isLateWindowComp(order, amt, cfg);
 		const sentAt = Math.max(0, ...order.lines.map((l: any) => l.firedAt || (l.sent ? l.createdAt : 0)));
 		const stale = sentAt > 0 && Date.now() - sentAt >= cfg.lateCompStaleSendHours * 3_600_000;
+		rememberFloorSnapshot(order.id, floorSnap(get));
+		rememberLineVoid(order.id, lineId, { comped: true, actionReason: applied.reason });
 		set({
 			orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 				...o,
@@ -2790,7 +2868,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			reason: applied.reason,
 			...gateMeta(opts?.approval, opts?.path),
 		});
-		floorSync("lines", order.id);
+		floorSync("lines-flush", order.id);
 		return { ok: true };
 	},
 	voidCheck: (reason, opts) => {
@@ -2799,6 +2877,74 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			: get().getActiveOrder();
 		if (!order) return { ok: false, error: "No order" };
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
+		const entityId = actingEntityOperator(get().getCurrentEmployee?.());
+		if (entityId && order.lines.some((l: any) => !lineInEntityScope(l, entityId) && !l.voided && !l.comped)) {
+			const mine = order.lines.filter((l: any) => lineInEntityScope(l, entityId) && !l.voided && !l.comped);
+			if (!mine.length) return { ok: false, error: "Not permitted for this operator" };
+			if (!mine.some((l: any) => l.sent)) {
+				return { ok: false, error: "Unsent checks are deleted. Sent checks are voided or comped." };
+			}
+			const cfg = lpCfg(get);
+			const tickets = get().tickets;
+			let needs = false;
+			let amt = 0;
+			for (const line of mine) {
+				if (!line.sent) continue;
+				const lineAmt = lineUnitTotal(line) * line.quantity;
+				amt += lineAmt;
+				if (voidNeedsManager(line, tickets, cfg, lineAmt)) needs = true;
+			}
+			const skip = Boolean(opts?.skipGate);
+			const path = opts?.path;
+			if (!skip && needs && !get().canAuthorizeGate("void", amt) && path !== "break_glass") {
+				return { ok: false, error: "Void needs a manager, shift lead, or pending approval." };
+			}
+			let lines = order.lines;
+			const voidedIds: string[] = [];
+			const removedIds: string[] = [];
+			let picked = String(reason || "").trim();
+			for (const line of mine) {
+				if (!line.sent) {
+					const dropped = dropUnsentLine(lines, line.id);
+					if (dropped.ok) {
+						lines = dropped.lines;
+						removedIds.push(line.id);
+					}
+					continue;
+				}
+				const appliedLine = applySentLineAction(lines, line.id, "void", reason, voidReasonsFor(cfg));
+				if (!appliedLine.ok) return appliedLine;
+				lines = appliedLine.lines;
+				voidedIds.push(line.id);
+				picked = appliedLine.reason;
+			}
+			const planned = applyTicketVoids(tickets, order.id, voidedIds);
+			rememberFloorSnapshot(order.id, floorSnap(get));
+			for (const id of removedIds) rememberLineRemoved(order.id, id);
+			for (const id of voidedIds) rememberLineVoid(order.id, id, { voided: true, actionReason: picked });
+			const nextOrders = get().orders.map((o: any) => o.id === order.id ? { ...o, lines } : o);
+			const next = nextOrders.find((o: any) => o.id === order.id);
+			set({
+				orders: nextOrders,
+				tickets: planned.tickets,
+				tables: order.tableId
+					? get().tables.map((t: any) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(next)) : t)
+					: get().tables,
+				shift: { ...get().shift, voidsCents: get().shift.voidsCents + amt },
+			});
+			get().audit("void", picked, {
+				orderId: order.id,
+				orderNumber: order.number,
+				amountCents: amt,
+				reason: picked,
+				before: "open",
+				after: path === "break_glass" ? "break_glass" : "voided",
+				...gateMeta(opts?.approval, path),
+			});
+			floorSync("lines-flush", order.id);
+			printVoidChits(planned.chits);
+			return { ok: true };
+		}
 		if (!order.lines.some((l: any) => l.sent)) {
 			return { ok: false, error: "Unsent checks are deleted. Sent checks are voided or comped." };
 		}
@@ -2819,14 +2965,19 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		const applied = applyOpenCheckAction(order.lines, "void", reason, voidReasonsFor(cfg));
 		if (!applied.ok) return applied;
+		const voidedIds = applied.lines.filter((l: any) => l.voided).map((l: any) => l.id);
+		const planned = applyTicketVoids(tickets, order.id, voidedIds);
 		const nextOrder = { ...order, status: "voided", lines: applied.lines, closedAt: Date.now() };
 		const nextOrders = get().orders.map((o: any) => o.id === order.id ? nextOrder : o);
-		const nextTickets = tickets.map((t: any) =>
-			t.orderId === order.id && t.status !== "voided" ? { ...t, status: "voided" } : t,
-		);
+		const tableIds = [order.tableId, ...(order.mergedTableIds ?? [])].filter(Boolean);
+		rememberFloorSnapshot(order.id, floorSnap(get));
+		rememberCheckVoided(order.id, tableIds);
+		for (const id of voidedIds) {
+			rememberLineVoid(order.id, id, { voided: true, actionReason: applied.reason });
+		}
 		set({
 			orders: nextOrders,
-			tickets: nextTickets,
+			tickets: planned.tickets,
 			tables: releaseTableAfterGone(get, order, nextOrders),
 			shift: { ...get().shift, voidsCents: get().shift.voidsCents + amt },
 		});
@@ -2839,8 +2990,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			after: path === "break_glass" ? "break_glass" : "voided",
 			...gateMeta(opts?.approval, path),
 		});
-		floorSync("check", order.id);
+		floorSync("lines-flush", order.id);
 		if (order.tableId) floorSync("table", order.tableId);
+		printVoidChits(planned.chits);
 		return { ok: true };
 	},
 	compCheck: (reason, opts) => {
@@ -2880,6 +3032,10 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const late = isLateWindowComp(order, amt, cfg);
 		const sentAt = Math.max(0, ...order.lines.map((l: any) => l.firedAt || (l.sent ? l.createdAt : 0)));
 		const stale = sentAt > 0 && Date.now() - sentAt >= cfg.lateCompStaleSendHours * 3_600_000;
+		rememberFloorSnapshot(order.id, floorSnap(get));
+		for (const line of applied.lines) {
+			if (line.comped) rememberLineVoid(order.id, line.id, { comped: true, actionReason: applied.reason });
+		}
 		set({
 			orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 				...nextOrder,
@@ -2896,7 +3052,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			reason: applied.reason,
 			...gateMeta(opts?.approval, opts?.path),
 		});
-		floorSync("lines", order.id);
+		floorSync("lines-flush", order.id);
 		return { ok: true };
 	},
 	holdLine: (lineId, held) => {

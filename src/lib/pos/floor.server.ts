@@ -51,7 +51,7 @@ const ORDER_TYPES = new Set<OrderType>([
 ]);
 const ORDER_STATUSES = new Set<OrderStatus>(["open", "closed", "voided", "cancelled"]);
 const STATIONS = new Set<TicketStation>(["kitchen", "bar", "expo", "dessert"]);
-const TICKET_STATUSES = new Set<TicketStatus>(["new", "in_progress", "ready", "bumped"]);
+const TICKET_STATUSES = new Set<TicketStatus>(["new", "in_progress", "ready", "bumped", "voided"]);
 const LINE_STATUSES = new Set<FloorLineStatus>([
   "draft",
   "sent",
@@ -299,10 +299,14 @@ export function vendorOperatorId(ctx: EntityWriteContext): string | null {
 }
 
 function assertLineOperator(ctx: EntityWriteContext, operatorId: string | null | undefined): void {
+  if (!lineWritable(ctx, operatorId)) throw new ForbiddenError("Not permitted for this operator");
+}
+
+function lineWritable(ctx: EntityWriteContext, operatorId: string | null | undefined): boolean {
   const scoped = vendorOperatorId(ctx);
-  if (!scoped) return;
+  if (!scoped) return true;
   const op = clip(operatorId, 80) || HOST_SCOPE;
-  if (op !== scoped) throw new ForbiddenError("Not permitted for this operator");
+  return op === scoped;
 }
 
 function assertTicketOperator(ctx: EntityWriteContext, operatorId: string | null | undefined): void {
@@ -352,12 +356,12 @@ function mapLine(row: ItemRow): FloorLine {
     course: asCourse(row.course),
     station: asStation(row.station),
     itemStatus: asLineStatus(row.item_status),
-    sent: Boolean(row.sent),
-    held: Boolean(row.held),
-    voided: Boolean(row.voided),
-    comped: Boolean(row.comped),
+    sent: dbTrue(row.sent),
+    held: dbTrue(row.held),
+    voided: dbTrue(row.voided),
+    comped: dbTrue(row.comped),
     discountCents: n(row.discount_cents),
-    taxExempt: Boolean(row.tax_exempt),
+    taxExempt: dbTrue(row.tax_exempt),
     ticketId: row.ticket_id,
     createdAt: n(row.created_at_ms),
     firedAt: row.fired_at_ms == null ? null : n(row.fired_at_ms),
@@ -607,7 +611,7 @@ async function upsertLines(
   now: number,
 ): Promise<void> {
   for (const line of lines) {
-    assertLineOperator(ctx, line.operatorId);
+    if (!lineWritable(ctx, line.operatorId)) continue;
     const status = lineToRowStatus(line);
     await sql`
       insert into pos_check_items (
@@ -725,6 +729,7 @@ async function upsertTicketRows(
         operator_id = excluded.operator_id,
         vendor_name = excluded.vendor_name,
         status = case
+          when pos_tickets.status = ${"voided"} then ${"voided"}
           when pos_tickets.status = ${"bumped"} then ${"bumped"}
           when excluded.status = ${"new"} then pos_tickets.status
           when pos_tickets.status = ${"ready"} and excluded.status <> ${"bumped"} then ${"ready"}
@@ -812,6 +817,88 @@ async function setLineStatusForTicket(
   `;
 }
 
+async function releaseTableIfClear(
+  sql: Sql,
+  ctx: EntityWriteContext,
+  tableId: string | null | undefined,
+  checkId: string,
+  now: number,
+): Promise<void> {
+  if (!tableId) return;
+  const others = await sql<{ id: string }>`
+    select id from pos_checks
+    where location_id = ${ctx.locationId}
+      and table_id = ${tableId}
+      and status = ${"open"}
+      and id <> ${checkId}
+    limit 1
+  `;
+  if (others[0]) return;
+  await upsertTableRow(
+    sql,
+    ctx,
+    {
+      tableId,
+      status: "empty",
+      checkId: null,
+      serverId: null,
+      guestCount: null,
+      seatedAt: null,
+      statusSince: now,
+    },
+    now,
+  );
+}
+
+async function cancelFiredTickets(
+  sql: Sql,
+  ctx: EntityWriteContext,
+  check: FloorCheck,
+  actor: FloorActor | undefined,
+  now: number,
+): Promise<void> {
+  const whole = check.status === "voided";
+  const voidedIds = new Set(check.lines.filter((line) => whole || line.voided).map((line) => line.id));
+  if (!whole && voidedIds.size === 0) return;
+  const scoped = vendorOperatorId(ctx);
+  const rows = await sql<TicketRow>`
+    select * from pos_tickets
+    where check_id = ${check.id}
+      and location_id = ${ctx.locationId}
+      and status <> ${"voided"}
+  `;
+  for (const row of rows) {
+    if (scoped && !whole && (row.operator_id || HOST_SCOPE) !== scoped) continue;
+    const items = parseTicketItems(row.items);
+    const remain = whole ? [] : items.filter((item) => !voidedIds.has(item.lineId));
+    const hit = whole || remain.length !== items.length;
+    if (!hit) continue;
+    if (remain.length === 0) {
+      await sql`
+        update pos_tickets set status = ${"voided"}
+        where id = ${row.id} and location_id = ${ctx.locationId}
+      `;
+    } else {
+      await sql`
+        update pos_tickets set items = ${JSON.stringify(remain)}::jsonb
+        where id = ${row.id} and location_id = ${ctx.locationId}
+      `;
+    }
+    await writeEvent(sql, {
+      locationId: ctx.locationId,
+      ticketId: row.id,
+      checkId: check.id,
+      kind: "void",
+      actor,
+      operatorId: row.operator_id,
+      at: now,
+      payload: {
+        lineIds: items.filter((item) => whole || voidedIds.has(item.lineId)).map((item) => item.lineId),
+      },
+    });
+  }
+}
+
 export async function upsertCheck(
   userId: string,
   input: UpsertCheckInput,
@@ -820,25 +907,47 @@ export async function upsertCheck(
   const ctx = await loadFloorContext(userId, input.locationId, station);
   const sql = await getSql();
   const now = Date.now();
+  const scoped = vendorOperatorId(ctx);
+  const suppliedLines = Array.isArray(input.check.lines);
+  const lines = suppliedLines
+    ? input.check.lines.filter((line) => lineWritable(ctx, line.operatorId))
+    : [];
+  let status = input.check.status;
+  if (scoped && status === "voided") {
+    const rows = await sql<{ id: string; operator_id: string | null; voided: unknown; comped: unknown }>`
+      select id, operator_id, voided, comped from pos_check_items
+      where check_id = ${input.check.id} and location_id = ${ctx.locationId}
+    `;
+    const voiding = new Set(lines.filter((line) => line.voided).map((line) => line.id));
+    const foreignLive = rows.some((row) => {
+      if ((row.operator_id || HOST_SCOPE) === scoped) return false;
+      if (dbTrue(row.voided) || dbTrue(row.comped)) return false;
+      if (voiding.has(row.id)) return false;
+      return true;
+    });
+    if (foreignLive) status = "open";
+  }
   const check: FloorCheck = {
     ...input.check,
+    status,
     locationId: ctx.locationId,
     updatedAt: now,
-    lines: input.check.lines ?? [],
+    lines,
     payments: input.check.payments ?? [],
     mergedTableIds: input.check.mergedTableIds ?? [],
   };
-  for (const line of check.lines) assertLineOperator(ctx, line.operatorId);
   await upsertCheckRow(sql, ctx, check, input.clientMutationId ?? null, now);
-  if (check.lines.length) await upsertLines(sql, ctx, check.id, check.lines, now);
-  if (check.status === "voided") {
-    await sql`
-      update pos_tickets set status = ${"voided"}
-      where check_id = ${check.id}
-        and location_id = ${ctx.locationId}
-        and status <> ${"voided"}
-    `;
+  if (suppliedLines) {
+    if (check.lines.length) await upsertLines(sql, ctx, check.id, check.lines, now);
+    await pruneUnsentLines(
+      sql,
+      ctx,
+      check.id,
+      check.lines.map((line) => line.id),
+    );
   }
+  await cancelFiredTickets(sql, ctx, check, input.actor, now);
+  if (check.status === "voided") await releaseTableIfClear(sql, ctx, check.tableId, check.id, now);
   return { ok: true, checkId: check.id };
 }
 
@@ -848,13 +957,15 @@ async function pruneUnsentLines(
   checkId: string,
   keepIds: string[],
 ): Promise<void> {
-  const rows = await sql<{ id: string; sent: boolean | string | null }>`
-    select id, sent from pos_check_items
+  const scoped = vendorOperatorId(ctx);
+  const rows = await sql<{ id: string; sent: boolean | string | null; operator_id: string | null }>`
+    select id, sent, operator_id from pos_check_items
     where check_id = ${checkId} and location_id = ${ctx.locationId}
   `;
   const keep = new Set(keepIds);
   for (const row of rows) {
     if (dbSent(row.sent) || keep.has(row.id)) continue;
+    if (scoped && (row.operator_id || HOST_SCOPE) !== scoped) continue;
     await sql`
       delete from pos_check_items
       where id = ${row.id}
@@ -878,10 +989,24 @@ export async function deleteUnsentCheck(
   `;
   if (!existing[0]) return { ok: true };
   if (existing[0].status !== "open") throw new ForbiddenError("This check cannot be deleted.");
-  const items = await sql<{ sent: boolean | string | null }>`
-    select sent from pos_check_items
+  const items = await sql<{ id: string; sent: boolean | string | null; operator_id: string | null }>`
+    select id, sent, operator_id from pos_check_items
     where check_id = ${input.checkId} and location_id = ${ctx.locationId}
   `;
+  const scoped = vendorOperatorId(ctx);
+  if (scoped && items.some((row) => (row.operator_id || HOST_SCOPE) !== scoped)) {
+    for (const row of items) {
+      if ((row.operator_id || HOST_SCOPE) !== scoped || dbSent(row.sent)) continue;
+      await sql`
+        delete from pos_check_items
+        where id = ${row.id}
+          and check_id = ${input.checkId}
+          and location_id = ${ctx.locationId}
+          and sent = false
+      `;
+    }
+    return { ok: true };
+  }
   if (items.some((row) => dbSent(row.sent))) {
     throw new ForbiddenError("Sent items stay on the check. Void or comp the check.");
   }
@@ -891,10 +1016,16 @@ export async function deleteUnsentCheck(
     limit 1
   `;
   if (pays[0]) throw new ForbiddenError("This check has a payment.");
+  const table = await sql<{ table_id: string | null }>`
+    select table_id from pos_checks
+    where id = ${input.checkId} and location_id = ${ctx.locationId}
+    limit 1
+  `;
   await sql`
     delete from pos_checks
     where id = ${input.checkId} and location_id = ${ctx.locationId}
   `;
+  await releaseTableIfClear(sql, ctx, table[0]?.table_id, input.checkId, Date.now());
   return { ok: true };
 }
 
@@ -1172,6 +1303,7 @@ export async function listOpenFloor(
   const tickets = await sql<TicketRow>`
     select * from pos_tickets
     where location_id = ${ctx.locationId}
+      and status <> ${"voided"}
       and (
         status <> ${"bumped"}
         or coalesce(bumped_at_ms, created_at_ms) >= ${now - BUMP_RECALL_MS}
@@ -1333,6 +1465,7 @@ export async function listStationTickets(
     select * from pos_tickets
     where location_id = ${ctx.locationId}
       and station = ${st}
+      and status <> ${"voided"}
       and (
         status <> ${"bumped"}
         or coalesce(bumped_at_ms, created_at_ms) >= ${now - BUMP_RECALL_MS}
@@ -1371,11 +1504,17 @@ export async function applyFloorOutboxPayload(
 
   if (kind === "order_upsert") {
     const check = payload.check as FloorCheck | undefined;
+    if (!check?.id) {
+      const checkId = clip(payload.checkId, 80);
+      if (checkId) await deleteUnsentCheck(userId, { locationId: loc, checkId });
+      return;
+    }
     if (check?.id) {
       await upsertCheck(userId, {
         locationId: loc,
         check,
         clientMutationId,
+        actor,
       });
       const tickets = Array.isArray(payload.tickets) ? (payload.tickets as FloorTicket[]) : [];
       if (tickets.length) {

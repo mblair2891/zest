@@ -17,6 +17,29 @@ export type CheckActionOrder = {
   cardAuth?: unknown;
 };
 
+const BROAD_CHECK_ROLES = new Set(["owner", "manager", "supervisor", "host"]);
+
+/** Null means the actor may void any entity on the check. A set id is that entity only. */
+export function actingEntityOperator(
+  emp: { role?: string | null; operatorId?: string | null } | null | undefined,
+): string | null {
+  if (!emp) return null;
+  if (BROAD_CHECK_ROLES.has(emp.role ?? "")) return null;
+  const op = String(emp.operatorId ?? "").trim();
+  if (!op || op === "host") return null;
+  return op;
+}
+
+export function lineInEntityScope(
+  line: { vendorId?: string | null; operatorId?: string | null } | null | undefined,
+  entityId: string | null,
+): boolean {
+  if (!entityId) return true;
+  if (!line) return false;
+  const op = String(line.vendorId ?? line.operatorId ?? "").trim();
+  return (op || "host") === entityId;
+}
+
 export function canRemoveLine(line: CheckActionLine | undefined | null): boolean {
   if (!line) return false;
   return !line.sent && !line.voided && !line.comped;

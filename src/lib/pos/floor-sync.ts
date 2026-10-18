@@ -34,6 +34,18 @@ import {
 import { applyItem86Overlay, parseItem86 } from "./item-86";
 import { quantumPaidServerNotice } from "@/lib/payments/finix-events";
 import { useNotifyStore } from "./notify-store";
+import {
+  floorRejectMessage,
+  lineEditGeneration,
+  mergeOpenOrders,
+  mergeOpenTickets,
+  noteLineEdit,
+  reconcilePendingFloor,
+  releasedTableIds,
+  rollbackFloorEdit,
+} from "./floor-merge";
+
+export { noteLineEdit };
 
 const POLL_MS = 3000;
 const LOCAL_GRACE_MS = 20_000;
@@ -268,32 +280,15 @@ export function applyOpenFloor(floor: OpenFloor): void {
   const now = Date.now();
 
   const serverOrders = floor.checks.map(floorCheckToOrder);
-  const serverIds = new Set(serverOrders.map((o) => o.id));
-  const localOnly = s.orders.filter((o) => {
-    if (serverIds.has(o.id)) return false;
-    return now - (o.createdAt || 0) < LOCAL_GRACE_MS;
-  });
-
-  const mergedOrders = serverOrders.map((server) => {
-    const local = s.orders.find((o) => o.id === server.id);
-    if (!local) return server;
-    const serverLineIds = new Set(server.lines.map((l) => l.id));
-    const extra = local.lines.filter(
-      (l) => !serverLineIds.has(l.id) && !l.sent && now - (l.createdAt || 0) < LOCAL_GRACE_MS,
-    );
-    if (!extra.length) return server;
-    return { ...server, lines: [...server.lines, ...extra] };
-  });
+  const mergedOrders = mergeOpenOrders(s.orders, serverOrders, now, LOCAL_GRACE_MS);
 
   const serverTickets = floor.tickets.map(floorTicketToKitchen);
-  const ticketIds = new Set(serverTickets.map((t) => t.id));
-  const localTickets = s.tickets.filter((t) => {
-    if (ticketIds.has(t.id)) return false;
-    return now - (t.createdAt || 0) < LOCAL_GRACE_MS;
-  });
+  const mergedTickets = mergeOpenTickets(s.tickets, serverTickets, now, LOCAL_GRACE_MS);
+  const heldTables = releasedTableIds();
 
   const tables = s.tables.map((tb) => {
     const st = floor.tables.find((x) => x.tableId === tb.id);
+    if (heldTables.has(tb.id) && st && st.checkId && st.status !== "empty") return tb;
     if (!st) return tb;
     return {
       ...tb,
@@ -316,17 +311,33 @@ export function applyOpenFloor(floor: OpenFloor): void {
     return note ? [note] : [];
   });
 
-  const nextOrders = [...mergedOrders, ...localOnly];
+  const nextOrders = mergedOrders;
   const activeStill = nextOrders.some((o) => o.id === s.activeOrderId);
   const prevById = new Map(s.tickets.map((t) => [t.id, t.status]));
   const overlay = parseItem86(floor.item86);
   const menuItems = applyItem86Overlay(s.menuItems, overlay);
   usePosStore.setState({
     orders: nextOrders,
-    tickets: [...serverTickets, ...localTickets],
+    tickets: mergedTickets,
     tables,
     menuItems,
-    activeOrderId: activeStill ? s.activeOrderId : s.activeOrderId,
+    activeOrderId: activeStill ? s.activeOrderId : null,
+  });
+  reconcilePendingFloor({
+    checks: serverOrders.map((order) => ({
+      id: order.id,
+      status: order.status,
+      lines: order.lines.map((line) => ({
+        id: line.id,
+        voided: line.voided,
+        comped: line.comped,
+      })),
+    })),
+    tables: floor.tables.map((table) => ({
+      tableId: table.tableId,
+      status: table.status,
+      checkId: table.checkId,
+    })),
   });
   if (paidNotices.length) {
     const notify = useNotifyStore.getState();
@@ -411,7 +422,32 @@ async function runOrQueue(
     try {
       await online();
       return;
-    } catch {
+    } catch (err) {
+      const rejected = floorRejectMessage(err);
+      if (rejected) {
+        const checkId =
+          (typeof payload.checkId === "string" && payload.checkId) ||
+          (payload.check && typeof payload.check === "object" && "id" in payload.check
+            ? String((payload.check as { id?: string }).id ?? "")
+            : "");
+        const snap = checkId ? rollbackFloorEdit(checkId) : null;
+        if (snap) {
+          usePosStore.setState({
+            orders: snap.orders as Order[],
+            tickets: snap.tickets as KitchenTicket[],
+            tables: snap.tables as Table[],
+            activeOrderId: snap.activeOrderId,
+            selectedLineId: snap.selectedLineId,
+          });
+        }
+        try {
+          const { toast } = await import("sonner");
+          toast.error(rejected);
+        } catch {
+          /* toast optional */
+        }
+        return;
+      }
       /* queue — do not pretend other devices saw this yet */
     }
   }
@@ -436,9 +472,11 @@ export async function hydrateFloor(locationId: string): Promise<void> {
 }
 
 export async function persistAfterLocalMutation(kind: string, id?: string): Promise<void> {
+  const gen = id ? lineEditGeneration(id) : undefined;
   const s = usePosStore.getState();
   const locationId = s.tenantLocationId;
   if (!locationId) return;
+  const stale = () => Boolean(id && gen !== undefined && lineEditGeneration(id) !== gen);
   try {
     const { persistLocationSnapshot } = await import("@/lib/offline/location-snapshot");
     persistLocationSnapshot();
@@ -450,6 +488,7 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
   if (kind === "lines" && id) {
     const prev = lineDebounce.get(id);
     if (prev) clearTimeout(prev);
+    noteLineEdit(id);
     lineDebounce.set(
       id,
       setTimeout(() => {
@@ -490,11 +529,12 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
   }
 
   if (kind === "check-delete" && id) {
-    const pending = lineDebounce.get(id);
-    if (pending) {
-      clearTimeout(pending);
+    const pendingTimer = lineDebounce.get(id);
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
       lineDebounce.delete(id);
     }
+    if (stale()) return;
     await runOrQueue(
       "order_upsert",
       `Delete check · ${id.slice(-6)}`,
@@ -510,6 +550,14 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
   }
 
   if (kind === "check" || kind === "lines-flush" || kind === "lines") {
+    if (id) {
+      const pendingTimer = lineDebounce.get(id);
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        lineDebounce.delete(id);
+      }
+    }
+    if (stale()) return;
     const order = s.orders.find((o) => o.id === id) ?? s.getActiveOrder?.();
     if (!order) return;
     const check = orderToFloorCheck(order, locationId, s.tickets);
@@ -668,15 +716,14 @@ export function applyStationTickets(station: TicketStation, incoming: FloorTicke
   const s = usePosStore.getState();
   const now = Date.now();
   const mapped = incoming.map(floorTicketToKitchen);
-  const mappedIds = new Set(mapped.map((t) => t.id));
   const others = s.tickets.filter((t) => t.station !== station);
-  const localOnly = s.tickets.filter(
-    (t) =>
-      t.station === station &&
-      !mappedIds.has(t.id) &&
-      now - (t.createdAt || 0) < LOCAL_GRACE_MS,
+  const merged = mergeOpenTickets(
+    s.tickets.filter((t) => t.station === station),
+    mapped,
+    now,
+    LOCAL_GRACE_MS,
   );
-  usePosStore.setState({ tickets: [...others, ...mapped, ...localOnly] });
+  usePosStore.setState({ tickets: [...others, ...merged] });
 }
 
 export function useStationTicketPolling(

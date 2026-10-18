@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_288_open_check_void",
+    date: "2026-10-18",
+    title: "Deleting an item or voiding an open check",
+    summary:
+      "Remove an unsent item or void an open check and it stays gone on every station.",
+    body: "An item that has not been sent can be removed and leaves the check. A sent item is voided with a reason from the location list, and the kitchen or bar that had it gets a cancel ticket. Delete check removes an open check with nothing sent. Void check clears a sent check, cancels its tickets, and the table goes empty. Paid checks stay frozen. The change stays after refresh.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor", "orders"],
+  },
+  {
     id: "upd_2026_10_287_station_fit",
     date: "2026-10-18",
     title: "Station screens fit the display",

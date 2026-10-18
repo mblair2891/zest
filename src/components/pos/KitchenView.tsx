@@ -114,8 +114,8 @@ export function KitchenView({ station, expo, operatorId }: Props) {
     const st = activeRail;
     let t =
       st === "all"
-        ? tickets.filter((x) => x.station === "kitchen" || x.station === "bar")
-        : tickets.filter((x) => x.station === st);
+        ? tickets.filter((x) => (x.station === "kitchen" || x.station === "bar") && x.status !== "voided")
+        : tickets.filter((x) => x.station === st && x.status !== "voided");
     if (expo) t = t.filter((x) => x.status === "ready" || (showBumped && x.status === "bumped"));
     else if (!showBumped) t = t.filter((x) => x.status !== "bumped");
     if (filter !== "all") t = t.filter((x) => x.status === filter);
@@ -145,6 +145,7 @@ export function KitchenView({ station, expo, operatorId }: Props) {
         ? t.station === "kitchen" || t.station === "bar"
         : t.station === activeRail) &&
       t.status !== "bumped" &&
+      t.status !== "voided" &&
       (!(lockedVendor || vendorFilter) || t.vendorId === (lockedVendor || vendorFilter)),
   ).length;
 

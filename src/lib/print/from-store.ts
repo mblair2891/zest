@@ -220,7 +220,7 @@ function guestCheckJob(
 export async function printFromPos(
   kind: "send" | "bump" | "ready" | "receipt" | "guest_check" | "test",
   id?: string,
-  opts?: { source?: KitchenPrintSource },
+  opts?: { source?: KitchenPrintSource; voidTickets?: KitchenTicket[] },
 ): Promise<void> {
   const s = usePosStore.getState();
   const locationId = s.tenantLocationId || "";
@@ -229,6 +229,39 @@ export async function printFromPos(
   const jobs: PrintJob[] = [];
   const source: KitchenPrintSource = opts?.source ?? "station";
   const queueOnly = source === "qr" || source === "kiosk" || source === "online" || source === "dashboard";
+
+  for (const t of opts?.voidTickets ?? []) {
+    const destinationName =
+      t.destinationName || (t.station === "bar" ? "Bar" : DEFAULT_ORDER_DESTINATION);
+    const station: PrintStation = printStationForDestination(destinationName);
+    jobs.push({
+      id: uid("prn"),
+      kind: "ticket",
+      station,
+      locationId,
+      locationName,
+      checkId: t.orderId,
+      checkNumber: t.orderNumber,
+      tableLabel: t.tableLabel,
+      serverName: t.serverName,
+      guestName: t.guestName,
+      guestPhone: t.guestPhone,
+      channelOrderId: t.channelOrderId,
+      dueAt: t.dueAt,
+      specialInstructions: t.specialInstructions ? `VOID · ${t.specialInstructions}` : "VOID",
+      diningOption: t.diningOption,
+      marketplaceTender: Boolean(s.orders.find((o) => o.id === t.orderId)?.marketplace),
+      operatorId: t.vendorId,
+      operatorName: t.vendorName,
+      destinationName,
+      items: linesFromTicket(t),
+      timezone: parseVenueTimezone(s.settings.timezone),
+      at: venueNowMs(),
+      ticketId: t.id,
+      printSource: source,
+      printerId: t.printerId,
+    });
+  }
 
   if (kind === "send") {
     const tickets = id

@@ -4,13 +4,25 @@ import test from "node:test";
 import {
   applyOpenCheckAction,
   applySentLineAction,
+  actingEntityOperator,
   canDeleteCheck,
   canVoidOrCompCheck,
   lineActionReason,
+  lineInEntityScope,
   removeUnsentLine,
 } from "../src/lib/pos/check-actions.ts";
 
 const reasons = ["Wrong item", "Kitchen error", "Manager approved"];
+
+test("a vendor void stays on that entity and a manager can void any line", () => {
+  assert.equal(actingEntityOperator({ role: "manager", operatorId: "bar" }), null);
+  assert.equal(actingEntityOperator({ role: "host", operatorId: "host" }), null);
+  assert.equal(actingEntityOperator({ role: "server" }), null);
+  assert.equal(actingEntityOperator({ role: "vendor_operator", operatorId: "bar" }), "bar");
+  assert.equal(lineInEntityScope({ vendorId: "bar" }, "bar"), true);
+  assert.equal(lineInEntityScope({ vendorId: "food" }, "bar"), false);
+  assert.equal(lineInEntityScope({ vendorId: "food" }, null), true);
+});
 
 test("unsent item is removed and disappears", () => {
   const lines = [
@@ -142,8 +154,9 @@ test("guide states the remove and void rule", () => {
   assert.match(orders, /has not been sent can be removed/);
   assert.match(loss, /reason from the location list/);
   assert.doesNotMatch(loss, /void\/comp skip the gate/);
-  assert.match(types, /2026\.10\.287/);
-  assert.match(types, /Station screens fit the display/);
+  assert.match(types, /2026\.10\.288/);
+  assert.match(types, /Deleting an item or voiding an open check/);
+  assert.match(orders, /cancel ticket to the kitchen or bar/);
   const payments = readFileSync("src/lib/guide/content/payments.ts", "utf8");
   assert.match(payments, /A card reader connects by Bluetooth, Network, or USB/);
 });
