@@ -228,6 +228,8 @@ export type CashHandlingConfig = {
   drawerKickPin: 2 | 5;
   /** Print check before tender does not kick unless this is on. Default off. */
   kickOnPrintCheck: boolean;
+  /** On until a location admin or manager turns it off. */
+  drawerOpenRequiresManager: boolean;
   noSaleOpen: NoSaleOpen;
   /** Roles that may no-sale without a manager PIN. Default bartender + manager. */
   noSaleAllowedRoles: NoSaleRole[];
@@ -314,6 +316,7 @@ export const DEFAULT_CASH_HANDLING: CashHandlingConfig = {
   openOnCashSale: "always",
   drawerKickPin: 2,
   kickOnPrintCheck: false,
+  drawerOpenRequiresManager: true,
   noSaleOpen: "assigned_user",
   noSaleAllowedRoles: [...DEFAULT_NO_SALE_ROLES],
   printNoSaleSlip: false,
@@ -443,6 +446,7 @@ export function parseCashHandling(raw: unknown): CashHandlingConfig {
     openOnCashSale,
     drawerKickPin: Number(o.drawerKickPin) === 5 ? 5 : 2,
     kickOnPrintCheck: Boolean(o.kickOnPrintCheck),
+    drawerOpenRequiresManager: o.drawerOpenRequiresManager !== false,
     noSaleOpen,
     noSaleAllowedRoles: parseNoSaleAllowedRoles(o.noSaleAllowedRoles, noSaleOpen),
     printNoSaleSlip: Boolean(o.printNoSaleSlip),

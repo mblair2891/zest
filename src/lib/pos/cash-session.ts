@@ -759,7 +759,11 @@ export function applyCashTender(opts: {
     orderId: opts.order?.id,
     refund: opts.refund,
   });
-  if (sink.type === "drawer" && opts.cfg.openOnCashSale !== "never") {
+  if (
+    sink.type === "drawer" &&
+    opts.cfg.openOnCashSale !== "never" &&
+    !opts.cfg.drawerOpenRequiresManager
+  ) {
     void import("@/lib/print/dispatch").then(async (m) => {
       const { resolveReceiptPrinterForCheck } = await import("@/lib/print/printer-assignment");
       const sectionPrinter = resolveReceiptPrinterForCheck({

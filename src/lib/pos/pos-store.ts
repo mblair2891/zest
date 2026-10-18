@@ -223,8 +223,20 @@ export interface PosStore {
   getActiveOrder: () => Order | undefined;
   noSale: (
     reason: string,
-    opts?: { overrideEmployeeId?: string; overrideEmployeeName?: string },
+    opts?: {
+      overrideEmployeeId?: string;
+      overrideEmployeeName?: string;
+      source?: "order" | "payment" | "drawer";
+    },
   ) => ActionResult;
+  openCashDrawer: (opts?: {
+    preview?: boolean;
+    source?: "order" | "payment" | "drawer";
+    reason?: string;
+    noSale?: boolean;
+    overrideEmployeeId?: string;
+    overrideEmployeeName?: string;
+  }) => ActionResult;
   flagReceiptPending: (orderId: string) => ActionResult;
   clearReceiptPending: (orderId: string) => ActionResult;
   audit: (action: string, detail: string, meta?: AuditMeta) => void;

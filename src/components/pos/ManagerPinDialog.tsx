@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,6 +27,10 @@ interface Props {
   gate?: ApprovalGateKind;
   amountCents?: number;
   onRequestPending?: (reason: string) => void;
+  /** Replaces a rejected PIN message. A lockout message stays as written. */
+  denyMessage?: string;
+  /** Dialog closed without a successful PIN. */
+  onDismiss?: () => void;
 }
 
 export function ManagerPinDialog({
@@ -41,7 +45,10 @@ export function ManagerPinDialog({
   gate,
   amountCents = 0,
   onRequestPending,
+  denyMessage,
+  onDismiss,
 }: Props) {
+  const verifiedRef = useRef(false);
   const [pin, setPin] = useState("");
   const [reason, setReason] = useState(reasons?.[0] ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +78,7 @@ export function ManagerPinDialog({
     }
     setPin("");
     setError(null);
+    verifiedRef.current = true;
     onOpenChange(false);
     onVerified({ reason, path });
     return true;
@@ -101,7 +109,8 @@ export function ManagerPinDialog({
       const path = "path" in res && res.path === "shift_lead" ? "shift_lead" : "manager";
       finish(path);
     } else {
-      setError(res.error ?? "Invalid PIN");
+      const locked = "locked" in res && Boolean(res.locked);
+      setError(locked ? (res.error ?? "Invalid PIN") : (denyMessage ?? res.error ?? "Invalid PIN"));
       setPin("");
     }
   };
@@ -119,6 +128,8 @@ export function ManagerPinDialog({
       open={open}
       onOpenChange={(o) => {
         if (!o) {
+          if (!verifiedRef.current) onDismiss?.();
+          verifiedRef.current = false;
           setPin("");
           setError(null);
           setGlass(false);

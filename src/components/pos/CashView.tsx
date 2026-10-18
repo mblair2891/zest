@@ -20,15 +20,15 @@ import {
   useCashSessionStore,
 } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
-import { kickCashDrawer } from "@/lib/print/dispatch";
 import { CloseoutQueue } from "./CloseoutQueue";
 import { TillCloseoutQueue } from "./TillCloseoutQueue";
 import { TillCloseoutView } from "./TillCloseoutView";
 import { useTillCloseoutStore } from "@/lib/pos/till-closeout-store";
 import { NightlyIntegrityPanel } from "./NightlyIntegrityPanel";
-import { NO_SALE_REASONS, parseLossPrevention } from "@/lib/pos/loss-prevention";
+import { NO_SALE_REASONS } from "@/lib/pos/loss-prevention";
 import { ApprovalQueue } from "./ApprovalQueue";
 import { TillTransferSection } from "./TillTransferPanel";
+import { DRAWER_PIN_DENIED, DRAWER_STAYS_CLOSED } from "@/lib/pos/drawer-open";
 
 export function CashView() {
   const shift = usePosStore((s) => s.shift);
@@ -38,8 +38,6 @@ export function CashView() {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const employees = usePosStore((s) => s.employees);
   const settings = usePosStore((s) => s.settings);
-  const devices = usePosStore((s) => s.locationDevices ?? []);
-  const locId = usePosStore((s) => s.tenantLocationId) || "";
   const kind = useStationSessionStore((s) => s.assignment.kind);
   const activeDeviceId = usePosStore((s) => s.activeDeviceId);
   const cfg = parseCashHandling(settings.cashHandling);
@@ -66,8 +64,6 @@ export function CashView() {
   const [noSaleReason, setNoSaleReason] = useState<string>(NO_SALE_REASONS[0]);
   const audit = usePosStore((s) => s.audit);
   const requestApproval = usePosStore((s) => s.requestApproval);
-  const canAuthorizeGate = usePosStore((s) => s.canAuthorizeGate);
-  const lp = parseLossPrevention(settings.lossPrevention);
   const [mgrOpen, setMgrOpen] = useState(false);
   const [pending, setPending] = useState<
     null | "close" | "open" | "paid_in" | "paid_out" | "drop" | "no_sale" | "kick" | "issue"
@@ -223,63 +219,51 @@ export function CashView() {
       }
       return;
     }
-    if (kind === "no_sale" || kind === "kick") {
-      if (sink.type === "drawer") {
-        void kickCashDrawer({
-          locationId: locId,
-          devices,
-          printerId: sink.drawer.kickPrinterId,
-          pin: cfg.drawerKickPin === 5 ? 5 : 2,
-          deviceId: activeDeviceId,
-        });
-        if (kind === "no_sale") {
-          useCashSessionStore.getState().logNoSale({
-            employeeId: emp.id,
-            employeeName: emp.name,
-            drawerId: sink.drawer.id,
-            reason: noSaleReason,
-          });
-          audit("no_sale", noSaleReason, {
-            reason: noSaleReason,
-            after: sink.drawer.id,
-          });
-        }
-      }
+    if (kind === "no_sale") {
+      const res = usePosStore.getState().noSale(noSaleReason, { source: "drawer" });
+      if (!res.ok) setFlash(res.error ?? DRAWER_STAYS_CLOSED);
+      else setFlash(null);
+      return;
+    }
+    if (kind === "kick") {
+      const res = usePosStore.getState().openCashDrawer({
+        source: "drawer",
+        reason: "Open drawer",
+      });
+      if (!res.ok) setFlash(res.error ?? DRAWER_STAYS_CLOSED);
+      else setFlash(null);
     }
   };
 
   const ask = (kind: NonNullable<typeof pending>) => {
     setPending(kind);
-    if (needMgr(kind) && !manager) {
-      setMgrOpen(true);
-      return;
-    }
-    if (kind === "no_sale" && cfg.noSaleOpen === "off") {
-      setFlash("No-sale is off.");
-      return;
-    }
-    if (kind === "no_sale" && cfg.noSaleOpen === "manager" && !canAuthorizeGate("no_sale", 0) && !manager) {
-      if (lp.pendingApproval) {
-        const res = requestApproval({
-          kind: "no_sale",
-          reason: noSaleReason,
-          amountCents: 0,
-          payload: { drawerId: sink.type === "drawer" ? sink.drawer.id : undefined },
-        });
-        setFlash(res.ok ? "No-sale held for approval." : res.error ?? "Could not queue");
+    if (kind === "kick" || kind === "no_sale") {
+      if (kind === "no_sale" && cfg.noSaleOpen === "off") {
+        setFlash("No-sale is off.");
         setPending(null);
         return;
       }
-    }
-    if (kind === "no_sale" && cfg.noSaleOpen === "assigned_user" && sink.type === "drawer") {
-      const allowed =
-        manager ||
-        sink.drawer.assignedEmployeeIds.length === 0 ||
-        sink.drawer.assignedEmployeeIds.includes(emp?.id ?? "");
-      if (!allowed) {
-        setFlash("Only assigned users can no-sale this drawer.");
+      const preview = usePosStore.getState().openCashDrawer({
+        preview: true,
+        source: "drawer",
+        reason: kind === "no_sale" ? noSaleReason : "Open drawer",
+      });
+      if (!preview.ok && preview.code === "manager_pin") {
+        setMgrOpen(true);
         return;
       }
+      if (!preview.ok) {
+        setFlash(preview.error ?? DRAWER_STAYS_CLOSED);
+        setPending(null);
+        return;
+      }
+      run(kind);
+      setPending(null);
+      return;
+    }
+    if (needMgr(kind) && !manager) {
+      setMgrOpen(true);
+      return;
     }
     run(kind);
     setPending(null);
@@ -535,7 +519,16 @@ export function CashView() {
       <ManagerPinDialog
         open={mgrOpen}
         onOpenChange={setMgrOpen}
-        title="Manager cash authorization"
+        title={pending === "kick" || pending === "no_sale" ? "Open drawer — manager PIN" : "Manager cash authorization"}
+        description={
+          pending === "kick" || pending === "no_sale"
+            ? "A manager PIN opens the cash drawer."
+            : undefined
+        }
+        denyMessage={pending === "kick" || pending === "no_sale" ? DRAWER_PIN_DENIED : undefined}
+        onDismiss={() => {
+          if (pending === "kick" || pending === "no_sale") setFlash(DRAWER_STAYS_CLOSED);
+        }}
         gate={pending === "no_sale" ? "no_sale" : undefined}
         reasons={pending === "no_sale" ? NO_SALE_REASONS : undefined}
         onRequestPending={

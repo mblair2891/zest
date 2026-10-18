@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_292_drawer_approval",
+    date: "2026-10-18",
+    title: "Cash drawer manager approval",
+    summary:
+      "Venue Settings can require a manager PIN before the cash drawer opens.",
+    body: "Cash / Drawer has Cash drawer open requires manager approval. It stays on until a location admin or manager turns it off. On asks for a manager PIN from the order screen, Pay, or Kick drawer. The drawer opens after that PIN. Cancel leaves the drawer closed. A PIN that does not approve leaves the drawer closed. Off opens the drawer for staff who already have that drawer. Assigned drawer, personal bank, and no drawer still apply. The open is audited with who asked, who approved when a PIN was required, and the time.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "no-sale",
+    tags: ["cash"],
+  },
+  {
     id: "upd_2026_10_291_unscheduled_clockin",
     date: "2026-10-18",
     title: "Unscheduled shift clock-in",

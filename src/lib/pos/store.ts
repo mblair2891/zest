@@ -80,11 +80,12 @@ import {
 } from "./check-ops";
 import { applyCashTender, currentCashSink, useCashSessionStore } from "./cash-session";
 import { hasCompletedCloseoutToday } from "./closeout-store";
-import { cashRoleFromSession, parseCashHandling } from "./cash-handling";
+import { cashRoleFromSession, isManagerCash, parseCashHandling } from "./cash-handling";
+import { staffCustody } from "./cash-custody";
 import {
   NO_DRAWER_ON_STATION,
-  noSaleNeedsManagerPin,
 } from "./no-sale";
+import { classifyDrawerAssignment, decideDrawerOpen } from "./drawer-open";
 import { resolveReceiptDrawer } from "../print/receipt-drawer";
 
 import { readPairedDeviceId } from "./location-devices";
@@ -567,6 +568,123 @@ function managerActor(get: any) {
 		id: get().managerAuthEmployeeId || "mgr",
 		name: get().managerAuthEmployeeName || "Manager",
 	};
+}
+
+function evaluateDrawerGate(
+	get: any,
+	opts?: { overrideEmployeeId?: string; overrideEmployeeName?: string },
+):
+	| { ok: false; error: string; code?: string }
+	| {
+			ok: true;
+			emp: { id: string; name: string; role?: string };
+			drawer: { id: string; label?: string };
+			stationId: string | null;
+			deviceRole: string | null;
+			approverRequired: boolean;
+			approverId?: string;
+			approverName?: string;
+			sinkDrawerId?: string;
+	  } {
+	const emp = get().getCurrentEmployee();
+	if (!emp) return { ok: false, error: "Not signed in" };
+	const deviceRole = currentDeviceRole(get) ?? readStationDeviceRole();
+	const cashCfg = parseCashHandling(get().settings.cashHandling);
+	let stationId = get().activeDeviceId || null;
+	try {
+		stationId = stationId || readStationPair()?.deviceId || null;
+	} catch { /* */ }
+	if (!stationId && get().tenantLocationId) {
+		try {
+			stationId = readPairedDeviceId(get().tenantLocationId);
+		} catch { /* */ }
+	}
+	const stationHasDrawer = deviceRole !== "ods" && deviceRole !== "kiosk";
+	const drawer = stationHasDrawer
+		? resolveReceiptDrawer(get().locationDevices, stationId, deviceRole)
+		: undefined;
+	const custody = staffCustody({
+		role: emp.role,
+		roleDefaults: cashCfg.custodyByRole,
+		employeeOverride: cashCfg.custodyByEmployeeId[emp.id] ?? null,
+	});
+	const sink = currentCashSink({
+		cfg: cashCfg,
+		emp,
+		deviceRole,
+		deviceId: stationId,
+	});
+	const assignment = classifyDrawerAssignment({
+		stationHasDrawer: Boolean(drawer),
+		custody,
+		sink: sink.type,
+		assignedEmployeeIds: sink.type === "drawer" ? sink.drawer.assignedEmployeeIds : [],
+		employeeId: emp.id,
+		isManager: isManagerCash(emp.role),
+	});
+	const sessionMgr = managerActor(get);
+	const approved =
+		Boolean(opts?.overrideEmployeeId) ||
+		Boolean(sessionMgr) ||
+		isManagerCash(emp.role);
+	const decision = decideDrawerOpen({
+		assignment,
+		requiresManager: cashCfg.drawerOpenRequiresManager,
+		approved,
+	});
+	if (decision.phase === "blocked") {
+		return {
+			ok: false,
+			error: assignment === "no_drawer" ? NO_DRAWER_ON_STATION : (decision.message ?? NO_DRAWER_ON_STATION),
+		};
+	}
+	if (decision.phase === "prompt") {
+		return { ok: false, error: "Manager PIN required.", code: "manager_pin" };
+	}
+	const approver = decision.approverRequired
+		? sessionMgr && sessionMgr.id !== emp.id
+			? sessionMgr
+			: { id: opts?.overrideEmployeeId || emp.id, name: opts?.overrideEmployeeName || emp.name }
+		: null;
+	return {
+		ok: true,
+		emp,
+		drawer: { id: drawer!.id, label: drawer!.label },
+		stationId,
+		deviceRole: deviceRole ?? null,
+		approverRequired: decision.approverRequired,
+		approverId: approver?.id,
+		approverName: approver?.name,
+		sinkDrawerId: sink.type === "drawer" ? sink.drawer.id : undefined,
+	};
+}
+
+function auditDrawerOpen(
+	get: any,
+	gate: {
+		emp: { id: string; name: string };
+		drawer: { id: string; label?: string };
+		stationId: string | null;
+		deviceRole: string | null;
+		approverRequired: boolean;
+		approverId?: string;
+		approverName?: string;
+	},
+	reason: string,
+	source: string,
+) {
+	get().audit("drawer_open", `Drawer open · ${source}`, {
+		reason,
+		deviceId: gate.stationId ?? undefined,
+		deviceRole: gate.deviceRole ?? undefined,
+		after: gate.drawer.label || gate.drawer.id,
+		amountCents: 0,
+		requesterId: gate.emp.id,
+		requesterName: gate.emp.name,
+		overrideEmployeeId: gate.approverRequired ? gate.approverId : undefined,
+		overrideEmployeeName: gate.approverRequired ? gate.approverName : undefined,
+		approvalStatus: gate.approverRequired ? "approved" : undefined,
+	});
 }
 
 function notifyOnCall(get: any, body: any, _approvalId?: any) {
@@ -1535,59 +1653,79 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		return get().orders.find((o: any) => o.id === id);
 	},
 	noSale: (reason, opts) => {
-		const emp = get().getCurrentEmployee();
-		if (!emp) return { ok: false, error: "Not signed in" };
-		const deviceRole = currentDeviceRole(get) ?? readStationDeviceRole();
-		if (deviceRole === "ods" || deviceRole === "kiosk") {
-			return { ok: false, error: NO_DRAWER_ON_STATION };
-		}
 		const trimmed = String(reason ?? "").trim();
 		if (!trimmed) return { ok: false, error: "Pick a reason." };
+		const gate = evaluateDrawerGate(get, opts);
+		if (!gate.ok) return gate;
 		const cashCfg = parseCashHandling(get().settings.cashHandling);
-		const needsPin = noSaleNeedsManagerPin(emp.role, cashCfg.noSaleAllowedRoles);
-		if (needsPin && !opts?.overrideEmployeeId && !get().hasManagerAuth()) {
-			return { ok: false, error: "Manager PIN required.", code: "manager_pin" };
-		}
-		let stationId = get().activeDeviceId || null;
-		try {
-			stationId = stationId || readStationPair()?.deviceId || null;
-		} catch { /* */ }
-		if (!stationId && get().tenantLocationId) {
-			try {
-				stationId = readPairedDeviceId(get().tenantLocationId);
-			} catch { /* */ }
-		}
-		const drawer = resolveReceiptDrawer(get().locationDevices, stationId, deviceRole);
-		if (!drawer) return { ok: false, error: NO_DRAWER_ON_STATION };
 		const stationLabel =
-			(get().locationDevices ?? []).find((d: any) => d.id === stationId)?.label ||
-			drawer.label ||
+			(get().locationDevices ?? []).find((d: any) => d.id === gate.stationId)?.label ||
+			gate.drawer.label ||
 			"Station";
 		void import("@/lib/print/from-store").then((m) =>
 			m.performNoSale({
 				reason: trimmed,
 				printSlip: cashCfg.printNoSaleSlip,
-				printerId: drawer.id,
+				printerId: gate.drawer.id,
 			}),
 		);
 		try {
-			const sinkDrawer = cashCfg.drawers.find((d) => d.kickPrinterId === drawer.id) ?? cashCfg.drawers[0];
+			const sinkDrawer = cashCfg.drawers.find((d) => d.kickPrinterId === gate.drawer.id) ?? cashCfg.drawers[0];
 			useCashSessionStore.getState().logNoSale({
-				employeeId: emp.id,
-				employeeName: emp.name,
-				drawerId: sinkDrawer?.id,
+				employeeId: gate.emp.id,
+				employeeName: gate.emp.name,
+				drawerId: gate.sinkDrawerId || sinkDrawer?.id,
 				reason: trimmed,
 			});
 		} catch { /* optional till log */ }
 		get().audit("no_sale", trimmed, {
 			reason: trimmed,
-			deviceId: stationId ?? undefined,
-			deviceRole: deviceRole ?? undefined,
+			deviceId: gate.stationId ?? undefined,
+			deviceRole: gate.deviceRole ?? undefined,
 			after: stationLabel,
 			amountCents: 0,
-			overrideEmployeeId: opts?.overrideEmployeeId,
-			overrideEmployeeName: opts?.overrideEmployeeName,
+			requesterId: gate.emp.id,
+			requesterName: gate.emp.name,
+			overrideEmployeeId: gate.approverRequired ? (opts?.overrideEmployeeId || gate.approverId) : undefined,
+			overrideEmployeeName: gate.approverRequired ? (opts?.overrideEmployeeName || gate.approverName) : undefined,
 		});
+		auditDrawerOpen(get, gate, trimmed, opts?.source || "order");
+		return { ok: true };
+	},
+	openCashDrawer: (opts) => {
+		const gate = evaluateDrawerGate(get, opts);
+		if (!gate.ok) return gate;
+		if (opts?.preview) return { ok: true };
+		const cashCfg = parseCashHandling(get().settings.cashHandling);
+		const reason = String(opts?.reason ?? "").trim() || "Open drawer";
+		if (opts?.noSale) {
+			void import("@/lib/print/from-store").then((m) =>
+				m.performNoSale({
+					reason,
+					printSlip: cashCfg.printNoSaleSlip,
+					printerId: gate.drawer.id,
+				}),
+			);
+			try {
+				useCashSessionStore.getState().logNoSale({
+					employeeId: gate.emp.id,
+					employeeName: gate.emp.name,
+					drawerId: gate.sinkDrawerId,
+					reason,
+				});
+			} catch { /* optional till log */ }
+		} else {
+			void import("@/lib/print/dispatch").then((m) =>
+				m.kickCashDrawer({
+					locationId: get().tenantLocationId || "",
+					devices: get().locationDevices,
+					printerId: gate.drawer.id,
+					pin: cashCfg.drawerKickPin === 5 ? 5 : 2,
+					deviceId: gate.stationId,
+				}),
+			);
+		}
+		auditDrawerOpen(get, gate, reason, opts?.source || "drawer");
 		return { ok: true };
 	},
 	postLedger: (entries) => {

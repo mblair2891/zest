@@ -55,6 +55,7 @@ import { DEVICE_ROLE_LABEL } from "@/lib/pos/device-roles";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { tipOutWithMode } from "@/lib/pos/tip-pooling";
 import { TipPoolingSettings } from "./TipPoolingSettings";
+import { DrawerOpenApprovalSetting } from "./DrawerOpenApprovalSetting";
 
 function save(next: CashHandlingConfig) {
   usePosStore.getState().updateSettings({ cashHandling: next });
@@ -115,6 +116,11 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
           Closeout
         </GuideLearnLink>
       </div>
+      <DrawerOpenApprovalSetting
+        requires={cfg.drawerOpenRequiresManager}
+        write={write}
+        onChange={(drawerOpenRequiresManager) => patch({ drawerOpenRequiresManager })}
+      />
       <p className="text-xs text-muted-foreground">
         Each staff row has one assignment: house drawer, personal bank, or none. Kitchen is
         always none. These are form controls — not a JSON blob.

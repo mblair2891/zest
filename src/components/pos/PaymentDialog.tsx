@@ -92,8 +92,10 @@ import { NO_SECTION_RECEIPT, printCardTipSlips, printGuestCheck, printGuestRecei
 import {
   ADD_RECEIPT_PRINTER,
   currentStationDeviceId,
+  stationMayKickDrawer,
   stationMayPrintReceipt,
 } from "@/lib/print/receipt-printer";
+import { DRAWER_PIN_DENIED, DRAWER_STAYS_CLOSED } from "@/lib/pos/drawer-open";
 import { parseStationClass } from "@/lib/pos/station-class";
 import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/api";
 import { defaultGiftIssuer, fulfillingIssuer } from "@/lib/pos/gift-issuer";
@@ -186,6 +188,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const tables = usePosStore((s) => s.tables);
   const floorSections = usePosStore((s) => s.floorSections);
   const stationId = activeDeviceId || currentStationDeviceId();
+  const canOpenDrawer = stationMayKickDrawer(locationDevices, stationId);
   const stationRow = locationDevices.find((d) => d.id === stationId);
   const stationClass = parseStationClass(stationRow?.stationClass, stationRow);
   const payTable = order?.tableId ? tables.find((t) => t.id === order.tableId) : undefined;
@@ -241,6 +244,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const [giftSellTender, setGiftSellTender] = useState<"cash" | "card">("card");
   const [giftNote, setGiftNote] = useState<string | null>(null);
   const [giftMgrOpen, setGiftMgrOpen] = useState(false);
+  const [drawerPinOpen, setDrawerPinOpen] = useState(false);
+  const [drawerMsg, setDrawerMsg] = useState<string | null>(null);
   const issueGiftCard = usePosStore((s) => s.issueGiftCard);
   const giftCards = usePosStore((s) => s.giftCards);
   const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
@@ -2426,6 +2431,44 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               {!busy && method === "house_account" && "Charge house account"}
               {!busy && method === "other" && `Take ${payCfg.otherLabel || "other"}`}
             </Button>
+            {canOpenDrawer ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="station-touch min-h-12 w-full"
+                  data-open-drawer=""
+                  onClick={() => {
+                    setDrawerMsg(null);
+                    const preview = usePosStore.getState().openCashDrawer({
+                      preview: true,
+                      source: "payment",
+                      reason: "Open drawer",
+                    });
+                    if (!preview.ok && preview.code === "manager_pin") {
+                      setDrawerPinOpen(true);
+                      return;
+                    }
+                    if (!preview.ok) {
+                      setDrawerMsg(preview.error ?? DRAWER_STAYS_CLOSED);
+                      return;
+                    }
+                    const res = usePosStore.getState().openCashDrawer({
+                      source: "payment",
+                      reason: "Open drawer",
+                    });
+                    setDrawerMsg(res.ok ? "Drawer opened." : (res.error ?? DRAWER_STAYS_CLOSED));
+                  }}
+                >
+                  Open drawer
+                </Button>
+                {drawerMsg ? (
+                  <p className="text-center text-sm text-muted-foreground" data-drawer-message role="status">
+                    {drawerMsg}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
             {method === "card" && cardHoldAuth && cardLink === "usb" ? (
               <Button
                 type="button"
@@ -2450,6 +2493,22 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       onVerified={() => {
         setGiftMgrOpen(false);
         sellGiftOnStation({ skipManager: true });
+      }}
+    />
+    <ManagerPinDialog
+      open={drawerPinOpen}
+      onOpenChange={setDrawerPinOpen}
+      title="Open drawer — manager PIN"
+      description="A manager PIN opens the cash drawer."
+      skipIfAuthed={false}
+      denyMessage={DRAWER_PIN_DENIED}
+      onDismiss={() => setDrawerMsg(DRAWER_STAYS_CLOSED)}
+      onVerified={() => {
+        const res = usePosStore.getState().openCashDrawer({
+          source: "payment",
+          reason: "Open drawer",
+        });
+        setDrawerMsg(res.ok ? "Drawer opened." : (res.error ?? DRAWER_STAYS_CLOSED));
       }}
     />
     </>

@@ -10,12 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { ManagerPinDialog } from "./ManagerPinDialog";
 import { usePosStore } from "@/lib/pos/store";
-import { parseCashHandling } from "@/lib/pos/cash-handling";
 import {
   NO_DRAWER_ON_STATION,
   STATION_NO_SALE_REASONS,
-  noSaleNeedsManagerPin,
 } from "@/lib/pos/no-sale";
+import { DRAWER_PIN_DENIED, DRAWER_STAYS_CLOSED } from "@/lib/pos/drawer-open";
 import { cn } from "@/lib/utils";
 import {
   currentStationDeviceId,
@@ -31,8 +30,6 @@ export function NoSaleControl({
   size?: "sm" | "lg";
   variant?: "outline" | "default";
 }) {
-  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
-  const cashCfg = parseCashHandling(usePosStore((s) => s.settings.cashHandling));
   const noSale = usePosStore((s) => s.noSale);
   const locationDevices = usePosStore((s) => s.locationDevices);
   const canPayStation = stationMayKickDrawer(
@@ -44,13 +41,13 @@ export function NoSaleControl({
   const [reason, setReason] = useState<string>(STATION_NO_SALE_REASONS[0]);
   const [flash, setFlash] = useState<string | null>(null);
 
-  const needsPin = noSaleNeedsManagerPin(emp?.role, cashCfg.noSaleAllowedRoles);
   if (!canPayStation) return null;
 
   const run = (r: string, override?: { overrideEmployeeId?: string; overrideEmployeeName?: string }) => {
     const res = noSale(r, override);
     if (!res.ok) {
       setFlash(res.error ?? NO_DRAWER_ON_STATION);
+      if (res.code === "manager_pin") setPinOpen(true);
       return false;
     }
     setFlash(null);
@@ -60,8 +57,16 @@ export function NoSaleControl({
 
   const begin = () => {
     setFlash(null);
-    if (needsPin) setPinOpen(true);
-    else setOpen(true);
+    const preview = usePosStore.getState().openCashDrawer({ preview: true, source: "order" });
+    if (!preview.ok && preview.code === "manager_pin") {
+      setPinOpen(true);
+      return;
+    }
+    if (!preview.ok) {
+      setFlash(preview.error ?? DRAWER_STAYS_CLOSED);
+      return;
+    }
+    setOpen(true);
   };
 
   return (
@@ -77,6 +82,11 @@ export function NoSaleControl({
         <Banknote className="h-4 w-4" />
         No sale
       </Button>
+      {flash && !open && !pinOpen && (
+        <p className="text-sm text-danger" data-drawer-message role="status">
+          {flash}
+        </p>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -112,20 +122,23 @@ export function NoSaleControl({
       <ManagerPinDialog
         open={pinOpen}
         onOpenChange={setPinOpen}
-        title="No sale — manager PIN"
-        description="This role needs a manager PIN to open the drawer."
+        title="Open drawer — manager PIN"
+        description="A manager PIN opens the cash drawer."
         reasons={STATION_NO_SALE_REASONS}
         requireReason
         skipIfAuthed={false}
+        denyMessage={DRAWER_PIN_DENIED}
+        onDismiss={() => setFlash(DRAWER_STAYS_CLOSED)}
         onVerified={(ctx) => {
           const r = ctx?.reason || reason;
           setReason(r);
+          const mgr = usePosStore.getState();
           const res = noSale(r, {
-            overrideEmployeeName: "Manager",
+            overrideEmployeeId: mgr.managerAuthEmployeeId || undefined,
+            overrideEmployeeName: mgr.managerAuthEmployeeName || "Manager",
           });
           if (!res.ok) {
-            setFlash(res.error ?? NO_DRAWER_ON_STATION);
-            setOpen(true);
+            setFlash(res.error ?? DRAWER_STAYS_CLOSED);
             return;
           }
           setFlash(null);
