@@ -95,7 +95,7 @@ export function DeviceModeView({
         <KitchenView station="all" operatorId={operatorId} />
       );
     return (
-      <div className="flex h-full min-h-0 flex-col" data-station-home="ods">
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden" data-station-home="ods">
         <div className="flex shrink-0 items-center justify-end gap-3 border-b border-border px-3 py-2">
           <ClockedInChip />
           <Button type="button" size="lg" variant="outline" className="station-touch h-12" onClick={() => setJob("closeout")}>

@@ -180,6 +180,119 @@
   }
 }
 
+/*
+ * Station shell tracks the measured viewport (set on :root as --station-vw / --station-vh).
+ * Fallback is the dynamic viewport so the first paint still fits before that measure.
+ */
+.station-viewport {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: var(--station-vh, 100dvh);
+  max-height: var(--station-vh, 100dvh);
+  overflow: hidden;
+}
+
+.station-pin-screen {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.station-pin-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.station-pin-pad {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.station-pin-fit {
+  container-type: size;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+/* 1–9, then Enter, 0, Clock in. Rows share leftover height. 48px when the cell allows it. */
+.station-pin-keys {
+  display: grid;
+  flex: 1 1 auto;
+  align-self: stretch;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: clamp(0.35rem, 1.4cqmin, 0.85rem);
+}
+
+.station-pin-keys button {
+  height: 100%;
+  width: 100%;
+  min-height: min(3rem, 100%);
+  min-width: min(3rem, 100%);
+  padding-inline: 0.35rem;
+  font-size: clamp(1rem, 8cqh, 1.85rem);
+}
+
+.station-pin-keys [data-pin-key="enter"],
+.station-pin-keys [data-pin-key="clock-in"] {
+  font-size: clamp(0.9rem, 6cqh, 1.25rem);
+  line-height: 1.1;
+}
+
+[data-floor-fit="room"] {
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Pay stays inside the station. The tender list scrolls. The charge row stays on screen. */
+[data-station-pay] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  max-height: var(--station-vh, 100dvh);
+}
+
+html[data-orientation="landscape"] [data-station-pay] {
+  max-height: calc(var(--station-vh, 100dvh) - 0.5rem);
+  padding: 0.75rem;
+}
+
+.station-pay-scroll {
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.station-pay-actions {
+  flex: 0 0 auto;
+}
+
+.station-pay-actions button {
+  min-height: 3rem;
+}
+
 /* Handheld / short station: large taps. Never shrink type to fit a dashboard. */
 [data-station-layout="handheld"] .kds-large-touch button,
 [data-station-layout="tablet"] .kds-large-touch button {

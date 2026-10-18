@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 /**
  * Station chrome by physical viewport — not by PIN role.
@@ -34,7 +34,34 @@ const SHORT_HEIGHT = 700;
 
 export function viewportSize(): { width: number; height: number } {
   if (typeof window === "undefined") return { width: 1280, height: 800 };
-  return { width: window.innerWidth, height: window.innerHeight };
+  const vv = window.visualViewport;
+  const width = vv && vv.width > 0 ? vv.width : window.innerWidth;
+  const height = vv && vv.height > 0 ? vv.height : window.innerHeight;
+  return { width: Math.round(width), height: Math.round(height) };
+}
+
+/** CSS variables the station shell and PIN pad read. Landscape when width >= height. */
+export function stationViewportVars(width: number, height: number): {
+  vw: string;
+  vh: string;
+  orientation: "landscape" | "portrait";
+} {
+  const w = Math.max(0, Math.round(width));
+  const h = Math.max(0, Math.round(height));
+  return {
+    vw: `${w}px`,
+    vh: `${h}px`,
+    orientation: h > w ? "portrait" : "landscape",
+  };
+}
+
+export function applyStationViewport(width: number, height: number): void {
+  if (typeof document === "undefined") return;
+  const next = stationViewportVars(width, height);
+  const root = document.documentElement;
+  root.style.setProperty("--station-vw", next.vw);
+  root.style.setProperty("--station-vh", next.vh);
+  root.dataset.orientation = next.orientation;
 }
 
 export function stationLayoutFromSize(width: number, height: number): StationLayout {
@@ -63,14 +90,29 @@ export function stationLayoutFromSize(width: number, height: number): StationLay
 
 export function useStationLayout(): StationLayout {
   const [size, setSize] = useState(viewportSize);
-  useEffect(() => {
-    const apply = () => setSize(viewportSize());
+  useLayoutEffect(() => {
+    const apply = () => {
+      const next = viewportSize();
+      applyStationViewport(next.width, next.height);
+      setSize((prev) =>
+        prev.width === next.width && prev.height === next.height ? prev : next,
+      );
+    };
+    const applySoon = () => {
+      apply();
+      window.requestAnimationFrame(apply);
+    };
     apply();
     window.addEventListener("resize", apply);
-    window.addEventListener("orientationchange", apply);
+    window.addEventListener("orientationchange", applySoon);
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", apply);
+    vv?.addEventListener("scroll", apply);
     return () => {
       window.removeEventListener("resize", apply);
-      window.removeEventListener("orientationchange", apply);
+      window.removeEventListener("orientationchange", applySoon);
+      vv?.removeEventListener("resize", apply);
+      vv?.removeEventListener("scroll", apply);
     };
   }, []);
   return stationLayoutFromSize(size.width, size.height);

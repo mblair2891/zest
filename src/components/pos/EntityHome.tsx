@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
+import { useStationLayout } from "@/lib/ui/station-layout";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -177,6 +179,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const houseName = usePosStore((s) => s.settings?.name);
   const stationKind = useStationSessionStore((s) => s.assignment.kind);
   const stationPad = isStationPinPath() || isNativeApp();
+  useStationLayout();
   useEffect(() => {
     if (isVenueEntityId(entityId) && activeEntityId !== entityId) {
       applyEntity(entityId);
@@ -192,7 +195,12 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
 
   if (!entity) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)]">
+      <div
+        className={cn(
+          "flex items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)]",
+          stationPad ? "station-viewport station-pin-screen" : "min-h-[100dvh]",
+        )}
+      >
         {stationPad ? (
           <p className="text-sm text-muted-foreground">Unknown venue on this station.</p>
         ) : (
@@ -334,13 +342,19 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   };
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
+    <div
+      className={cn(
+        "flex flex-col bg-bg pt-[var(--grok-banner-h,0px)]",
+        stationPad ? "station-viewport station-pin-screen" : "min-h-[100dvh]",
+      )}
+      data-station-pin={stationPad ? "" : undefined}
+    >
       <NetworkWatcher />
       <NetworkBanner />
       <TrainingBanner />
       <PrintWaitingBanner />
       {stationPad && <StationDeviceHealthBanner />}
-      <div className="flex items-center justify-end gap-2 px-4 pt-3">
+      <div className={cn("flex shrink-0 items-center justify-end gap-2 px-4", stationPad ? "py-1" : "pt-3")}>
         {stationPad && <StationDevicesButton />}
         <HelpButton surface="pin" />
         {!stationPad && (
@@ -351,7 +365,12 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
         )}
       </div>
       <div
-        className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-8"
+        className={cn(
+          "mx-auto flex w-full flex-1 flex-col px-4",
+          stationPad
+            ? "station-pin-body max-w-none pb-2"
+            : "max-w-lg justify-center py-8",
+        )}
         data-demo={prospect ? "demo-pin-gate" : undefined}
       >
         {!stationPad && (
@@ -364,11 +383,16 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </Link>
         )}
 
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
-            <Icon className="h-7 w-7" />
+        <div className={cn("text-center", stationPad ? "mb-1 shrink-0" : "mb-8")}>
+          <div
+            className={cn(
+              "mx-auto flex items-center justify-center rounded-2xl bg-primary text-primary-foreground",
+              stationPad ? "mb-1 h-9 w-9" : "mb-4 h-16 w-16 shadow-lg shadow-primary/25",
+            )}
+          >
+            <Icon className={stationPad ? "h-4 w-4" : "h-7 w-7"} />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className={cn("font-semibold tracking-tight text-foreground", stationPad ? "text-lg leading-tight" : "text-2xl")}>
             {stationPad
               ? houseName || readTenantPosContext()?.locationName || entity.venueName
               : entity.venueName}
@@ -381,7 +405,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
               <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
             </>
           )}
-          <p className="mt-3 text-sm font-medium">4-digit PIN</p>
+          <p className={cn("font-medium", stationPad ? "mt-1 text-xs" : "mt-3 text-sm")}>4-digit PIN</p>
           {(() => {
             const paired = readStationDeviceRole();
             const stationRole =
@@ -389,15 +413,17 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
               (stationPad ? deviceRoleFromSessionMode(stationKind) : null);
             if (!stationRole) return null;
             return (
-              <p className="mt-2 text-sm text-foreground">
+              <p className={cn("text-foreground", stationPad ? "mt-0.5 text-xs" : "mt-2 text-sm")}>
                 {DEVICE_ROLE_LABEL[stationRole]}
-                <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                  {DEVICE_ROLE_BLURB[stationRole]}
-                </span>
+                {stationPad ? null : (
+                  <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                    {DEVICE_ROLE_BLURB[stationRole]}
+                  </span>
+                )}
               </p>
             );
           })()}
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className={cn("text-xs text-muted-foreground", stationPad ? "mt-0.5" : "mt-1")}>
             PIN signs you onto this station. Enter opens the floor. Clock in only punches.
           </p>
           {prospect && (
@@ -520,7 +546,10 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
         <button
           type="button"
           onClick={() => openGuide("intro")}
-          className="mt-8 text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+          className={cn(
+            "text-center text-xs text-muted-foreground underline-offset-2 hover:underline",
+            stationPad ? "mt-1 shrink-0" : "mt-8",
+          )}
         >
           Operators Guide
         </button>

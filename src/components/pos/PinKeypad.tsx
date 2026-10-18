@@ -59,15 +59,22 @@ export function PinKeypad({
 
   return (
     <div
-      className={cn("mx-auto w-full max-w-sm", shaking && "pin-shake")}
+      className={cn(
+        station ? "station-pin-pad" : "mx-auto w-full max-w-sm",
+        shaking && "pin-shake",
+      )}
       data-demo="pin-keypad"
       data-pin-pad={station ? "station" : "confirm"}
     >
-      {title && <p className="mb-1 text-center text-sm font-semibold">{title}</p>}
-      {hint && <p className="mb-4 text-center text-xs text-muted-foreground">{hint}</p>}
+      {title && <p className="mb-1 shrink-0 text-center text-sm font-semibold">{title}</p>}
+      {hint && (
+        <p className={cn("text-center text-xs text-muted-foreground", station ? "mb-1 shrink-0" : "mb-4")}>
+          {hint}
+        </p>
+      )}
       <button
         type="button"
-        className="mb-5 flex w-full justify-center gap-3"
+        className={cn("flex w-full shrink-0 justify-center gap-3", station ? "mb-2" : "mb-5")}
         aria-label="Clear PIN"
         onClick={() => {
           onClearError?.();
@@ -90,46 +97,48 @@ export function PinKeypad({
         </p>
       )}
       {station ? (
-        <div className="grid grid-cols-3 gap-3" data-pin-keys="12">
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((key) => (
+        <div className="station-pin-fit">
+          <div className="station-pin-keys" data-pin-keys="12">
+            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((key) => (
+              <Button
+                key={key}
+                type="button"
+                variant="secondary"
+                className="station-pin-key h-auto font-semibold tabular"
+                data-pin-key={key}
+                onClick={() => press(key)}
+              >
+                {key}
+              </Button>
+            ))}
             <Button
-              key={key}
+              type="button"
+              variant="default"
+              className="station-pin-key h-auto px-1 font-semibold leading-tight"
+              data-pin-key="enter"
+              onClick={() => runStation("enter")}
+            >
+              Enter
+            </Button>
+            <Button
               type="button"
               variant="secondary"
-              className="h-20 min-h-20 text-2xl font-semibold tabular"
-              data-pin-key={key}
-              onClick={() => press(key)}
+              className="station-pin-key h-auto font-semibold tabular"
+              data-pin-key="0"
+              onClick={() => press("0")}
             >
-              {key}
+              0
             </Button>
-          ))}
-          <Button
-            type="button"
-            variant="default"
-            className="h-20 min-h-20 px-1 text-base font-semibold leading-tight"
-            data-pin-key="enter"
-            onClick={() => runStation("enter")}
-          >
-            Enter
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-20 min-h-20 text-2xl font-semibold tabular"
-            data-pin-key="0"
-            onClick={() => press("0")}
-          >
-            0
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-20 min-h-20 px-1 text-base font-semibold leading-tight"
-            data-pin-key="clock-in"
-            onClick={() => runStation("clock_in")}
-          >
-            Clock in
-          </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="station-pin-key h-auto px-1 font-semibold leading-tight"
+              data-pin-key="clock-in"
+              onClick={() => runStation("clock_in")}
+            >
+              Clock in
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-3">

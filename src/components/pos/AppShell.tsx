@@ -505,7 +505,7 @@ export function AppShell() {
   if (kdsMode) {
     return (
       <div
-        className={cn("relative flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}
+        className={cn("relative flex station-viewport flex-col bg-bg text-foreground", shellPad)}
         data-station-layout={stationLayout.form}
       >
         <LoginOnboardingHost />
@@ -537,7 +537,7 @@ export function AppShell() {
         </header>
         <ClockInAfterPinDialog />
         <div
-          className="min-h-0 flex-1"
+          className="min-h-0 flex-1 overflow-hidden"
           data-demo={demoDevice === "kds_bar" ? "bar" : demoDevice === "expo" ? "expo" : "kitchen"}
         >
           <KitchenView
@@ -558,7 +558,7 @@ export function AppShell() {
   if (stationPinShell) {
     return (
       <div
-        className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}
+        className={cn("flex station-viewport flex-col bg-bg text-foreground", shellPad)}
         data-station-layout={stationLayout.form}
         data-station-pin-shell
       >
@@ -619,7 +619,7 @@ export function AppShell() {
 
   return (
     <div
-      className={cn("relative flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}
+      className={cn("relative flex station-viewport flex-col bg-bg text-foreground", shellPad)}
       data-station-layout={stationLayout.form}
     >
       <LoginOnboardingHost />

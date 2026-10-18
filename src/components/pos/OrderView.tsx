@@ -1404,7 +1404,7 @@ export function OrderView({
   return (
     <div
       className={cn(
-        "relative flex h-full min-h-0",
+        "relative flex h-full min-h-0 w-full min-w-0 overflow-hidden",
         checkOverlay ? "flex-col" : "flex-row",
       )}
     >

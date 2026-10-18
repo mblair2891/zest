@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { stationLayoutFromSize } from "../src/lib/ui/station-layout.ts";
+import { stationLayoutFromSize, stationViewportVars } from "../src/lib/ui/station-layout.ts";
 
 test("8 inch Android handheld portrait is single-column handheld", () => {
   const l = stationLayoutFromSize(800, 1280);
@@ -40,6 +40,16 @@ test("counter 15 inch keeps side nav", () => {
   assert.equal(l.twoCol, true);
   assert.equal(l.counter, true);
   assert.equal(l.form, "counter");
+});
+
+test("elo landscape viewport is landscape and a turned phone is portrait", () => {
+  const elo = stationViewportVars(1280, 800);
+  assert.equal(elo.orientation, "landscape");
+  assert.equal(elo.vw, "1280px");
+  assert.equal(elo.vh, "800px");
+  const turned = stationViewportVars(800, 1280);
+  assert.equal(turned.orientation, "portrait");
+  assert.equal(turned.vh, "1280px");
 });
 
 test("10 inch tablet portrait uses handheld overlay, not three columns", () => {

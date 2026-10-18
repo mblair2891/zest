@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_287_station_fit",
+    date: "2026-10-18",
+    title: "Station screens fit the display",
+    summary:
+      "The station PIN pad shows Enter and Clock in with no scroll. Floor, order, pay, and the kitchen screen fit the station.",
+    body: "The PIN pad fills the station display. Enter stays left of 0 and Clock in stays right of 0. Turn the station and the pad refits. Clock out stays in Close out. The floor, the order screen, pay, and the kitchen order display fit the same display in landscape or portrait.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor", "kitchen"],
+    audience: "all",
+    topicId: "station-fit",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_286_usb_card_reader",
     date: "2026-10-17",
     title: "USB card reader",

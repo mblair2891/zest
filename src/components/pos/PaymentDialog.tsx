@@ -1585,13 +1585,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       }}
     >
       <DialogContent
+        data-station-pay=""
         className={cn(
+          "flex flex-col overflow-hidden",
           layout.handheld
-            ? "h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 left-0 top-0 rounded-none max-h-none"
-            : "max-w-md",
+            ? "left-0 top-0 h-[var(--station-vh,100dvh)] w-full max-w-none translate-x-0 translate-y-0 rounded-none"
+            : "max-h-[var(--station-vh,100dvh)] w-[min(calc(var(--station-vw,100vw)-1rem),40rem)]",
         )}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center justify-between gap-2 pr-6">
             <span>
               {done
@@ -1606,6 +1608,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             </GuideLearnLink>
           </DialogTitle>
         </DialogHeader>
+        <div className="station-pay-scroll">
         {method === "card" && (payStatus?.mode === "sandbox" || sandbox) && (
           <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
             TRAINING — Quantum Payments sandbox. Not a live card capture. Cash and gift still work without a reader.
@@ -2364,12 +2367,12 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 {error}
               </p>
             )}
-
-            <div
-              className={cn(
-                "flex items-center justify-between rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm",
-              )}
-            >
+          </div>
+        )}
+        </div>
+        {!done && !guestFace ? (
+          <div className="station-pay-actions space-y-2">
+            <div className="flex items-center justify-between rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm">
               <span className="text-muted-foreground">Charging</span>
               <span className="text-lg font-semibold tabular">
                 {formatCurrency(cardTotal)}
@@ -2377,7 +2380,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             </div>
 
             <Button
-              className="w-full"
+              className="station-touch min-h-12 w-full"
               size="xl"
               onClick={() => {
                 if (method === "card" && cardHoldAuth && stationClass === "handheld" && !guestFace) {
@@ -2405,7 +2408,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="station-touch min-h-12 w-full"
                 data-void-card=""
                 disabled={busy || usbAttached !== true}
                 onClick={voidUsbCard}
@@ -2414,7 +2417,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               </Button>
             ) : null}
           </div>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
     <ManagerPinDialog

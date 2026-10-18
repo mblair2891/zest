@@ -142,6 +142,8 @@ test("guide states the remove and void rule", () => {
   assert.match(orders, /has not been sent can be removed/);
   assert.match(loss, /reason from the location list/);
   assert.doesNotMatch(loss, /void\/comp skip the gate/);
-  assert.match(types, /2026\.10\.286/);
-  assert.match(types, /USB card reader connection/);
+  assert.match(types, /2026\.10\.287/);
+  assert.match(types, /Station screens fit the display/);
+  const payments = readFileSync("src/lib/guide/content/payments.ts", "utf8");
+  assert.match(payments, /A card reader connects by Bluetooth, Network, or USB/);
 });
