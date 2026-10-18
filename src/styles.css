@@ -270,6 +270,18 @@
   aspect-ratio: 3 / 4;
   max-width: 100%;
   margin-inline: auto;
+  grid-template-rows: repeat(4, minmax(0, 1fr)) minmax(2.75rem, 0.72fr);
+}
+
+/* Under Enter, same column. Does not move Enter, 0, or Clock in. */
+.station-pin-keys [data-pin-key="backspace"] {
+  grid-column: 1;
+  grid-row: 5;
+  flex-direction: column;
+  white-space: normal;
+  font-size: clamp(0.72rem, 3.4cqh, 0.95rem);
+  line-height: 1.05;
+  gap: 0.1rem;
 }
 
 .station-pin-keys button {

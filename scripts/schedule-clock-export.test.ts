@@ -217,6 +217,8 @@ test("PIN pad is Enter and Clock in and does not open order entry from a punch",
   assert.match(pad, /data-pin-keys="12"/);
   assert.match(pad, /data-pin-key="enter"/);
   assert.match(pad, /data-pin-key="clock-in"/);
+  assert.match(pad, /data-pin-key="backspace"/);
+  assert.match(pad, /slice\(0, -1\)/);
   assert.match(pad, /Clock in/);
   assert.doesNotMatch(pad, /Clock out/);
   const flow = readFileSync("src/components/pos/EndShiftFlow.tsx", "utf8");

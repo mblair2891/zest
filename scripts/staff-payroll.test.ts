@@ -158,6 +158,6 @@ test("the operators guide explains the employee number and the pay rate", () => 
   assert.match(hr, /2,080/);
   assert.match(hr, /Summex does not process payroll/);
   const guide = readFileSync("docs/operators-guide.md", "utf8");
-  assert.match(guide, /Guide v2026\.10\.293/);
+  assert.match(guide, /Guide v2026\.10\.294/);
   assert.match(guide, /employee number unique at the venue/);
 });

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_294_pin_backspace",
+    date: "2026-10-18",
+    title: "PIN pad backspace",
+    summary: "Backspace on the station PIN pad removes the last digit.",
+    body: "The PIN pad stays in the center of the order and host station. Backspace sits under Enter and removes the last digit before Enter or Clock in. Enter stays left of 0 and Clock in stays right of 0.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "station-fit",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_293_pin_pad_center",
     date: "2026-10-18",
     title: "Centered station PIN pad",

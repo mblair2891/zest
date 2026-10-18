@@ -20,8 +20,9 @@ export function PinKeypad({
   onComplete: (pin: string) => void;
   onClearError?: () => void;
   /**
-   * Station pad: 1–9, Enter, 0, Clock in. Enter opens the session.
-   * Clock in punches and stays on the pad. No clock-out key.
+   * Station pad: 1–9, Enter, 0, Clock in, then Backspace under Enter.
+   * Enter opens the session. Clock in punches and stays on the pad.
+   * Backspace removes the last digit. No clock-out key.
    */
   station?: {
     onEnter: (pin: string) => void;
@@ -137,6 +138,20 @@ export function PinKeypad({
               onClick={() => runStation("clock_in")}
             >
               Clock in
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="station-pin-key station-pin-backspace h-auto px-1 font-semibold leading-tight"
+              data-pin-key="backspace"
+              aria-label="Backspace"
+              onClick={() => {
+                onClearError?.();
+                setPin((p) => p.slice(0, -1));
+              }}
+            >
+              <Delete className="h-5 w-5" aria-hidden />
+              Backspace
             </Button>
           </div>
         </div>

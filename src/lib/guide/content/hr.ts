@@ -23,7 +23,7 @@ export const HR_TOPICS: GuideTopic[] = [
         "You belong to one employer entity. Another stall cannot open your file.",
       ),
       steps(
-        "On the PIN pad, enter your PIN and tap Clock in to punch, or Enter to open the station. There is no Clock out key. If you Enter while off the clock and inside today’s window, you may accept Clock in for this shift? or tap Not now. Already clocked in, Enter goes to work and the floor shows clocked in HH:MM.",
+        "On the PIN pad, enter your PIN and tap Clock in to punch, or Enter to open the station. Backspace removes the last digit. There is no Clock out key. If you Enter while off the clock and inside today’s window, you may accept Clock in for this shift? or tap Not now. Already clocked in, Enter goes to work and the floor shows clocked in HH:MM.",
         "Open HR only if your house uses it — request time-off or confirm availability.",
         "Complete packets you were sent. Do not skip I-9 sections or backdate them.",
       ),

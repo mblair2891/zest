@@ -9,6 +9,14 @@ test("station PIN pad scales inside the viewport and keeps Enter and Clock in", 
   assert.match(station, /data-pin-key="enter"/);
   assert.match(station, /data-pin-key="0"/);
   assert.match(station, /data-pin-key="clock-in"/);
+  assert.match(station, /data-pin-key="backspace"/);
+  assert.match(station, /Backspace/);
+  assert.match(station, /setPin\(\(p\) => p\.slice\(0, -1\)\)/);
+  const enterAt = station.indexOf('data-pin-key="enter"');
+  const zeroAt = station.indexOf('data-pin-key="0"');
+  const clockAt = station.indexOf('data-pin-key="clock-in"');
+  const backAt = station.indexOf('data-pin-key="backspace"');
+  assert.ok(enterAt >= 0 && enterAt < zeroAt && zeroAt < clockAt && clockAt < backAt);
   assert.match(station, /Clock in/);
   assert.equal(station.includes("h-20"), false);
   assert.equal(station.includes("min-h-20"), false);
