@@ -102,10 +102,10 @@ test("payments and tipping guides describe the card tip buttons", () => {
   const types = read("src/lib/guide/types.ts");
   assert.match(payments, /18%, 20%, 25%, and Custom/);
   assert.match(payments, /Sandbox keys send the charge to the Finix sandbox/);
-  assert.match(payments, /matches Guide v2026\.10\.292/);
+  assert.match(payments, /matches Guide v2026\.10\.293/);
   assert.match(payments, /A card reader connects by Bluetooth, Network, or USB/);
   assert.match(tipping, /18%, 20%, 25%, and Custom/);
-  assert.match(types, /GUIDE_VERSION = "2026\.10\.292"/);
-  assert.match(types, /Cash drawer manager approval/);
+  assert.match(types, /GUIDE_VERSION = "2026\.10\.293"/);
+  assert.match(types, /Centered PIN pad/);
   assert.match(payments, /The station PIN pad and the floor, order, pay, and kitchen screens fit the display/);
 });

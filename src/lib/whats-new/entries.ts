@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_293_pin_pad_center",
+    date: "2026-10-18",
+    title: "Centered station PIN pad",
+    summary: "The station PIN pad sits in the center of the screen at a normal size.",
+    body: "The PIN pad sits in the center of the order and host station in portrait and landscape. Enter stays left of 0 and Clock in stays right of 0. A clock status above the pad stays there. Clock out stays in Close out.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "station-fit",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_292_drawer_approval",
     date: "2026-10-18",
     title: "Cash drawer manager approval",

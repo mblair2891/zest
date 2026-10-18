@@ -24,6 +24,9 @@ test("station PIN pad scales inside the viewport and keeps Enter and Clock in", 
   assert.match(css, /--station-vh/);
   assert.match(css, /minmax\(0, 1fr\)/);
   assert.match(css, /min\(3rem, 100%\)/);
+  assert.match(css, /\.station-pin-screen \.station-pin-keys/);
+  assert.match(css, /aspect-ratio:\s*3\s*\/\s*4/);
+  assert.match(css, /justify-content:\s*center/);
   assert.match(css, /data-station-pay/);
 
   const layout = readFileSync("src/lib/ui/station-layout.ts", "utf8");

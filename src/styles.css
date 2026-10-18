@@ -240,6 +240,12 @@
   width: 100%;
 }
 
+/* Station screen: center a 3×4 pad. A status line above this box stays full width. */
+.station-pin-screen .station-pin-fit {
+  align-items: center;
+  justify-content: center;
+}
+
 /* 1–9, then Enter, 0, Clock in. Rows share leftover height. 48px when the cell allows it. */
 .station-pin-keys {
   display: grid;
@@ -252,6 +258,18 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(4, minmax(0, 1fr));
   gap: clamp(0.35rem, 1.4cqmin, 0.85rem);
+}
+
+/* Slightly taller than wide (4 rows / 3 columns). Cap the side so a landscape station stays a pad. */
+.station-pin-screen .station-pin-keys {
+  --pin-side: min(28rem, 100cqi, calc(100cqb * 0.72));
+  flex: 0 0 auto;
+  align-self: center;
+  width: var(--pin-side);
+  height: calc(var(--pin-side) * 4 / 3);
+  aspect-ratio: 3 / 4;
+  max-width: 100%;
+  margin-inline: auto;
 }
 
 .station-pin-keys button {
