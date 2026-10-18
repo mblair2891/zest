@@ -56,6 +56,64 @@ export function isInsideClockInWindow(
   return now >= open && now <= close;
 }
 
+export const NO_SHIFT_BLOCKED = "No shift scheduled. Clock-in not allowed.";
+export const NO_SHIFT_CONFIRM = "No shift scheduled. Clock in anyway?";
+
+/** A published shift covers now from the early window through the end plus the late window. */
+export function shiftCoversClockIn(
+  now: number,
+  shift: { start: number; end: number; published: boolean } | null,
+  rules: Pick<ClockRules, "clockInEarlyMinutes" | "clockInLateMinutes">,
+): boolean {
+  if (!shift || !shift.published) return false;
+  return (
+    now >= shift.start - rules.clockInEarlyMinutes * 60_000 &&
+    now <= shift.end + rules.clockInLateMinutes * 60_000
+  );
+}
+
+export type ClockShiftPick<T> =
+  | { kind: "covering"; shift: T }
+  | { kind: "upcoming"; shift: T }
+  | { kind: "none" };
+
+/**
+ * Covering shift wins. The next shift that has not opened yet stays on the early-window path.
+ * A shift that already ended is not a covering shift.
+ */
+export function pickClockShift<T extends { start: number; end: number; published: boolean }>(
+  now: number,
+  shifts: T[],
+  rules: Pick<ClockRules, "clockInEarlyMinutes" | "clockInLateMinutes">,
+): ClockShiftPick<T> {
+  const covering = shifts.find((shift) => shiftCoversClockIn(now, shift, rules));
+  if (covering) return { kind: "covering", shift: covering };
+  const earlyMs = rules.clockInEarlyMinutes * 60_000;
+  const upcoming = shifts
+    .filter((shift) => shift.published && now < shift.start - earlyMs)
+    .sort((a, b) => a.start - b.start)[0];
+  if (upcoming) return { kind: "upcoming", shift: upcoming };
+  return { kind: "none" };
+}
+
+export type UnscheduledClockAction =
+  | { action: "scheduled" }
+  | { action: "block"; message: string }
+  | { action: "confirm"; message: string }
+  | { action: "allow"; message: "Unscheduled" };
+
+/** Location On/Off when no shift covers now. A manager force does not change this. */
+export function unscheduledClockGate(input: {
+  hasCoveringShift: boolean;
+  allowUnscheduled: boolean;
+  confirmed: boolean;
+}): UnscheduledClockAction {
+  if (input.hasCoveringShift) return { action: "scheduled" };
+  if (!input.allowUnscheduled) return { action: "block", message: NO_SHIFT_BLOCKED };
+  if (!input.confirmed) return { action: "confirm", message: NO_SHIFT_CONFIRM };
+  return { action: "allow", message: "Unscheduled" };
+}
+
 export function evaluateClockIn(
   now: number,
   shift: ShiftWindow,

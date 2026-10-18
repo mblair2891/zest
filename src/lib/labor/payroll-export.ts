@@ -43,6 +43,7 @@ export type PayrollExportLine = {
   payRateType?: string;
   payRateCents?: number;
   entityName?: string;
+  unscheduled?: boolean;
 };
 
 export type PayrollExportBatch = {
@@ -98,6 +99,7 @@ export function genericPayrollCsv(batch: PayrollExportBatch): string {
     "pool_out",
     "employer_id",
     "employer_name",
+    "unscheduled",
   ];
   const lines = batch.lines.map((r) =>
     [
@@ -127,6 +129,7 @@ export function genericPayrollCsv(batch: PayrollExportBatch): string {
       ((r.poolOutCents ?? 0) / 100).toFixed(2),
       csvEscape(batch.employerId),
       csvEscape(batch.employerName),
+      r.unscheduled ? "Y" : "N",
     ].join(","),
   );
   return [header.join(","), ...lines].join("\n");

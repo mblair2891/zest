@@ -24,6 +24,8 @@ export type PayrollRow = {
   lastName?: string;
   payRateType?: string;
   payRateCents?: number;
+  /** True when any included punch had no shift covering clock-in. Hours still count. */
+  unscheduled?: boolean;
 };
 
 export function buildPayrollRows(opts: {
@@ -91,6 +93,7 @@ export function buildPayrollRows(opts: {
     if (flags.includes("daily")) row.otDaily = true;
     if (flags.includes("weekly")) row.otWeekly = true;
     if (flags.includes("seventh")) row.otSeventh = true;
+    if (p.unscheduled) row.unscheduled = true;
   }
   return [...byEmp.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -118,6 +121,7 @@ export function payrollCsv(rows: PayrollRow[]): string {
     "ot_weekly",
     "ot_seventh",
     "punches",
+    "unscheduled",
   ];
   const lines = rows.map((r) => {
     const split = splitPersonName(r.name);
@@ -141,6 +145,7 @@ export function payrollCsv(rows: PayrollRow[]): string {
       r.otWeekly ? "Y" : "N",
       r.otSeventh ? "Y" : "N",
       String(r.punchCount),
+      r.unscheduled ? "Y" : "N",
     ].join(",");
   });
   return [header.join(","), ...lines].join("\n");
@@ -156,7 +161,8 @@ export function payrollPdf(rows: PayrollRow[]): Blob {
         `${r.name} (${r.role}) ${r.operatorName}  reg ${r.regularHours.toFixed(2)}h  OT ${r.otHours.toFixed(2)}h` +
         (r.otDaily ? " daily" : "") +
         (r.otWeekly ? " weekly" : "") +
-        (r.otSeventh ? " 7th-day" : ""),
+        (r.otSeventh ? " 7th-day" : "") +
+        (r.unscheduled ? " Unscheduled" : ""),
     ),
   ];
   const text = lines.join("\n");

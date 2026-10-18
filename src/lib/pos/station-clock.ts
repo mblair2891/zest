@@ -30,7 +30,10 @@ function syncClockedFlag(employeeId: string, shouldBeIn: boolean) {
 /**
  * Clock in / out for the signed-in person. Never changes the station view.
  */
-export function punchStationClock(employeeId: string): { ok: boolean; error?: string; forceRequired?: boolean } {
+export function punchStationClock(
+  employeeId: string,
+  opts?: { confirmUnscheduled?: boolean },
+): { ok: boolean; error?: string; forceRequired?: boolean; needsUnscheduledConfirm?: boolean } {
   const emp = usePosStore.getState().employees.find((e) => e.id === employeeId);
   if (!emp) return { ok: false, error: "Not signed in" };
   const ops = useOpsStore.getState();
@@ -44,8 +47,16 @@ export function punchStationClock(employeeId: string): { ok: boolean; error?: st
     homeOperatorId: emp.operatorId || HOST_SCOPE,
     clockOperatorId: clockOperatorId(),
     grants: grantsFor(),
+    confirmUnscheduled: opts?.confirmUnscheduled,
   });
-  if (!res.ok) return { ok: false, error: res.error ?? "Could not clock in.", forceRequired: res.forceRequired };
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: res.error ?? "Could not clock in.",
+      forceRequired: res.needsUnscheduledConfirm ? undefined : res.forceRequired,
+      needsUnscheduledConfirm: res.needsUnscheduledConfirm,
+    };
+  }
   syncClockedFlag(emp.id, true);
   return { ok: true };
 }
@@ -54,6 +65,7 @@ export type PunchByPinResult = {
   ok: boolean;
   error?: string;
   forceRequired?: boolean;
+  needsUnscheduledConfirm?: boolean;
   employeeId?: string;
   employeeName?: string;
   already?: boolean;
@@ -66,7 +78,7 @@ export type PunchByPinResult = {
 export function punchClockByPin(
   pin: string,
   mode: "clock_in" | "clock_out",
-  opts?: { force?: boolean; locationId?: string | null },
+  opts?: { force?: boolean; locationId?: string | null; confirmUnscheduled?: boolean },
 ): PunchByPinResult {
   const st = usePosStore.getState();
   const loc = opts?.locationId || st.tenantLocationId || "";
@@ -99,12 +111,14 @@ export function punchClockByPin(
     homeOperatorId: emp.operatorId || HOST_SCOPE,
     clockOperatorId: clockOperatorId(),
     grants: grantsFor(),
+    confirmUnscheduled: opts?.confirmUnscheduled,
   });
   if (!res.ok) {
     return {
       ok: false,
       error: res.error ?? "Could not clock in.",
-      forceRequired: res.forceRequired,
+      forceRequired: res.needsUnscheduledConfirm ? undefined : res.forceRequired,
+      needsUnscheduledConfirm: res.needsUnscheduledConfirm,
       employeeId: emp.id,
       employeeName: emp.name,
     };
@@ -160,7 +174,7 @@ export function punchOutAfterCloseout(
 export function punchClockForEmployee(
   employeeId: string,
   mode: "clock_in" | "clock_out",
-  opts?: { force?: boolean },
+  opts?: { force?: boolean; confirmUnscheduled?: boolean },
 ): PunchByPinResult {
   const emp = usePosStore.getState().employees.find((e) => e.id === employeeId);
   if (!emp) return { ok: false, error: "Unknown staff" };
@@ -191,12 +205,14 @@ export function punchClockForEmployee(
     homeOperatorId: emp.operatorId || HOST_SCOPE,
     clockOperatorId: clockOperatorId(),
     grants: grantsFor(),
+    confirmUnscheduled: opts?.confirmUnscheduled,
   });
   if (!res.ok) {
     return {
       ok: false,
       error: res.error ?? "Could not clock in.",
-      forceRequired: res.forceRequired,
+      forceRequired: res.needsUnscheduledConfirm ? undefined : res.forceRequired,
+      needsUnscheduledConfirm: res.needsUnscheduledConfirm,
       employeeId: emp.id,
       employeeName: emp.name,
     };

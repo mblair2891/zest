@@ -1373,9 +1373,10 @@ export async function listOpenFloor(
       status: string;
       regular_minutes: number | null;
       ot_minutes: number | null;
+      unscheduled: unknown;
     }>`
       select id, employee_id, employee_name, employer_id, clock_in_at, clock_out_at,
-             status, regular_minutes, ot_minutes
+             status, regular_minutes, ot_minutes, unscheduled
       from location_punches
       where location_id = ${ctx.locationId}
         and clock_out_at is null
@@ -1392,6 +1393,7 @@ export async function listOpenFloor(
       status: p.status || "open",
       regularMinutes: p.regular_minutes ?? 0,
       otMinutes: p.ot_minutes ?? 0,
+      unscheduled: dbTrue(p.unscheduled),
     }));
   } catch {
     punches = [];

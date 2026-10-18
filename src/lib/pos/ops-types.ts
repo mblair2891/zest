@@ -54,6 +54,8 @@ export interface TimePunch {
   otMinutes?: number;
   otFlags?: string[];
   operatorId?: string;
+  /** Punch started with no shift covering now, after the person confirmed. */
+  unscheduled?: boolean;
 }
 
 export interface SupervisorAlert {

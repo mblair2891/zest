@@ -33,6 +33,7 @@ export type EntityOwnerPunch = {
   role?: string;
   payRateType?: string | null;
   payRateCents?: number | null;
+  unscheduled?: boolean;
 };
 
 export type EntityOwnerItem = {
@@ -65,6 +66,8 @@ export type EntityTodaySnapshot = {
   laborPct: number | null;
   laborByRole: Array<{ role: string; cents: number }>;
   laborByEmployee: Array<{ employeeId: string; name: string; cents: number }>;
+  /** Minutes inside laborMinutes that started with no covering shift. */
+  unscheduledMinutes: number;
   topItems: EntityTopItem[];
   eightySixCount: number;
 };
@@ -206,6 +209,7 @@ export function entityToday(input: EntityTodayInput): EntityTodaySnapshot {
     employeeName?: string;
     role?: string;
     entityId?: string;
+    unscheduled?: boolean;
   }> = [];
   for (const punch of input.punches) {
     if (String(punch.operatorId || "").trim() !== entityId) continue;
@@ -222,6 +226,7 @@ export function entityToday(input: EntityTodayInput): EntityTodaySnapshot {
         employeeName: punch.employeeName,
         role: punch.role,
         entityId,
+        unscheduled: punch.unscheduled === true,
       });
     }
   }
@@ -252,6 +257,7 @@ export function entityToday(input: EntityTodayInput): EntityTodaySnapshot {
     laborPct,
     laborByRole: labor.byRole,
     laborByEmployee: labor.byEmployee,
+    unscheduledMinutes: labor.unscheduledMinutes,
     topItems,
     eightySixCount,
   };

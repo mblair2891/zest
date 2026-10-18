@@ -83,6 +83,7 @@ import { StaffingRecsSettings } from "./StaffingRecsSettings";
 import { LaborBasisSettings } from "./LaborBasisSettings";
 import { RevenueShareSettings } from "./RevenueShareSettings";
 import { useOpsStore } from "@/lib/pos/ops-store";
+import { UnscheduledClockSetting } from "@/components/pos/UnscheduledClockSetting";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
@@ -1197,6 +1198,16 @@ export function SettingsView() {
       <Pack id="staffing" packs={packs}>
         <RevenueShareSettings write={write} />
         <LaborBasisSettings write={write} />
+        <UnscheduledClockSetting
+          allow={parseLaborRules(labor).allowClockWithNoShift}
+          write={write}
+          onChange={(allow) =>
+            updateLabor({
+              allowClockWithNoShift: allow,
+              requireOverrideForNoShift: !allow,
+            })
+          }
+        />
         <StaffingRecsSettings
           cfg={parseLaborRules(labor).staffingRecs}
           write={write}

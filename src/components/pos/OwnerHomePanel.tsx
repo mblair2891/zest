@@ -60,6 +60,9 @@ function MetricGrid({ title, row }: { title: string; row: OwnerMetrics }) {
         <Metric label="Comps" value={formatCurrency(row.compCents)} />
         <Metric label="Prime cost" value={pct(row.primePct)} />
         <Metric label="Labor" value={pct(row.laborPct)} />
+        {row.unscheduledMinutes > 0 ? (
+          <Metric label="Unscheduled" value={`${(row.unscheduledMinutes / 60).toFixed(2)}h`} />
+        ) : null}
         <Metric label="Food cost" value={pct(row.foodCostPct)} />
         <Metric label="Bev cost" value={pct(row.bevCostPct)} />
       </div>

@@ -294,10 +294,15 @@ export function roundPunch(at: number, minutes: number): number {
 }
 
 export {
+  NO_SHIFT_BLOCKED,
+  NO_SHIFT_CONFIRM,
   clockInWindowBounds,
   evaluateClockIn,
   evaluateClockOut,
   isInsideClockInWindow,
+  pickClockShift,
+  shiftCoversClockIn,
+  unscheduledClockGate,
   type ClockEval,
   type ShiftWindow,
 } from "./clock-eval";

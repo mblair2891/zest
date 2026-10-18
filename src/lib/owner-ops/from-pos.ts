@@ -151,6 +151,7 @@ export function collectOwnerFacts(args: {
         role: employee?.title?.trim() || employee?.role,
         payRateType: employee?.payRateType,
         payRateCents: employee?.payRateCents,
+        unscheduled: punch.unscheduled === true,
       },
     ];
   });

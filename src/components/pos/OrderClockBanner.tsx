@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { UnscheduledClockDialog } from "@/components/pos/UnscheduledClockDialog";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { usePosStore } from "@/lib/pos/store";
@@ -27,6 +28,7 @@ export function OrderClockBanner() {
   );
   const clockIn = useOpsStore((s) => s.clockIn);
   const [error, setError] = useState<string | null>(null);
+  const [askUnscheduled, setAskUnscheduled] = useState(false);
   if (!emp) return null;
   const clocked = Boolean(emp.clockedIn || punch);
   if (clocked) {
@@ -42,34 +44,48 @@ export function OrderClockBanner() {
       </p>
     );
   }
-  const punchIn = () => {
+  const punchIn = (confirmUnscheduled = false) => {
     setError(null);
     const res = clockIn(emp.id, emp.name, {
       homeOperatorId: emp.operatorId || HOST_SCOPE,
+      confirmUnscheduled,
     });
+    if (!res.ok && res.needsUnscheduledConfirm) {
+      setAskUnscheduled(true);
+      return;
+    }
     if (!res.ok) {
+      setAskUnscheduled(false);
       setError(res.error ?? "Could not clock in.");
       return;
     }
+    setAskUnscheduled(false);
     const latest = usePosStore.getState().employees.find((e) => e.id === emp.id);
     if (latest && !latest.clockedIn) clockToggle(emp.id);
   };
   return (
-    <div
-      className="clock-banner-flash flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-white"
-      data-clock-banner="out"
-      role="status"
-    >
-      <span className="text-sm font-bold tracking-wide">NOT CLOCKED IN</span>
-      <button
-        type="button"
-        className="rounded-md bg-white px-3 py-1 text-sm font-semibold text-red-950"
-        data-clock-in
-        onClick={punchIn}
+    <>
+      <div
+        className="clock-banner-flash flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-white"
+        data-clock-banner="out"
+        role="status"
       >
-        Clock in
-      </button>
-      {error ? <span className="w-full text-xs">{error}</span> : null}
-    </div>
+        <span className="text-sm font-bold tracking-wide">NOT CLOCKED IN</span>
+        <button
+          type="button"
+          className="rounded-md bg-white px-3 py-1 text-sm font-semibold text-red-950"
+          data-clock-in
+          onClick={() => punchIn(false)}
+        >
+          Clock in
+        </button>
+        {error ? <span className="w-full text-xs">{error}</span> : null}
+      </div>
+      <UnscheduledClockDialog
+        open={askUnscheduled}
+        onCancel={() => setAskUnscheduled(false)}
+        onConfirm={() => punchIn(true)}
+      />
+    </>
   );
 }

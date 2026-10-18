@@ -474,6 +474,7 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
         regularMinutes?: number;
         otMinutes?: number;
         status: string;
+        unscheduled?: boolean;
       };
     }) => ({
       orgId: String(d.orgId ?? "").trim(),
@@ -490,6 +491,7 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
         regularMinutes: Math.max(0, Math.round(Number(d.punch.regularMinutes) || 0)),
         otMinutes: Math.max(0, Math.round(Number(d.punch.otMinutes) || 0)),
         status: String(d.punch.status ?? "open").slice(0, 40),
+        unscheduled: d.punch.unscheduled === true,
       },
     }),
   )
@@ -530,12 +532,12 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
     await sql`
       insert into location_punches (
         id, org_id, location_id, employer_id, employee_id, employee_name,
-        clock_in_at, clock_out_at, regular_minutes, ot_minutes, status, updated_at
+        clock_in_at, clock_out_at, regular_minutes, ot_minutes, status, unscheduled, updated_at
       ) values (
         ${data.punch.id}, ${orgId}, ${locationId}, ${employerId},
         ${data.punch.employeeId}, ${data.punch.employeeName},
         ${inAt}, ${outAt}, ${data.punch.regularMinutes}, ${data.punch.otMinutes},
-        ${data.punch.status}, now()
+        ${data.punch.status}, ${data.punch.unscheduled}, now()
       )
       on conflict (id) do update set
         clock_out_at = excluded.clock_out_at,
@@ -543,6 +545,7 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
         ot_minutes = excluded.ot_minutes,
         status = excluded.status,
         employee_name = excluded.employee_name,
+        unscheduled = excluded.unscheduled,
         updated_at = now()
     `;
     return { ok: true as const };

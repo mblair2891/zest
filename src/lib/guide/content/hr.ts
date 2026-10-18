@@ -48,7 +48,7 @@ export const HR_TOPICS: GuideTopic[] = [
       ),
       ul(
         "On Users, or on the entity Staff tab, enter a first name, a last name, an employee number unique at this venue, and a pay rate. Hourly is the amount per hour. Salary is the annual amount. Hire date and status (active, inactive, or terminated) are on the same form. Display name, email, and phone are optional. A blank display name shows as first and last. PIN, role, and entity stay. An optional position names the job on the list and on the hours file.",
-        "The hours file lists the employee number, first name, last name, pay rate type, pay rate, hours worked, entity, and role, then the existing hours, overtime flags, and tips. Hours worked are the clock punches for that pay period. Labor cost uses that rate: hourly times hours, or the annual salary times hours divided by 2,080. Reports can group that cost by entity, role, and employee.",
+        "The hours file lists the employee number, first name, last name, pay rate type, pay rate, hours worked, entity, and role, then the existing hours, overtime flags, and tips. Hours worked are the clock punches for that pay period. A punch with no scheduled shift is marked Unscheduled on that file. Labor cost uses that rate: hourly times hours, or the annual salary times hours divided by 2,080. Reports can group that cost by entity, role, and employee. Unscheduled hours still count in labor cost.",
         "An older staff row that only had one name splits on the last word. A single word stays the first name until someone enters a last name. Summex does not invent an employee number for those rows.",
         "Reports → Payroll export (and Labor → Hours export) is entity-scoped: employees, role, entity, regular vs OT hours, OT flags (daily / weekly / seventh-day from owner-entered venue rules), declared and card tips, pay period. Card tips already cashed out at closeout are omitted from the file.",
         "Formats: generic CSV and a hours PDF always. Intuit QuickBooks Payroll and ADP when keys are set. Other payroll products import the same CSV. The PDF is not a paycheck.",
@@ -86,7 +86,7 @@ export const HR_TOPICS: GuideTopic[] = [
         "Schedule grid: week or pay period. Role, entity, optional station or section, start, end, break. Copy last week. Publish week. Unpublished drafts do not appear on the clock.",
         "Clock in is its own key on the station PIN pad — separate from Enter. Completing clock in does not open order entry. Clock out is the last step of Close out.",
         "Grace (minutes): early clock-in, late clock-in, early clock-out, late clock-out. Outside grace: allow with manager PIN, or block (setting).",
-        "Clock only on a published shift (default on). No scheduled shift is a red flag when that setting is on.",
+        "Venue Settings, Scheduling / Clock-in, has Allow clock-in for unscheduled shifts. It is off until a location admin or manager turns it on. Off blocks a clock-in when no shift covers now, with the message No shift scheduled. Clock-in not allowed. On asks No shift scheduled. Clock in anyway? Confirm marks that punch Unscheduled on the timecard, labor cost, staffing recommendations, and the hours file. Cancel does not clock in. A scheduled shift still clocks in as usual.",
         "Approval per entity: (1) manual — manager approves every punch; (2) auto if clock-out is within X minutes of scheduled end; (3) auto if clock-out is within X minutes of that employee’s last closed ticket. Unapproved punches stay in Exceptions. Approved punches lock for export.",
         "Red-flag notify managers: early in, late in, early out, late out, missed punch, no scheduled shift.",
         "Pay period weekly / biweekly / semimonthly with period-end time in the venue timezone. Payroll packet ready N days before pay date.",
@@ -95,7 +95,7 @@ export const HR_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Labor → Schedule. Add shifts for this entity. Copy last week if the grid repeats. Publish week — drafts stay off the clock.",
-        "Labor → Rules. Set grace windows, block vs manager PIN, approval mode, pay period and period-end time, OT flags, packet-ready days.",
+        "Labor → Rules, or Venue Settings → Scheduling / Clock-in. Set grace windows, block vs manager PIN, and Allow clock-in for unscheduled shifts. Off is the default. A location admin or manager turns it on. Set approval mode, pay period and period-end time, OT flags, and packet-ready days.",
         "Staff: PIN pad → Clock in (punch only) or Enter (open the station). Clock out is Close out. Manager PIN overrides outside grace when the house allows it.",
         "Supervisor: Exceptions hold unapproved punches. Approve to lock for export.",
         "Labor → Hours export: when the period ends, Download CSV/PDF or Send. Summex does not print a paycheck.",

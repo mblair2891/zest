@@ -162,6 +162,8 @@ export type StaffingSnapshot = {
   clocked: { id: string; name: string; role: EmployeeRole; clockInAt: number; idleMinutes: number }[];
   byRole: Partial<Record<EmployeeRole, number>>;
   clockedHours: number;
+  /** Hours inside clockedHours that started with no covering shift. */
+  unscheduledHours: number;
   salesCents: number;
   salesLast30mCents: number;
   baseline30mCents: number;
@@ -323,8 +325,14 @@ export function decideStaffing(cfg: StaffingRecsConfig, snap: StaffingSnapshot):
 
   const hasAdd = out.some((d) => d.kind === "recommend_add");
   const hasCut = out.some((d) => d.kind === "recommend_cut");
+  const note = unscheduledStaffingNote(snap.unscheduledHours);
+  const withNote = (rows: StaffingDecision[]): StaffingDecision[] => {
+    if (!note) return rows;
+    if (rows.some((row) => row.message.startsWith("Unscheduled hours"))) return rows;
+    return [...rows, note];
+  };
   if (hasAdd && hasCut) {
-    return [
+    return withNote([
       {
         kind: "recommend_hold",
         role: "server",
@@ -333,9 +341,22 @@ export function decideStaffing(cfg: StaffingRecsConfig, snap: StaffingSnapshot):
         message: "Hold staff — demand and labor signals conflict.",
         suggestedAction: "Do not cut or add yet. Recommendations only — the manager decides.",
       },
-    ];
+    ]);
   }
-  return out.slice(0, 3);
+  return withNote(out.slice(0, 3));
+}
+
+function unscheduledStaffingNote(hours: number): StaffingDecision | null {
+  if (!(hours > 0)) return null;
+  const shown = hours.toFixed(2);
+  return {
+    kind: "recommend_hold",
+    role: "server",
+    reasons: [`Unscheduled ${shown}h`],
+    severity: "info",
+    message: `Unscheduled hours count in labor (${shown}h).`,
+    suggestedAction: "Those hours stay in labor cost. The hours file marks them Unscheduled.",
+  };
 }
 
 function formatDollars(cents: number): string {
@@ -357,17 +378,26 @@ export function idleMinutesFor(
 }
 
 export function clockedHoursFromPunches(punches: TimePunch[], now: number): number {
+  return minutesFromPunches(punches, now, false) / 60;
+}
+
+export function unscheduledHoursFromPunches(punches: TimePunch[], now: number): number {
+  return minutesFromPunches(punches, now, true) / 60;
+}
+
+function minutesFromPunches(punches: TimePunch[], now: number, unscheduledOnly: boolean): number {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
   const from = start.getTime();
   let minutes = 0;
   for (const p of punches) {
     if (p.status === "rejected") continue;
+    if (unscheduledOnly && p.unscheduled !== true) continue;
     const a = Math.max(p.clockInAt, from);
     const b = Math.min(p.clockOutAt ?? now, now);
     if (b > a) minutes += (b - a) / 60_000;
   }
-  return minutes / 60;
+  return minutes;
 }
 
 export function upcomingCovers(
@@ -432,6 +462,7 @@ export function buildStaffingSnapshot(input: {
   const byRole: Partial<Record<EmployeeRole, number>> = {};
   for (const c of clocked) byRole[c.role] = (byRole[c.role] ?? 0) + 1;
   const hours = Math.max(clockedHoursFromPunches(input.punches, now), clocked.length * 0.25);
+  const unscheduledHours = unscheduledHoursFromPunches(input.punches, now);
   const salesLast30mCents =
     input.salesLast30mCents ?? salesInWindow(input.orders, now - 30 * 60_000, now);
   let baseline30mCents = daypartBaseline30m(input.orders, now, daypart);
@@ -460,6 +491,7 @@ export function buildStaffingSnapshot(input: {
     clocked,
     byRole,
     clockedHours: hours,
+    unscheduledHours,
     salesCents,
     salesLast30mCents,
     baseline30mCents,

@@ -154,6 +154,11 @@ export function EntityTodayHome({
         />
         <Card label="86 count" value={String(snap.eightySixCount)} testId="today-86" onClick={() => onOpen("menu")} />
       </div>
+      {snap.unscheduledMinutes > 0 ? (
+        <p className="text-xs text-muted-foreground" data-unscheduled-labor>
+          Unscheduled {(snap.unscheduledMinutes / 60).toFixed(2)}h still count in labor.
+        </p>
+      ) : null}
 
       {snap.laborByRole.length > 0 || snap.laborByEmployee.length > 0 ? (
         <div className="grid gap-3 sm:grid-cols-2" data-today-labor-groups="">

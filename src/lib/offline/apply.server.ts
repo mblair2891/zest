@@ -230,10 +230,11 @@ async function applyClockPunch(sql: Sql, userId: string, item: FlushItem) {
   await sql`
     insert into location_punches (
       id, org_id, location_id, employer_id, employee_id, employee_name,
-      clock_in_at, status
+      clock_in_at, status, unscheduled
     ) values (
       ${id}, ${orgId}, ${item.locationId}, ${employerId || "host"},
-      ${employeeId}, ${name}, ${new Date(at).toISOString()}, ${"open"}
+      ${employeeId}, ${name}, ${new Date(at).toISOString()}, ${"open"},
+      ${item.payload.unscheduled === true}
     )
     on conflict (id) do nothing
   `;

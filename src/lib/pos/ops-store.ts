@@ -25,7 +25,9 @@ import {
   evaluateClockOut,
   parseLaborMap,
   parseLaborRules,
+  pickClockShift,
   roundPunch,
+  unscheduledClockGate,
   DEFAULT_LABOR_RULES,
   type EntityLaborRules,
 } from "@/lib/labor/rules";
@@ -536,8 +538,16 @@ interface OpsState {
       homeOperatorId?: string;
       clockOperatorId?: string | null;
       grants?: Array<{ employeeId: string; workOperatorId: string }>;
+      confirmUnscheduled?: boolean;
     },
-  ) => { ok: boolean; error?: string; punchId?: string; forceRequired?: boolean; flags?: string[] };
+  ) => {
+    ok: boolean;
+    error?: string;
+    punchId?: string;
+    forceRequired?: boolean;
+    needsUnscheduledConfirm?: boolean;
+    flags?: string[];
+  };
   scanMissedPunches: (now?: number) => number;
   clockOut: (
     employeeId: string,
@@ -721,19 +731,36 @@ export const useOpsStore = create<OpsState>()(
           })?.operatorId ||
           published[0]?.operatorId ||
           homeOp;
-        const labor = parseLaborRules(get().laborByEntity[hoursEntity] ?? get().labor);
-        const now = roundPunch(Date.now(), labor.punchRoundingMinutes);
+        const windowLabor = parseLaborRules(get().laborByEntity[hoursEntity] ?? get().labor);
+        const house = parseLaborRules(get().labor);
+        const now = roundPunch(Date.now(), windowLabor.punchRoundingMinutes);
         const force = Boolean(opts?.force);
-        const shift =
-          published.find((s) => now >= s.start - labor.clockInEarlyMinutes * 60_000 && now <= s.end + labor.clockInLateMinutes * 60_000) ??
-          published[0] ??
-          null;
-        const evalIn = evaluateClockIn(
-          now,
-          shift ? { id: shift.id, start: shift.start, end: shift.end, published: shift.published } : null,
-          labor,
-          force,
-        );
+        const picked = pickClockShift(now, published, windowLabor);
+        if (picked.kind === "none") {
+          const gate = unscheduledClockGate({
+            hasCoveringShift: false,
+            allowUnscheduled: house.allowClockWithNoShift,
+            confirmed: Boolean(opts?.confirmUnscheduled),
+          });
+          if (gate.action === "block") return { ok: false, error: gate.message };
+          if (gate.action === "confirm") {
+            return { ok: false, needsUnscheduledConfirm: true, error: gate.message };
+          }
+        }
+        const unscheduled = picked.kind === "none";
+        const shift = picked.kind === "none" ? null : picked.shift;
+        const evalIn = unscheduled
+          ? {
+              ok: true as const,
+              flags: ["Unscheduled"],
+              notify: house.notifyNoScheduledShift ? ["Unscheduled"] : [],
+            }
+          : evaluateClockIn(
+              now,
+              shift ? { id: shift.id, start: shift.start, end: shift.end, published: shift.published } : null,
+              windowLabor,
+              force,
+            );
         if (!evalIn.ok) {
           if (evalIn.notify.length) {
             set({
@@ -757,14 +784,15 @@ export const useOpsStore = create<OpsState>()(
           id: uid("tp"),
           employeeId,
           employeeName,
-          shiftId: shift?.id,
-          scheduledStart: shift?.start,
-          scheduledEnd: shift?.end,
+          shiftId: unscheduled ? undefined : shift?.id,
+          scheduledStart: unscheduled ? undefined : shift?.start,
+          scheduledEnd: unscheduled ? undefined : shift?.end,
           operatorId: shift?.operatorId || homeOp,
           clockInAt: now,
           status: "open",
           redFlag: evalIn.flags.length > 0,
-          redFlagReason: evalIn.flags[0],
+          redFlagReason: unscheduled ? "Unscheduled" : evalIn.flags[0],
+          unscheduled: unscheduled || undefined,
         };
         let alerts = get().alerts;
         if (evalIn.notify.length) {
@@ -796,9 +824,10 @@ export const useOpsStore = create<OpsState>()(
         const now = roundPunch(Date.now(), labor.punchRoundingMinutes);
         const force = Boolean(opts?.force);
         const lastTicket = get().lastTicketByEmployee[employeeId];
-        const shiftRow =
-          (punch.shiftId ? get().shifts.find((s) => s.id === punch.shiftId) : undefined) ??
-          get().shifts.find((s) => s.employeeId === employeeId && s.published && sameDay(s.start, punch.clockInAt));
+        const shiftRow = punch.unscheduled
+          ? undefined
+          : (punch.shiftId ? get().shifts.find((s) => s.id === punch.shiftId) : undefined) ??
+            get().shifts.find((s) => s.employeeId === employeeId && s.published && sameDay(s.start, punch.clockInAt));
         const shift = shiftRow
           ? { id: shiftRow.id, start: shiftRow.start, end: shiftRow.end, published: shiftRow.published }
           : punch.scheduledStart && punch.scheduledEnd

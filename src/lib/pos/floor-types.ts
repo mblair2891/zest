@@ -169,6 +169,7 @@ export type FloorPunch = {
   status: string;
   regularMinutes: number;
   otMinutes: number;
+  unscheduled?: boolean;
 };
 
 export type UpsertCheckInput = {

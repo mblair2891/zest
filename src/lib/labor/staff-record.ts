@@ -238,16 +238,26 @@ export type RatedMinutes = {
   employeeName?: string;
   role?: string;
   entityId?: string;
+  unscheduled?: boolean;
 };
+
+function unscheduledMinutesOf(lines: RatedMinutes[]): number {
+  return lines.reduce(
+    (sum, line) => sum + (line.unscheduled ? Math.max(0, Number(line.minutes) || 0) : 0),
+    0,
+  );
+}
 
 /** No personal rate keeps one rounded house-wage total. A rate splits cost by person, role, and entity. */
 export function sumLaborCents(lines: RatedMinutes[], fallbackWageCentsPerHour: number) {
   const minutes = lines.reduce((sum, line) => sum + Math.max(0, Number(line.minutes) || 0), 0);
+  const unscheduledMinutes = unscheduledMinutesOf(lines);
   const usedRate = lines.some((line) => Math.round(Number(line.payRateCents) || 0) > 0);
   if (!usedRate) {
     return {
       cents: Math.round((minutes / 60) * Math.max(0, fallbackWageCentsPerHour)),
       minutes,
+      unscheduledMinutes,
       usedRate: false,
       byRole: [] as Array<{ role: string; cents: number }>,
       byEmployee: [] as Array<{ employeeId: string; name: string; cents: number }>,
@@ -269,6 +279,7 @@ export function sumLaborCents(lines: RatedMinutes[], fallbackWageCentsPerHour: n
   return {
     cents: groups.totalCents,
     minutes,
+    unscheduledMinutes,
     usedRate: true,
     byRole: [...groups.byRole.entries()].map(([role, cents]) => ({ role, cents })),
     byEmployee: [...groups.byEmployee.entries()].map(([employeeId, row]) => ({

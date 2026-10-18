@@ -23,6 +23,9 @@ import { computePayPeriod, hoursExportStatus, parseLaborRules } from "@/lib/labo
 import { hrPayrollExportFn } from "@/lib/hr/api";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { UnscheduledClockDialog } from "@/components/pos/UnscheduledClockDialog";
+import { UnscheduledClockSetting } from "@/components/pos/UnscheduledClockSetting";
+import { canEmployee } from "@/lib/access/permissions";
 import { HOST_SCOPE, canViewPayroll, entityLoginScope } from "@/lib/access/entity-grants";
 import { isFloorRole } from "@/lib/pos/pin";
 import { buildPayrollRows, payrollCsv, payrollPdf } from "@/lib/labor/payroll";
@@ -85,6 +88,8 @@ export function LaborOpsView() {
     if (demoScope) setOpFilter(demoScope);
   }, [demoScope]);
   const [forceOverride, setForceOverride] = useState(false);
+  const [askUnscheduled, setAskUnscheduled] = useState<{ id: string; name: string } | null>(null);
+  const canWriteSettings = canEmployee(current, "settings:write");
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const rules = parseLaborRules(labor);
@@ -92,7 +97,7 @@ export function LaborOpsView() {
 
   const supervisorName = current?.name ?? "Supervisor";
 
-  const doClock = (id: string, name: string, isIn: boolean) => {
+  const doClock = (id: string, name: string, isIn: boolean, confirmUnscheduled = false) => {
     const force = forceOverride && (current?.role === "owner" || current?.role === "manager");
     if (isIn) {
       try {
@@ -141,7 +146,12 @@ export function LaborOpsView() {
         homeOperatorId: employees.find((e) => e.id === id)?.operatorId || HOST_SCOPE,
         clockOperatorId: opScope || undefined,
         grants: usePosStore.getState().extraEntityShiftGrants ?? [],
+        confirmUnscheduled,
       });
+      if (!res.ok && res.needsUnscheduledConfirm) {
+        setAskUnscheduled({ id, name });
+        return;
+      }
       if (!res.ok) {
         setFlash(res.error ?? "Clock in failed");
         return;
@@ -252,7 +262,7 @@ export function LaborOpsView() {
                     checked={forceOverride}
                     onChange={(e) => setForceOverride(e.target.checked)}
                   />
-                  Manager override (no-shift / outside window)
+                  Manager override (outside the clock window)
                 </label>
               )}
               <div className="mt-2 flex flex-wrap gap-2">
@@ -363,6 +373,7 @@ export function LaborOpsView() {
                   >
                     {p.status.replace("_", " ")}
                   </Badge>
+                  {p.unscheduled && <Badge variant="warn">Unscheduled</Badge>}
                   {p.redFlag && (
                     <Badge variant="danger">
                       <AlertTriangle className="mr-0.5 h-3 w-3" />
@@ -548,22 +559,16 @@ export function LaborOpsView() {
               value={rules.clockOutLateAction}
               onChange={(v) => updateLabor({ clockOutLateAction: v })}
             />
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                checked={!rules.allowClockWithNoShift}
-                onChange={(e) => updateLabor({ allowClockWithNoShift: !e.target.checked })}
-              />
-              Clock only on a published shift
-            </label>
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                checked={rules.requireOverrideForNoShift}
-                onChange={(e) => updateLabor({ requireOverrideForNoShift: e.target.checked })}
-              />
-              Require manager override for no-shift punch
-            </label>
+            <UnscheduledClockSetting
+              allow={rules.allowClockWithNoShift}
+              write={canWriteSettings}
+              onChange={(allow) =>
+                updateLabor({
+                  allowClockWithNoShift: allow,
+                  requireOverrideForNoShift: !allow,
+                })
+              }
+            />
             <label className="flex items-center gap-2 text-xs">
               <input
                 type="checkbox"
@@ -874,6 +879,16 @@ export function LaborOpsView() {
           </div>
         )}
       </div>
+      <UnscheduledClockDialog
+        open={Boolean(askUnscheduled)}
+        onCancel={() => setAskUnscheduled(null)}
+        onConfirm={() => {
+          const pending = askUnscheduled;
+          if (!pending) return;
+          setAskUnscheduled(null);
+          doClock(pending.id, pending.name, false, true);
+        }}
+      />
     </div>
   );
 }
@@ -929,6 +944,7 @@ function PayrollTable({
             <th>Reg h</th>
             <th>OT</th>
             <th>Flags</th>
+            <th>Unscheduled</th>
             <th>Tips</th>
             <th>Sales</th>
           </tr>
@@ -948,6 +964,7 @@ function PayrollTable({
                   .filter(Boolean)
                   .join(" · ") || "—"}
               </td>
+              <td>{r.unscheduled ? "Unscheduled" : "—"}</td>
               <td className="tabular">{formatCurrency(r.tipsCents)}</td>
               <td className="tabular">{formatCurrency(r.salesCents)}</td>
             </tr>

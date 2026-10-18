@@ -52,6 +52,7 @@ export type OwnerPunch = {
   role?: string;
   payRateType?: string | null;
   payRateCents?: number | null;
+  unscheduled?: boolean;
 };
 
 export type OwnerSku = {
@@ -113,6 +114,7 @@ export type OwnerMetrics = {
   primeCents: number;
   primePct: number | null;
   laborPct: number | null;
+  unscheduledMinutes: number;
   foodCostPct: number | null;
   bevCostPct: number | null;
   deliverySalesCents: number;
@@ -299,6 +301,7 @@ function metrics(
       employeeName: row.employeeName,
       role: row.role,
       entityId: row.entityId,
+      unscheduled: row.unscheduled === true,
     })),
     wageCentsPerHour,
   );
@@ -314,6 +317,7 @@ function metrics(
     foodCostCents,
     bevCostCents,
     laborCents,
+    unscheduledMinutes: labor.unscheduledMinutes,
     primeCents,
     primePct: pct(primeCents, netSalesCents),
     laborPct: pct(laborCents, netSalesCents),

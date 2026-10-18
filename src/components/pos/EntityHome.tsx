@@ -27,6 +27,7 @@ import { TrainingBanner } from "./TrainingBanner";
 import { PrintWaitingBanner } from "./PrintWaitingBanner";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { isBackOfficeRole } from "@/lib/pos/pin";
+import { UnscheduledClockDialog } from "@/components/pos/UnscheduledClockDialog";
 import { pinIsManager, punchClockByPin, punchClockForEmployee } from "@/lib/pos/station-clock";
 import { isProspectDemo } from "@/lib/demo/session";
 import { DEMO_STAFF_PIN, isDemoStaffPin } from "@/lib/demo/pin";
@@ -174,6 +175,10 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
     employeeId: string;
     employeeName: string;
   } | null>(null);
+  const [pendingUnscheduled, setPendingUnscheduled] = useState<{
+    employeeId: string;
+    employeeName: string;
+  } | null>(null);
 
   const locId = usePosStore((s) => s.tenantLocationId);
   const houseName = usePosStore((s) => s.settings?.name);
@@ -224,7 +229,17 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   };
 
   const finishClock = (res: ReturnType<typeof punchClockByPin>) => {
+    if (!res.ok && res.needsUnscheduledConfirm && res.employeeId) {
+      setPendingForce(null);
+      setPendingUnscheduled({
+        employeeId: res.employeeId,
+        employeeName: res.employeeName ?? "",
+      });
+      setError(null);
+      return;
+    }
     if (!res.ok && res.forceRequired) {
+      setPendingUnscheduled(null);
       setPendingForce({
         employeeId: res.employeeId ?? "",
         employeeName: res.employeeName ?? "",
@@ -233,6 +248,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
       return;
     }
     setPendingForce(null);
+    setPendingUnscheduled(null);
     if (!res.ok) {
       if (!res.error || /invalid pin/i.test(res.error)) badPin();
       else setError(res.error);
@@ -463,6 +479,18 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
             {msg}
           </p>
         )}
+        <UnscheduledClockDialog
+          open={Boolean(pendingUnscheduled)}
+          onCancel={() => setPendingUnscheduled(null)}
+          onConfirm={() => {
+            const pending = pendingUnscheduled;
+            if (!pending) return;
+            setPendingUnscheduled(null);
+            finishClock(
+              punchClockForEmployee(pending.employeeId, "clock_in", { confirmUnscheduled: true }),
+            );
+          }}
+        />
 
         {prospect && (
           <label className="mt-4 block text-xs text-muted-foreground">

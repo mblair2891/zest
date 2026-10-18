@@ -29,6 +29,7 @@ export function persistPunchToServer(punch: TimePunch): void {
             regularMinutes: punch.regularMinutes ?? 0,
             otMinutes: punch.otMinutes ?? 0,
             status: punch.status,
+            unscheduled: punch.unscheduled === true,
           },
         },
       });

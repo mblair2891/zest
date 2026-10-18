@@ -736,6 +736,7 @@ export type HrPayrollRow = {
   otHours: number;
   shiftCount: number;
   punchCount: number;
+  unscheduled: boolean;
 };
 
 export async function payrollSummary(
@@ -773,8 +774,9 @@ export async function payrollSummary(
     regular_minutes: number;
     ot_minutes: number;
     clock_out_at: unknown;
+    unscheduled: unknown;
   }>`
-    select employee_id, employee_name, regular_minutes, ot_minutes, clock_out_at
+    select employee_id, employee_name, regular_minutes, ot_minutes, clock_out_at, unscheduled
     from location_punches
     where location_id = ${ctx.locationId} and employer_id = ${employerId}
   `;
@@ -788,6 +790,7 @@ export async function payrollSummary(
       otHours: 0,
       shiftCount: 0,
       punchCount: 0,
+      unscheduled: false,
     };
     if (name && cur.employeeName === id) cur.employeeName = name;
     by.set(id, cur);
@@ -806,10 +809,13 @@ export async function payrollSummary(
     cur.punchHours += (Number(r.regular_minutes) || 0) / 60;
     cur.otHours += (Number(r.ot_minutes) || 0) / 60;
     if (r.clock_out_at) cur.punchCount += 1;
+    if (r.unscheduled === true || r.unscheduled === "t" || r.unscheduled === "true" || r.unscheduled === 1) {
+      cur.unscheduled = true;
+    }
   }
   const rows = [...by.values()].sort((a, b) => a.employeeName.localeCompare(b.employeeName));
   const csv = [
-    "employee,scheduled_hours,punch_hours,ot_hours,shifts,punches",
+    "employee,scheduled_hours,punch_hours,ot_hours,shifts,punches,unscheduled",
     ...rows.map((r) =>
       [
         r.employeeName.replaceAll(",", " "),
@@ -818,6 +824,7 @@ export async function payrollSummary(
         r.otHours.toFixed(2),
         String(r.shiftCount),
         String(r.punchCount),
+        r.unscheduled ? "Y" : "N",
       ].join(","),
     ),
   ].join("\n");
@@ -978,8 +985,9 @@ export async function buildPayrollExport(
     regular_minutes: number;
     ot_minutes: number;
     clock_out_at: unknown;
+    unscheduled: unknown;
   }>`
-    select employee_id, employee_name, regular_minutes, ot_minutes, clock_out_at
+    select employee_id, employee_name, regular_minutes, ot_minutes, clock_out_at, unscheduled
     from location_punches
     where location_id = ${ctx.locationId}
       and employer_id = ${data.employerId}
@@ -1000,9 +1008,9 @@ export async function buildPayrollExport(
   `;
   const maps = await listPayrollMap(ctx, data.employerId);
   const mapBy = new Map(maps.map((m) => [m.employeeId, m.providerEmployeeId]));
-  const hours = new Map<string, { name: string; regular: number; ot: number }>();
+  const hours = new Map<string, { name: string; regular: number; ot: number; unscheduled: boolean }>();
   const ensure = (id: string, name: string) => {
-    const cur = hours.get(id) ?? { name, regular: 0, ot: 0 };
+    const cur = hours.get(id) ?? { name, regular: 0, ot: 0, unscheduled: false };
     if (name && cur.name === id) cur.name = name;
     hours.set(id, cur);
     return cur;
@@ -1013,6 +1021,9 @@ export async function buildPayrollExport(
     const cur = ensure(p.employee_id, p.employee_name);
     cur.regular += (Number(p.regular_minutes) || 0) / 60;
     cur.ot += (Number(p.ot_minutes) || 0) / 60;
+    if (p.unscheduled === true || p.unscheduled === "t" || p.unscheduled === "true" || p.unscheduled === 1) {
+      cur.unscheduled = true;
+    }
   }
   const tips = new Map<string, { declaredCents: number; ccCents: number }>();
   const staffIds = new Set(hours.keys());
@@ -1061,6 +1072,7 @@ export async function buildPayrollExport(
         regularHours: h.regular,
         otHours: h.ot,
         otFlag: h.ot > 0,
+        unscheduled: h.unscheduled,
         declaredTipsCents: split.declaredCents,
         ccTipsCents: includeCc ? split.ccCents : 0,
       };

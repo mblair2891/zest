@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { UnscheduledClockDialog } from "@/components/pos/UnscheduledClockDialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,6 +32,7 @@ export function ClockInAfterPinDialog() {
   const emp = employees.find((e) => e.id === currentEmployeeId) ?? null;
 
   const [open, setOpen] = useState(false);
+  const [askUnscheduled, setAskUnscheduled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const askedFor = useRef<string | null>(null);
@@ -82,18 +84,25 @@ export function ClockInAfterPinDialog() {
     setError(null);
   };
 
-  const punchIn = () => {
+  const punchIn = (confirmUnscheduled = false) => {
     if (!emp) return;
     setBusy(true);
     setError(null);
     const res = clockIn(emp.id, emp.name, {
       homeOperatorId: emp.operatorId || HOST_SCOPE,
+      confirmUnscheduled,
     });
     setBusy(false);
+    if (!res.ok && res.needsUnscheduledConfirm) {
+      setAskUnscheduled(true);
+      return;
+    }
     if (!res.ok) {
+      setAskUnscheduled(false);
       setError(res.error ?? "Could not clock in.");
       return;
     }
+    setAskUnscheduled(false);
     const latest = usePosStore.getState().employees.find((e) => e.id === emp.id);
     if (latest && !latest.clockedIn) clockToggle(emp.id);
     setOpen(false);
@@ -102,26 +111,34 @@ export function ClockInAfterPinDialog() {
   if (!stationPin) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && dismiss()}>
-      <DialogContent showClose={false} className="max-w-sm" data-demo="pin-clock-in-offer">
-        <DialogHeader>
-          <DialogTitle>Clock in for this shift?</DialogTitle>
-          <DialogDescription>
-            PIN signed you onto this station. Clock-in is a separate punch and
-            does not open order entry. Not now leaves you on the floor. Clock in
-            on the pad only punches.
-          </DialogDescription>
-        </DialogHeader>
-        {error && <p className="text-sm text-danger">{error}</p>}
-        <DialogFooter>
-          <Button type="button" variant="outline" className="h-12" onClick={dismiss} disabled={busy}>
-            Not now
-          </Button>
-          <Button type="button" className="h-12" onClick={punchIn} disabled={busy}>
-            {busy ? "Clocking in…" : "Clock in"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={(next) => !next && dismiss()}>
+        <DialogContent showClose={false} className="max-w-sm" data-demo="pin-clock-in-offer">
+          <DialogHeader>
+            <DialogTitle>Clock in for this shift?</DialogTitle>
+            <DialogDescription>
+              PIN signed you onto this station. Clock-in is a separate punch and
+              does not open order entry. Not now leaves you on the floor. Clock in
+              on the pad only punches.
+            </DialogDescription>
+          </DialogHeader>
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <DialogFooter>
+            <Button type="button" variant="outline" className="h-12" onClick={dismiss} disabled={busy}>
+              Not now
+            </Button>
+            <Button type="button" className="h-12" onClick={() => punchIn(false)} disabled={busy}>
+              {busy ? "Clocking in…" : "Clock in"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <UnscheduledClockDialog
+        open={askUnscheduled}
+        busy={busy}
+        onCancel={() => setAskUnscheduled(false)}
+        onConfirm={() => punchIn(true)}
+      />
+    </>
   );
 }

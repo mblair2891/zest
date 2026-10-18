@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_291_unscheduled_clockin",
+    date: "2026-10-18",
+    title: "Unscheduled shift clock-in",
+    summary:
+      "Venue Settings can allow a clock-in when no shift covers now. That punch is marked Unscheduled.",
+    body: "Scheduling / Clock-in has Allow clock-in for unscheduled shifts. It stays off until a location admin or manager turns it on. Off blocks the punch. On asks the person to confirm, then marks the punch Unscheduled on timecards, labor, staffing recommendations, and the hours file. A scheduled shift still clocks in as usual.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["labor"],
+    audience: "all",
+    topicId: "shift-allowables",
+    tags: ["labor"],
+  },
+  {
     id: "upd_2026_10_290_ticket_strip",
     date: "2026-10-18",
     title: "Compact ticket-strip check",
