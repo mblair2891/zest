@@ -73,6 +73,8 @@ export type LocationSetup = {
   printAgentSeenAt?: number;
   /** One in-flight staff Wi-Fi printer scan. Not a saved printer. */
   printerScan?: import("@/lib/print/printer-discover").PrinterScanTicket;
+  /** One in-flight printer ping for a PIN login. Not a print job. */
+  printerProbe?: import("@/lib/print/printer-probe-ticket").PrinterProbeTicket;
   voiceControlEnabledByRole?: Partial<Record<string, boolean>>;
   networkReadyStatus?: import("./network-readiness").NetworkReadyStatus;
   networkCheckedAt?: string;

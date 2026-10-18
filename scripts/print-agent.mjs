@@ -9,6 +9,7 @@
  *
  * Listens on http://127.0.0.1:9105
  *   GET  /health
+ *   POST /probe   JSON { host, port }  — connect and close, no bytes
  *   POST /print   JSON { target, escposBase64, family, job }
  *
  * Subscribe to the venue job queue (QR / kiosk / online / dashboard test):
@@ -51,6 +52,24 @@ function parseTarget(raw) {
   const [host, portStr] = s.includes(":") ? s.split(":") : [s, "9100"];
   const port = Number(portStr) || 9100;
   return { host, port };
+}
+
+function probeSocket(host, port) {
+  return new Promise((resolve, reject) => {
+    const sock = net.connect({ host, port }, () => {
+      sock.end();
+    });
+    sock.setTimeout(1500);
+    sock.on("timeout", () => {
+      sock.destroy();
+      reject(new Error("Printer timed out"));
+    });
+    sock.on("error", (err) => {
+      sock.destroy();
+      reject(err);
+    });
+    sock.on("close", () => resolve());
+  });
 }
 
 function writeSocket(host, port, buf) {
@@ -98,6 +117,27 @@ const server = http.createServer(async (req, res) => {
         printers: [],
         error: err instanceof Error ? err.message : "Scan failed",
       });
+    }
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/probe") {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    let body;
+    try {
+      body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+    } catch {
+      send(res, 400, { ok: false, error: "Invalid JSON" });
+      return;
+    }
+    try {
+      const host = String(body.host ?? "").trim();
+      const port = Number(body.port) > 0 ? Number(body.port) : 9100;
+      const target = host ? { host, port } : parseTarget(body.target);
+      await probeSocket(target.host, target.port);
+      send(res, 200, { ok: true, host: target.host, port: target.port });
+    } catch (err) {
+      send(res, 200, { ok: false, error: err instanceof Error ? err.message : "Printer not responding" });
     }
     return;
   }

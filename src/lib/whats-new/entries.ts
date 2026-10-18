@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_295_login_printer_check",
+    date: "2026-10-18",
+    title: "Printer check on login",
+    summary: "Signing in on a station checks the receipt and order printers and refreshes the connection banner.",
+    body: "A PIN on an order, host, or ODS station pings the receipt and order printers for that station and for the floor sections at the venue. The floor opens while the check runs. A printer that answers clears the not-responding banner. A printer that does not answer keeps the banner with that printer’s name.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "station-fit",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_294_pin_backspace",
     date: "2026-10-18",
     title: "PIN pad backspace",

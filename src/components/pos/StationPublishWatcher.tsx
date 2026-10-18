@@ -16,7 +16,8 @@ import { usePosStore } from "@/lib/pos/store";
 import { deliverRawPrint } from "@/lib/print/dispatch";
 import { sendNativeUsbBytes, nativeUsbPrinterConnected } from "@/lib/print/capacitor-raw-print";
 import { isUsbPrintJob } from "@/lib/print/printer-transport";
-import { claimStationPrintFn, completeStationPrintFn, finishPrinterScanFn, noteStationUsbFn, pullPrinterScanFn } from "@/lib/print/api";
+import { claimStationPrintFn, completeStationPrintFn, finishPrinterProbeFn, finishPrinterScanFn, noteStationUsbFn, pullPrinterProbeFn, pullPrinterScanFn } from "@/lib/print/api";
+import { probeNativePrinter } from "@/lib/print/capacitor-raw-print";
 import { scanNativePrinters } from "@/lib/print/discover-printers";
 import { isNativeApp } from "@/lib/native-shell";
 import { heartbeatLocationDeviceFn } from "@/lib/access/api";
@@ -29,6 +30,7 @@ import {
 
 const STATE_POLL_MS = 5_000;
 let printerScanBusy = false;
+let printerProbeBusy = false;
 let lastUsbNote: boolean | null = null;
 
 function pollUsbAttachment(locationId: string, deviceId: string): void {
@@ -75,6 +77,39 @@ function pollPrinterScan(locationId: string, deviceId: string): void {
     })
     .catch(() => undefined);
 }
+
+function pollPrinterProbe(locationId: string, deviceId: string): void {
+  if (printerProbeBusy || !isNativeApp()) return;
+  void pullPrinterProbeFn({ data: { locationId, deviceId } })
+    .then(async (res) => {
+      const ticket = res.ticket;
+      if (!ticket || ticket.status !== "pending" || printerProbeBusy) return;
+      printerProbeBusy = true;
+      try {
+        const results: { id: string; ok: boolean }[] = [];
+        for (const target of ticket.targets) {
+          const ok = await probeNativePrinter(target.host, target.port);
+          results.push({ id: target.id, ok: ok === true });
+        }
+        await finishPrinterProbeFn({
+          data: { locationId, deviceId, id: ticket.id, results, error: "" },
+        });
+      } catch {
+        await finishPrinterProbeFn({
+          data: {
+            locationId,
+            deviceId,
+            id: ticket.id,
+            results: [],
+            error: "Printer check failed.",
+          },
+        }).catch(() => undefined);
+      } finally {
+        printerProbeBusy = false;
+      }
+    })
+    .catch(() => undefined);
+}
 const PUBLISH_POLL_MS = 20_000;
 const IDLE_TICK_MS = 1_000;
 
@@ -95,6 +130,7 @@ function pollStationState(): void {
     .catch(() => undefined);
   const role = readStationDeviceRole() ?? pair?.station ?? "order";
   pollPrinterScan(locationId, deviceId);
+  pollPrinterProbe(locationId, deviceId);
   pollUsbAttachment(locationId, deviceId);
   void claimStationPrintFn({ data: { locationId, deviceId, role } })
     .then(async (res) => {

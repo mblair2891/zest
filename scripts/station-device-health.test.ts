@@ -27,9 +27,15 @@ import {
   type PaxScanRow,
 } from "../src/lib/payments/pax-d135.ts";
 import {
+  applyLoginProbe,
   assignedStationSystems,
+  lanProbePath,
+  loginConnectionPrinters,
+  scheduleConnectionProbes,
+  seedLoginProbe,
   stationHealthNotices,
 } from "../src/lib/pos/station-device-health.ts";
+import { parsePrinterProbeTargets } from "../src/lib/print/printer-probe-ticket.ts";
 
 const reader: PaxReader = {
   id: "pax_1890",
@@ -603,4 +609,131 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
     }),
     false,
   );
+});
+
+test("PIN login pings station and section printers and keeps the printer name", () => {
+  const devices = [
+    {
+      id: "dev_order",
+      label: "Order tablet",
+      type: "tablet",
+      receiptPrinterId: "prn_receipt",
+      orderPrinterIds: ["prn_kitchen"],
+    },
+    {
+      id: "prn_receipt",
+      label: "Receipt",
+      type: "receipt_printer",
+      print: { ip: "192.168.0.112", port: 9100 },
+    },
+    {
+      id: "prn_kitchen",
+      label: "Kitchen",
+      type: "order_printer",
+      print: { ip: "192.168.0.105", port: 9100 },
+    },
+    {
+      id: "prn_patio",
+      label: "Patio",
+      type: "receipt_printer",
+      print: { ip: "192.168.0.140", port: 9100, sectionIds: ["sec_patio"] },
+    },
+    {
+      id: "prn_unassigned",
+      label: "Spare",
+      type: "order_printer",
+      print: { ip: "10.0.0.9", port: 9100 },
+    },
+  ];
+  const printers = loginConnectionPrinters({
+    stationId: "dev_order",
+    devices,
+    sectionIds: ["sec_patio"],
+  });
+  assert.deepEqual(
+    printers.map((row) => row.label),
+    ["Receipt", "Kitchen", "Patio"],
+  );
+  const down = stationHealthNotices({
+    systems: printers,
+    connectedSerial: null,
+    probe: { prn_receipt: "down", prn_kitchen: "up", prn_patio: "down" },
+  });
+  assert.deepEqual(
+    down.map((notice) => notice.text),
+    ["Receipt is not responding.", "Patio is not responding."],
+  );
+  const cleared = applyLoginProbe(
+    { prn_receipt: "down", prn_kitchen: "up", prn_patio: "down" },
+    "prn_receipt",
+    "up",
+  );
+  assert.deepEqual(
+    stationHealthNotices({ systems: printers, connectedSerial: null, probe: cleared }).map(
+      (notice) => notice.text,
+    ),
+    ["Patio is not responding."],
+  );
+  const seeded = seedLoginProbe({ prn_receipt: "down" }, ["prn_receipt", "prn_patio"]);
+  assert.equal(seeded.prn_receipt, "down");
+  assert.equal(seeded.prn_patio, "pending");
+  assert.equal(
+    stationHealthNotices({
+      systems: printers,
+      connectedSerial: null,
+      probe: seeded,
+    }).some((notice) => notice.text === "Receipt is not responding."),
+    true,
+  );
+});
+
+test("login ping uses the station, the print agent, or an online station", () => {
+  assert.equal(lanProbePath({ native: true, agent: true, onlineStation: true }), "station_tcp");
+  assert.equal(lanProbePath({ native: false, agent: true, onlineStation: true }), "print_agent");
+  assert.equal(lanProbePath({ native: false, agent: false, onlineStation: true }), "online_station");
+  assert.equal(lanProbePath({ native: false, agent: false, onlineStation: false }), "unreachable");
+  const targets = parsePrinterProbeTargets([
+    { id: "prn_receipt", host: "192.168.0.112", port: 9100 },
+    { id: "public", host: "8.8.8.8", port: 9100 },
+    { id: "prn_receipt", host: "10.0.0.2", port: 9100 },
+  ]);
+  assert.deepEqual(targets, [{ id: "prn_receipt", host: "192.168.0.112", port: 9100 }]);
+});
+
+test("a login probe does not wait for the printer", async () => {
+  let finished = false;
+  let released: (ok: boolean) => void = () => {};
+  const gate = new Promise<boolean>((resolve) => {
+    released = resolve;
+  });
+  scheduleConnectionProbes({
+    targets: [{ id: "prn_receipt" }],
+    probe: () => gate,
+    onResult: () => {
+      finished = true;
+    },
+  });
+  assert.equal(finished, false);
+  released(true);
+  await gate;
+  await Promise.resolve();
+  assert.equal(finished, true);
+
+  const store = readFileSync("src/lib/pos/store.ts", "utf8");
+  const login = store.slice(store.indexOf("login: (pin)"), store.indexOf("applyVerifiedStationPin"));
+  assert.match(login, /void import\("\.\/station-connection-check"\)/);
+  assert.match(login, /refreshStationConnectionOnLogin\(\)/);
+  assert.doesNotMatch(login, /await import\("\.\/station-connection-check"\)/);
+  assert.doesNotMatch(login, /await m\.refreshStationConnectionOnLogin/);
+  const check = readFileSync("src/lib/pos/station-connection-check.ts", "utf8");
+  assert.match(check, /void runStationConnectionCheck/);
+  assert.match(check, /scheduleConnectionProbes/);
+  const banner = readFileSync("src/components/pos/StationDevices.tsx", "utf8");
+  assert.match(banner, /startStationConnectionCheck/);
+  assert.match(banner, /loginConnectionPrinters/);
+  const watcher = readFileSync("src/components/pos/StationPublishWatcher.tsx", "utf8");
+  assert.match(watcher, /pullPrinterProbeFn/);
+  assert.match(watcher, /probeNativePrinter/);
+  const agent = readFileSync("scripts/print-agent.mjs", "utf8");
+  assert.match(agent, /pathname === "\/probe"/);
 });

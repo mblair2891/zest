@@ -13,6 +13,7 @@ export type StationHealthDevice = {
   id: string;
   label?: string;
   type: string;
+  status?: string;
   cardReaderId?: string | null;
   receiptPrinterId?: string | null;
   orderPrinterIds?: string[] | null;
@@ -23,6 +24,9 @@ export type StationHealthDevice = {
     link?: string | null;
     usbAttached?: boolean | null;
     boundStationIds?: string[] | null;
+    sectionIds?: string[] | null;
+    venueDefault?: boolean | null;
+    serveNoSection?: boolean | null;
   } | null;
 };
 
@@ -64,6 +68,23 @@ function printerHost(device: StationHealthDevice): { host: string; port: number 
   return { host: parsed.host, port: parsed.port };
 }
 
+function toAssignment(
+  device: StationHealthDevice,
+  kind: "receipt_printer" | "order_printer",
+): StationAssignment {
+  const usb = device.print?.link === "usb";
+  const host = usb ? null : printerHost(device);
+  return {
+    kind,
+    id: device.id,
+    label: device.label?.trim() || (kind === "receipt_printer" ? "Receipt printer" : "Order printer"),
+    host: host?.host ?? null,
+    port: host?.port ?? 0,
+    usb,
+    usbAttached: usb ? device.print?.usbAttached : undefined,
+  };
+}
+
 /**
  * Systems registered to this station.
  * A venue printer with no station binding is not included.
@@ -96,17 +117,7 @@ export function assignedStationSystems(input: {
   const pushPrinter = (device: StationHealthDevice, kind: "receipt_printer" | "order_printer") => {
     if (seen.has(`${kind}:${device.id}`)) return;
     seen.add(`${kind}:${device.id}`);
-    const usb = device.print?.link === "usb";
-    const host = usb ? null : printerHost(device);
-    out.push({
-      kind,
-      id: device.id,
-      label: device.label?.trim() || (kind === "receipt_printer" ? "Receipt printer" : "Order printer"),
-      host: host?.host ?? null,
-      port: host?.port ?? 0,
-      usb,
-      usbAttached: usb ? device.print?.usbAttached : undefined,
-    });
+    out.push(toAssignment(device, kind));
   };
 
   if (station?.receiptPrinterId) {
@@ -165,4 +176,110 @@ export function stationHealthNotices(input: {
     });
   }
   return notices;
+}
+
+/**
+ * Receipt and order printers a PIN login should ping.
+ * Station receipt, station order list, and station binds, plus receipt and
+ * order printers assigned to this venue's sections.
+ * An order printer with no station bind and no section stays out.
+ */
+export function loginConnectionPrinters(input: {
+  stationId: string;
+  devices: StationHealthDevice[];
+  sectionIds?: string[];
+}): StationAssignment[] {
+  const stationId = input.stationId.trim();
+  if (!stationId) return [];
+  const station = input.devices.find((d) => d.id === stationId);
+  const sections = new Set((input.sectionIds ?? []).map((id) => id.trim()).filter(Boolean));
+  const out: StationAssignment[] = [];
+  const seen = new Set<string>();
+
+  const push = (device: StationHealthDevice) => {
+    if (device.status === "inactive") return;
+    if (seen.has(device.id)) return;
+    const kind = isReceiptType(device.type)
+      ? "receipt_printer"
+      : isOrderType(device.type)
+        ? "order_printer"
+        : null;
+    if (!kind) return;
+    seen.add(device.id);
+    out.push(toAssignment(device, kind));
+  };
+
+  if (station?.receiptPrinterId) {
+    const printer = input.devices.find((d) => d.id === station.receiptPrinterId);
+    if (printer) push(printer);
+  }
+  for (const device of input.devices) {
+    const chosen =
+      isOrderType(device.type) &&
+      Array.isArray(station?.orderPrinterIds) &&
+      station.orderPrinterIds.includes(device.id);
+    if (!chosen && !boundTo(device, stationId)) continue;
+    push(device);
+  }
+  for (const device of input.devices) {
+    const ids = device.print?.sectionIds ?? [];
+    const inSection = ids.some((id) => sections.has(id));
+    const venue = device.print?.venueDefault === true || device.print?.serveNoSection === true;
+    if (!inSection && !venue) continue;
+    push(device);
+  }
+  return out;
+}
+
+/** A new login keeps a down result visible until the fresh probe answers. */
+export function seedLoginProbe(
+  prev: Record<string, PrinterProbeState | undefined>,
+  ids: string[],
+): Record<string, PrinterProbeState | undefined> {
+  let changed = false;
+  const next = { ...prev };
+  for (const id of ids) {
+    if (!next[id]) {
+      next[id] = "pending";
+      changed = true;
+    }
+  }
+  return changed ? next : prev;
+}
+
+export function applyLoginProbe(
+  prev: Record<string, PrinterProbeState | undefined>,
+  id: string,
+  state: PrinterProbeState,
+): Record<string, PrinterProbeState | undefined> {
+  if (prev[id] === state) return prev;
+  return { ...prev, [id]: state };
+}
+
+/** Where a login ping may open TCP 9100. Cloud dials are not a path. */
+export type LanProbePath = "station_tcp" | "print_agent" | "online_station" | "unreachable";
+
+export function lanProbePath(input: {
+  native: boolean;
+  agent: boolean;
+  onlineStation: boolean;
+}): LanProbePath {
+  if (input.native) return "station_tcp";
+  if (input.agent) return "print_agent";
+  if (input.onlineStation) return "online_station";
+  return "unreachable";
+}
+
+/**
+ * Starts each probe and returns before any of them finish.
+ * The caller updates the banner from onResult.
+ */
+export function scheduleConnectionProbes(input: {
+  targets: { id: string }[];
+  probe: (id: string) => Promise<boolean>;
+  onResult: (id: string, ok: boolean) => void;
+}): void {
+  for (const target of input.targets) {
+    void input.probe(target.id).then((ok) => input.onResult(target.id, ok));
+  }
 }

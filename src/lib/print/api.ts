@@ -439,3 +439,78 @@ export const finishPrinterScanFn = createServerFn({ method: "POST" })
       }),
     };
   });
+
+/** Ask an online station to open TCP 9100 and close it. Does not print. */
+export const requestPrinterProbeFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId?: string; targets?: unknown }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+    targets: d.targets,
+  }))
+  .handler(async ({ context, data }) => {
+    if (!data.locationId) return { ticket: null };
+    const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
+    await assertLocationAccess(context.userId, data.locationId);
+    const { parsePrinterProbeTargets } = await import("./printer-probe-ticket.ts");
+    const { requestPrinterProbe } = await import("./printer-probe.server.ts");
+    return { ticket: await requestPrinterProbe(data.locationId, parsePrinterProbeTargets(data.targets)) };
+  });
+
+export const readPrinterProbeFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId?: string }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    if (!data.locationId) return { ticket: null };
+    const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
+    await assertLocationAccess(context.userId, data.locationId);
+    const { readPrinterProbe } = await import("./printer-probe.server.ts");
+    return { ticket: await readPrinterProbe(data.locationId) };
+  });
+
+/** Paired station pulls a pending printer ping. */
+export const pullPrinterProbeFn = createServerFn({ method: "POST" })
+  .validator((d: { locationId?: string; deviceId?: string }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ data }) => {
+    if (!data.locationId || !data.deviceId) return { ticket: null };
+    const { readStationPairState } = await import("@/lib/pos/station-state.server");
+    const live = await readStationPairState(data);
+    if (!live.ok) return { ticket: null };
+    const { pullPrinterProbe } = await import("./printer-probe.server.ts");
+    return { ticket: await pullPrinterProbe(data.locationId) };
+  });
+
+export const finishPrinterProbeFn = createServerFn({ method: "POST" })
+  .validator((d: {
+    locationId?: string;
+    deviceId?: string;
+    id?: string;
+    results?: unknown;
+    error?: string;
+  }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+    id: String(d.id ?? "").trim().slice(0, 40),
+    results: d.results,
+    error: String(d.error ?? "").slice(0, 180),
+  }))
+  .handler(async ({ data }) => {
+    if (!data.locationId || !data.deviceId || !data.id) return { ticket: null };
+    const { readStationPairState } = await import("@/lib/pos/station-state.server");
+    const live = await readStationPairState(data);
+    if (!live.ok) return { ticket: null };
+    const { parsePrinterProbeResults } = await import("./printer-probe-ticket.ts");
+    const { finishPrinterProbe } = await import("./printer-probe.server.ts");
+    return {
+      ticket: await finishPrinterProbe({
+        locationId: data.locationId,
+        id: data.id,
+        results: parsePrinterProbeResults(data.results),
+        error: data.error,
+      }),
+    };
+  });

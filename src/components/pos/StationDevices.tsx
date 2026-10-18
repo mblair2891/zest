@@ -45,11 +45,10 @@ import { readStationPair } from "@/lib/pos/station-pair";
 import { usePosStore } from "@/lib/pos/store";
 import {
   assignedStationSystems,
+  loginConnectionPrinters,
   stationHealthNotices,
-  type PrinterProbeState,
 } from "@/lib/pos/station-device-health";
-import { probePrinter } from "@/lib/print/printer-probe";
-import { nativeUsbPrinterConnected } from "@/lib/print/capacitor-raw-print";
+import { startStationConnectionCheck, subscribeStationPrinterProbe, getStationPrinterProbe } from "@/lib/pos/station-connection-check";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
 
 let devicesOpen = false;
@@ -156,7 +155,8 @@ export function StationDeviceHealthBanner() {
   const activeDeviceId = usePosStore((s) => s.activeDeviceId);
   const tenantLocationId = usePosStore((s) => s.tenantLocationId);
   const link = usePaxStationLink();
-  const [probe, setProbe] = useState<Record<string, PrinterProbeState>>({});
+  const probe = useSyncExternalStore(subscribeStationPrinterProbe, getStationPrinterProbe, getStationPrinterProbe);
+  const sectionKey = usePosStore((s) => s.floorSections.map((section) => section.id).join("|"));
   const stationId = useMemo(() => {
     const pair = readStationPair();
     if (isStationPinPath() && pair?.deviceId) return pair.deviceId;
@@ -165,54 +165,34 @@ export function StationDeviceHealthBanner() {
     const loc = tenantLocationId || pair?.locationId || "";
     return loc ? readPairedDeviceId(loc) || "" : "";
   }, [activeDeviceId, tenantLocationId]);
-  const systems = useMemo(
-    () =>
-      assignedStationSystems({
-        stationId,
-        devices,
-        readers: link.readers,
-      }),
-    [stationId, devices, link.readers],
-  );
+  const systems = useMemo(() => {
+    const readers = assignedStationSystems({
+      stationId,
+      devices,
+      readers: link.readers,
+    }).filter((system) => system.kind === "card_reader");
+    const printers = loginConnectionPrinters({
+      stationId,
+      devices,
+      sectionIds: sectionKey ? sectionKey.split("|") : [],
+    });
+    return [...readers, ...printers];
+  }, [stationId, devices, link.readers, sectionKey]);
   const printerKey = systems
     .filter((system) => system.kind !== "card_reader")
     .map((system) => `${system.id}:${system.usb ? "usb" : system.host ?? ""}:${system.port}`)
     .join("|");
 
   useEffect(() => {
-    const targets = systems.filter(
-      (system) => system.kind !== "card_reader" && (system.host || system.usb),
-    );
-    if (!targets.length) return;
-    let cancel = false;
-    setProbe((prev) => {
-      const next = { ...prev };
-      for (const target of targets) {
-        if (!next[target.id]) next[target.id] = "pending";
-      }
-      return next;
+    const printers = systems.filter((system) => system.kind !== "card_reader");
+    startStationConnectionCheck({
+      printers,
+      devices,
+      locationId: tenantLocationId || readStationPair()?.locationId || "",
     });
-    for (const target of targets) {
-      if (target.usb) {
-        void nativeUsbPrinterConnected().then((ok) => {
-          if (cancel || ok == null) return;
-          setProbe((prev) => ({ ...prev, [target.id]: ok ? "up" : "down" }));
-        });
-        continue;
-      }
-      const host = target.host;
-      if (!host) continue;
-      void probePrinter(host, target.port).then((ok) => {
-        if (cancel) return;
-        setProbe((prev) => ({ ...prev, [target.id]: ok ? "up" : "down" }));
-      });
-    }
-    return () => {
-      cancel = true;
-    };
-    // printerKey is the assigned printer set. systems is read from this render.
+    // printerKey is the assigned printer set. systems and devices are this render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [printerKey]);
+  }, [printerKey, tenantLocationId]);
 
   const notices = stationHealthNotices({
     systems,

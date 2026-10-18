@@ -881,6 +881,13 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		} catch {
 			/* */
 		}
+		try {
+			void import("./station-connection-check").then((m) => {
+				m.refreshStationConnectionOnLogin();
+			});
+		} catch {
+			/* connection check stays off the PIN */
+		}
 		return { ok: true };
 	},
 	applyVerifiedStationPin: (row, pin) => {
