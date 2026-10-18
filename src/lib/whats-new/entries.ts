@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_289_staff_payroll",
+    date: "2026-10-18",
+    title: "Staff pay rate and employee number",
+    summary:
+      "Staff records keep a first name, a last name, an employee number, and a pay rate. The hours export includes them.",
+    body: "Enter a first name, a last name, an employee number, and a pay rate on the staff form. Hourly is the amount per hour. Salary is the annual amount. The hours file lists the employee number, first name, last name, pay rate type, pay rate, hours worked, entity, and role. Labor cost uses that rate. An older single name splits into a first name and a last name.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["labor"],
+    audience: "all",
+    topicId: "payroll-export",
+    tags: ["labor"],
+  },
+  {
     id: "upd_2026_10_288_open_check_void",
     date: "2026-10-18",
     title: "Deleting an item or voiding an open check",

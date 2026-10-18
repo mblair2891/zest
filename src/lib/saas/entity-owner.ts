@@ -2,6 +2,7 @@
  * Entity-owner password login: header, today’s numbers, menu groups, bulk shifts.
  * Client-safe. No @/ value imports so node:test can load this file.
  */
+import { sumLaborCents } from "../labor/staff-record.ts";
 
 export type EntityOwnerLine = {
   entityId?: string | null;
@@ -27,6 +28,11 @@ export type EntityOwnerPunch = {
   clockInAt: number;
   clockOutAt?: number | null;
   status?: string;
+  employeeId?: string;
+  employeeName?: string;
+  role?: string;
+  payRateType?: string | null;
+  payRateCents?: number | null;
 };
 
 export type EntityOwnerItem = {
@@ -57,6 +63,8 @@ export type EntityTodaySnapshot = {
   laborCents: number;
   laborMinutes: number;
   laborPct: number | null;
+  laborByRole: Array<{ role: string; cents: number }>;
+  laborByEmployee: Array<{ employeeId: string; name: string; cents: number }>;
   topItems: EntityTopItem[];
   eightySixCount: number;
 };
@@ -190,17 +198,37 @@ export function entityToday(input: EntityTodayInput): EntityTodaySnapshot {
   }).length;
 
   const bounds = venueDayBounds(input.dayYmd, tz);
-  let laborMinutes = 0;
+  const laborLines: Array<{
+    minutes: number;
+    payRateType?: string | null;
+    payRateCents?: number | null;
+    employeeId?: string;
+    employeeName?: string;
+    role?: string;
+    entityId?: string;
+  }> = [];
   for (const punch of input.punches) {
     if (String(punch.operatorId || "").trim() !== entityId) continue;
     if (punch.status === "rejected") continue;
     const out = punch.clockOutAt && punch.clockOutAt > punch.clockInAt ? punch.clockOutAt : bounds.end;
     const a = Math.max(punch.clockInAt, bounds.start);
     const b = Math.min(out, bounds.end);
-    if (b > a) laborMinutes += Math.round((b - a) / 60_000);
+    if (b > a) {
+      laborLines.push({
+        minutes: Math.round((b - a) / 60_000),
+        payRateType: punch.payRateType,
+        payRateCents: punch.payRateCents,
+        employeeId: punch.employeeId,
+        employeeName: punch.employeeName,
+        role: punch.role,
+        entityId,
+      });
+    }
   }
   const wage = Math.max(0, input.wageCentsPerHour || 0);
-  const laborCents = Math.round((laborMinutes * wage) / 60);
+  const labor = sumLaborCents(laborLines, wage);
+  const laborMinutes = labor.minutes;
+  const laborCents = labor.cents;
   const laborPct =
     laborMinutes === 0 && wage <= 0
       ? null
@@ -222,6 +250,8 @@ export function entityToday(input: EntityTodayInput): EntityTodaySnapshot {
     laborCents,
     laborMinutes,
     laborPct,
+    laborByRole: labor.byRole,
+    laborByEmployee: labor.byEmployee,
     topItems,
     eightySixCount,
   };

@@ -2,6 +2,14 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, SelectField } from "@/components/platform/settings-fields";
+import { StaffPayFields } from "@/components/pos/StaffPayFields";
+import {
+  EMPTY_STAFF_PAY,
+  payRateDollars,
+  staffListTitle,
+  validateStaffPay,
+  type StaffPayDraft,
+} from "@/lib/labor/staff-record";
 import {
   Dialog,
   DialogContent,
@@ -60,7 +68,8 @@ export function TenantUsersPanel({
   const [adminEntity, setAdminEntity] = useState("");
   const [adminSeat, setAdminSeat] = useState<"owner" | "manager" | "accountant">("owner");
 
-  const [staffName, setStaffName] = useState("");
+  const [staffDraft, setStaffDraft] = useState<StaffPayDraft>(EMPTY_STAFF_PAY);
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [staffPin, setStaffPin] = useState("");
   const [staffRole, setStaffRole] = useState("server");
   const [staffHome, setStaffHome] = useState("");
@@ -121,25 +130,59 @@ export function TenantUsersPanel({
       .finally(() => setBusy(false));
   };
 
+  const staffPayload = () => ({
+    firstName: staffDraft.firstName,
+    lastName: staffDraft.lastName,
+    displayName: staffDraft.displayName,
+    employeeNumber: staffDraft.employeeNumber,
+    payRateType: staffDraft.payRateType,
+    payAmount: staffDraft.payAmount,
+    hireDate: staffDraft.hireDate || null,
+    employmentStatus: staffDraft.employmentStatus,
+    email: staffDraft.email,
+    phone: staffDraft.phone,
+    position: staffDraft.position,
+    role: staffRole,
+    homeEntityId: staffHome || null,
+  });
+
   const addStaff = (e: FormEvent) => {
     e.preventDefault();
+    const payError = validateStaffPay({
+      firstName: staffDraft.firstName,
+      lastName: staffDraft.lastName,
+      employeeNumber: staffDraft.employeeNumber,
+      payAmount: staffDraft.payAmount,
+    });
+    if (payError) {
+      setError(payError);
+      return;
+    }
     setBusy(true);
     setError(null);
     setNotice(null);
-    void addFloorStaffFn({
-      data: {
-        orgId,
-        locationId,
-        name: staffName,
-        pin: staffPin,
-        role: staffRole,
-        homeEntityId: staffHome || null,
-      },
-    })
+    const saving = editingStaffId
+      ? updateTenantUserFn({
+          data: { orgId, locationId, kind: "floor", id: editingStaffId, ...staffPayload() },
+        }).then(() => {
+          setNotice("Staff record saved.");
+          setEditingStaffId(null);
+        })
+      : addFloorStaffFn({
+          data: { orgId, locationId, pin: staffPin, ...staffPayload() },
+        }).then(() => {
+          const shown = staffListTitle({
+            firstName: staffDraft.firstName,
+            lastName: staffDraft.lastName,
+            displayName: staffDraft.displayName,
+            employeeNumber: staffDraft.employeeNumber,
+          });
+          setNotice(`Floor staff added. ${shown} uses PIN ${staffPin} on this venue.`);
+          setStaffPin("");
+        });
+    void saving
       .then(() => {
-        setNotice(`Floor staff added. ${staffName} uses PIN ${staffPin} on this venue.`);
-        setStaffName("");
-        setStaffPin("");
+        setStaffDraft(EMPTY_STAFF_PAY);
         setStaffRole("server");
         setStaffHome("");
         load();
@@ -320,24 +363,22 @@ export function TenantUsersPanel({
         onSubmit={addStaff}
       >
         <p className="text-sm font-medium">Add floor staff (PIN only)</p>
-        <p className="text-xs text-muted-foreground">Optional. Name, PIN, role, home entity.</p>
-        <Field label="Name">
-          <Input
-            required
-            value={staffName}
-            onChange={(e) => setStaffName(e.target.value)}
-          />
-        </Field>
-        <Field label="PIN">
-          <Input
-            required
-            inputMode="numeric"
-            pattern="\d{4,8}"
-            value={staffPin}
-            onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-            autoComplete="off"
-          />
-        </Field>
+        <p className="text-xs text-muted-foreground">
+          First name, last name, employee number, and pay rate. PIN, role, and home entity stay.
+        </p>
+        <StaffPayFields value={staffDraft} onChange={setStaffDraft} />
+        {editingStaffId ? null : (
+          <Field label="PIN">
+            <Input
+              required
+              inputMode="numeric"
+              pattern="\d{4,8}"
+              value={staffPin}
+              onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              autoComplete="off"
+            />
+          </Field>
+        )}
         <Field label="Role">
           <SelectField value={staffRole} onChange={setStaffRole}>
             {TENANT_FLOOR_ROLES.map((r) => (
@@ -357,9 +398,35 @@ export function TenantUsersPanel({
             ))}
           </SelectField>
         </Field>
-        <Button type="submit" variant="outline" disabled={busy || !staffName || staffPin.length < 4}>
-          {busy ? "Saving…" : "Add floor staff"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={
+              busy ||
+              !staffDraft.firstName.trim() ||
+              !staffDraft.lastName.trim() ||
+              !staffDraft.employeeNumber.trim() ||
+              !staffDraft.payAmount.trim() ||
+              (!editingStaffId && staffPin.length < 4)
+            }
+          >
+            {busy ? "Saving…" : editingStaffId ? "Save staff" : "Add floor staff"}
+          </Button>
+          {editingStaffId ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                setEditingStaffId(null);
+                setStaffDraft(EMPTY_STAFF_PAY);
+              }}
+            >
+              Cancel
+            </Button>
+          ) : null}
+        </div>
       </form>
 
       {rows === null && <p className="text-sm text-muted-foreground">Loading users…</p>}
@@ -392,8 +459,10 @@ export function TenantUsersPanel({
                 className="space-y-2 rounded-xl border border-border bg-surface px-3 py-2"
               >
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="font-medium">{u.name}</span>
-                  {u.status === "disabled" ? (
+                  <span className="font-medium">{staffListTitle(u)}</span>
+                  {u.employmentStatus && u.employmentStatus !== "active" ? (
+                    <span className="text-xs capitalize text-muted-foreground">{u.employmentStatus}</span>
+                  ) : u.status === "disabled" ? (
                     <span className="text-xs text-muted-foreground">Disabled</span>
                   ) : null}
                   <span className="text-xs text-muted-foreground">
@@ -430,6 +499,33 @@ export function TenantUsersPanel({
                       </option>
                     ))}
                   </select>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => {
+                      setEditingStaffId(u.id);
+                      setStaffRole(u.role);
+                      setStaffHome(u.homeEntityId || "");
+                      setStaffDraft({
+                        firstName: u.firstName || "",
+                        lastName: u.lastName || "",
+                        displayName: u.displayName || "",
+                        employeeNumber: u.employeeNumber || "",
+                        payRateType: u.payRateType === "salary" ? "salary" : "hourly",
+                        payAmount: u.payRateCents ? payRateDollars(u.payRateCents) : "",
+                        hireDate: u.hireDate || "",
+                        employmentStatus:
+                          u.employmentStatus || (u.status === "disabled" ? "inactive" : "active"),
+                        email: u.email || "",
+                        phone: u.phone || "",
+                        position: u.position || "",
+                      });
+                    }}
+                  >
+                    Edit
+                  </Button>
                   <Button
                     type="button"
                     size="sm"

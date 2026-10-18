@@ -51,7 +51,18 @@ export const addFloorStaffFn = createServerFn({ method: "POST" })
     (d: {
       orgId: string;
       locationId: string;
-      name: string;
+      name?: string;
+      firstName?: string;
+      lastName?: string;
+      displayName?: string;
+      employeeNumber?: string;
+      payRateType?: string;
+      payAmount?: string;
+      hireDate?: string | null;
+      employmentStatus?: string;
+      email?: string;
+      phone?: string;
+      position?: string;
       pin: string;
       role: string;
       homeEntityId?: string | null;
@@ -59,6 +70,17 @@ export const addFloorStaffFn = createServerFn({ method: "POST" })
       orgId: String(d.orgId ?? "").trim(),
       locationId: String(d.locationId ?? "").trim(),
       name: String(d.name ?? "").trim().slice(0, 80),
+      firstName: String(d.firstName ?? "").trim().slice(0, 80),
+      lastName: String(d.lastName ?? "").trim().slice(0, 80),
+      displayName: String(d.displayName ?? "").trim().slice(0, 80),
+      employeeNumber: String(d.employeeNumber ?? "").trim().slice(0, 40),
+      payRateType: String(d.payRateType ?? "hourly").trim(),
+      payAmount: String(d.payAmount ?? "").trim().slice(0, 20),
+      hireDate: d.hireDate ? String(d.hireDate).slice(0, 10) : null,
+      employmentStatus: String(d.employmentStatus ?? "active").trim(),
+      email: String(d.email ?? "").trim().slice(0, 160),
+      phone: String(d.phone ?? "").trim().slice(0, 40),
+      position: String(d.position ?? "").trim().slice(0, 80),
       pin: String(d.pin ?? "").replace(/\D/g, "").slice(0, 8),
       role: String(d.role ?? "server").trim(),
       homeEntityId: d.homeEntityId ? String(d.homeEntityId).trim().slice(0, 80) : null,
@@ -80,6 +102,17 @@ export const updateTenantUserFn = createServerFn({ method: "POST" })
       role?: string;
       status?: string;
       homeEntityId?: string | null;
+      firstName?: string;
+      lastName?: string;
+      displayName?: string;
+      employeeNumber?: string;
+      payRateType?: string;
+      payAmount?: string;
+      hireDate?: string | null;
+      employmentStatus?: string;
+      email?: string;
+      phone?: string;
+      position?: string;
     }) => ({
       orgId: String(d.orgId ?? "").trim(),
       locationId: String(d.locationId ?? "").trim(),
@@ -96,6 +129,19 @@ export const updateTenantUserFn = createServerFn({ method: "POST" })
           : d.homeEntityId
             ? String(d.homeEntityId).trim().slice(0, 80)
             : null,
+      firstName: d.firstName === undefined ? undefined : String(d.firstName).trim().slice(0, 80),
+      lastName: d.lastName === undefined ? undefined : String(d.lastName).trim().slice(0, 80),
+      displayName: d.displayName === undefined ? undefined : String(d.displayName).trim().slice(0, 80),
+      employeeNumber:
+        d.employeeNumber === undefined ? undefined : String(d.employeeNumber).trim().slice(0, 40),
+      payRateType: d.payRateType === undefined ? undefined : String(d.payRateType).trim(),
+      payAmount: d.payAmount === undefined ? undefined : String(d.payAmount).trim().slice(0, 20),
+      hireDate: d.hireDate === undefined ? undefined : d.hireDate ? String(d.hireDate).slice(0, 10) : null,
+      employmentStatus:
+        d.employmentStatus === undefined ? undefined : String(d.employmentStatus).trim(),
+      email: d.email === undefined ? undefined : String(d.email).trim().slice(0, 160),
+      phone: d.phone === undefined ? undefined : String(d.phone).trim().slice(0, 40),
+      position: d.position === undefined ? undefined : String(d.position).trim().slice(0, 80),
     }),
   )
   .handler(async ({ context, data }) => {

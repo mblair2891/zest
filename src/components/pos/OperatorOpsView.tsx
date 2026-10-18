@@ -22,6 +22,16 @@ import { TaxRatesEditor, ratesPatch } from "./TaxRatesSettings";
 import { persistTaxRates } from "@/lib/pos/persist-location-setup";
 import { resolveVenueTaxRates } from "@/lib/pos/tax-rates";
 import { BrandLogoField } from "@/components/brand/BrandLogoField";
+import { StaffPayFields } from "@/components/pos/StaffPayFields";
+import {
+  duplicateEmployeeNumber,
+  EMPTY_STAFF_PAY,
+  staffListTitle,
+  validateStaffPay,
+  type StaffPayDraft,
+} from "@/lib/labor/staff-record";
+import { addFloorStaffFn, updateTenantUserFn } from "@/lib/saas/tenant-users-api";
+import { useSaasStore } from "@/lib/pos/saas-store";
 
 /**
  * Narrow ops surface for a guest operator: staff, clock, 86, view-only settlement.
@@ -46,6 +56,7 @@ export function OperatorOpsView({
   const toggleItem = usePosStore((s) => s.toggleItemAvailable);
   const clockToggle = usePosStore((s) => s.clockToggle);
   const createEmployee = usePosStore((s) => s.createEmployee);
+  const updateEmployee = usePosStore((s) => s.updateEmployee);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const locId = usePosStore((s) => s.tenantLocationId);
   const settings = usePosStore((s) => s.settings);
@@ -57,10 +68,12 @@ export function OperatorOpsView({
   const canStaff = canEmployee(emp, "staff:invite") || hostManaged;
   const can86 = canEmployee(emp, "item:86") || hostManaged;
   const [vendorId, setVendorId] = useState(lockedId || vendors[0]?.id || "");
-  const [staffName, setStaffName] = useState("");
-  const [staffRole, setStaffRole] = useState<EmployeeRole>("kitchen");
+  const [staffDraft, setStaffDraft] = useState<StaffPayDraft>(EMPTY_STAFF_PAY);
+  const [staffRole, setStaffRole] = useState<EmployeeRole>(peopleOnly ? "server" : "kitchen");
   const [staffPin, setStaffPin] = useState("");
   const [createdPin, setCreatedPin] = useState<string | null>(null);
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const vendor =
     vendors.find((v) => v.id === (lockedId || vendorId)) ?? vendors[0];
@@ -83,7 +96,7 @@ export function OperatorOpsView({
     const items = menuItems.filter((m) => m.vendorId === vendor.id);
     const lastPeriod = periods.find((p) => p.rows.some((r) => r.vendorId === vendor.id));
     const row = lastPeriod?.rows.find((r) => r.vendorId === vendor.id);
-    const staff = employees.filter((e) => e.active && e.operatorId === vendor.id);
+    const staff = employees.filter((e) => e.operatorId === vendor.id);
     const share = parseRevenueShare(settings.revenueShare);
     const lines = shareLinesForOrders({
       orders: closed,
@@ -108,19 +121,143 @@ export function OperatorOpsView({
     );
   }
 
-  const addStaff = () => {
-    if (!staffName.trim() || !canStaff) return;
-    const res = createEmployee({
-      name: staffName.trim(),
-      role: staffRole,
-      pin: staffPin || undefined,
-      operatorId: vendor.id,
-      title: ROLE_LABEL[staffRole],
-    });
-    setCreatedPin(res.pin);
-    setStaffName("");
+  const resetStaffForm = () => {
+    setStaffDraft(EMPTY_STAFF_PAY);
     setStaffPin("");
+    setEditingId(null);
   };
+
+  const addStaff = () => {
+    if (!canStaff) return;
+    const payError = validateStaffPay({
+      firstName: staffDraft.firstName,
+      lastName: staffDraft.lastName,
+      employeeNumber: staffDraft.employeeNumber,
+      payAmount: staffDraft.payAmount,
+    });
+    if (payError) {
+      setStaffError(payError);
+      return;
+    }
+    if (duplicateEmployeeNumber(employees, editingId || "", staffDraft.employeeNumber)) {
+      setStaffError("That employee number is already used at this venue.");
+      return;
+    }
+    setStaffError(null);
+    const fields = {
+      firstName: staffDraft.firstName,
+      lastName: staffDraft.lastName,
+      displayName: staffDraft.displayName,
+      employeeNumber: staffDraft.employeeNumber,
+      payRateType: staffDraft.payRateType,
+      payAmount: staffDraft.payAmount,
+      hireDate: staffDraft.hireDate || null,
+      employmentStatus: staffDraft.employmentStatus,
+      email: staffDraft.email,
+      phone: staffDraft.phone,
+      role: staffRole,
+      operatorId: vendor.id,
+      title: staffDraft.position,
+    };
+    void (async () => {
+      const orgId = useSaasStore.getState().org.id;
+      const serverFields = {
+        orgId,
+        locationId: locId || "",
+        firstName: staffDraft.firstName,
+        lastName: staffDraft.lastName,
+        displayName: staffDraft.displayName,
+        employeeNumber: staffDraft.employeeNumber,
+        payRateType: staffDraft.payRateType,
+        payAmount: staffDraft.payAmount,
+        hireDate: staffDraft.hireDate || null,
+        employmentStatus: staffDraft.employmentStatus,
+        email: staffDraft.email,
+        phone: staffDraft.phone,
+        position: staffDraft.position,
+        role: staffRole,
+        homeEntityId: vendor.id,
+      };
+      try {
+        if (editingId) {
+          const local = updateEmployee(editingId, fields);
+          if (!local.ok) {
+            setStaffError(local.error || "Could not save");
+            return;
+          }
+          if (orgId && locId) {
+            try {
+              await updateTenantUserFn({ data: { ...serverFields, kind: "floor", id: editingId } });
+            } catch {
+              /* the station roster keeps the rate */
+            }
+          }
+          resetStaffForm();
+          return;
+        }
+        let serverId: string | undefined;
+        if (orgId && locId && staffPin.replace(/\D/g, "").length >= 4) {
+          try {
+            const saved = await addFloorStaffFn({ data: { ...serverFields, pin: staffPin } });
+            serverId = saved.id;
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "";
+            if (/employee number|First name|Last name|Pay rate|PIN must|already in use/i.test(msg)) {
+              setStaffError(msg);
+              return;
+            }
+          }
+        }
+        const res = createEmployee({ ...fields, id: serverId, pin: staffPin || undefined });
+        if (res.error) {
+          setStaffError(res.error);
+          return;
+        }
+        setCreatedPin(res.pin);
+        resetStaffForm();
+      } catch (err) {
+        setStaffError(err instanceof Error ? err.message : "Could not save");
+      }
+    })();
+  };
+
+  const staffEditor = (roles: readonly EmployeeRole[]) => (
+    <div className="grid gap-3">
+      <StaffPayFields value={staffDraft} onChange={setStaffDraft} />
+      <div className="grid gap-2 sm:grid-cols-3">
+        <select
+          className="h-10 rounded-xl border border-border bg-bg px-3 text-sm"
+          value={staffRole}
+          onChange={(e) => setStaffRole(e.target.value as EmployeeRole)}
+          aria-label="Role"
+        >
+          {(roles.includes(staffRole) ? roles : [staffRole, ...roles]).map((role) => (
+            <option key={role} value={role}>
+              {ROLE_LABEL[role]}
+            </option>
+          ))}
+        </select>
+        <Input
+          placeholder="PIN (optional)"
+          value={staffPin}
+          onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+        />
+        <Button
+          type="button"
+          onClick={addStaff}
+          disabled={!staffDraft.firstName.trim() || !staffDraft.lastName.trim()}
+        >
+          {editingId ? "Save staff" : "Add staff"}
+        </Button>
+      </div>
+      {staffError ? (
+        <p className="text-xs text-danger" role="alert">
+          {staffError}
+        </p>
+      ) : null}
+      {createdPin ? <p className="text-xs text-muted-foreground">Created PIN {createdPin}.</p> : null}
+    </div>
+  );
 
   if (peopleOnly) {
     return (
@@ -134,41 +271,47 @@ export function OperatorOpsView({
             {stats.staff.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-2 py-2">
                 <span>
-                  {s.name}{" "}
+                  {staffListTitle(s)}{" "}
                   <span className="text-muted-foreground">
-                    · {ROLE_LABEL[s.role]} · {s.pinHash || s.pin ? "PIN set" : "No PIN"}
+                    · {ROLE_LABEL[s.role]}
+                    {s.title ? ` · ${s.title}` : ""}
+                    {s.employmentStatus && s.employmentStatus !== "active" ? ` · ${s.employmentStatus}` : ""}
+                    · {s.pinHash || s.pin ? "PIN set" : "No PIN"}
                   </span>
                 </span>
+                {canStaff ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingId(s.id);
+                      setStaffRole(s.role);
+                      setStaffError(null);
+                      setStaffDraft({
+                        firstName: s.firstName || "",
+                        lastName: s.lastName || "",
+                        displayName: s.displayName || "",
+                        employeeNumber: s.employeeNumber || "",
+                        payRateType: s.payRateType === "salary" ? "salary" : "hourly",
+                        payAmount: s.payRateCents ? (s.payRateCents / 100).toFixed(2) : "",
+                        hireDate: s.hireDate || "",
+                        employmentStatus: s.employmentStatus || "active",
+                        email: s.email || "",
+                        phone: s.phone || "",
+                        position: s.title || "",
+                      });
+                    }}
+                  >
+                    Edit
+                  </Button>
+                ) : null}
               </li>
             ))}
             {stats.staff.length === 0 && (
               <li className="py-2 text-sm text-muted-foreground">No staff on this entity yet.</li>
             )}
           </ul>
-          {canStaff && (
-            <div className="grid gap-2 sm:grid-cols-4">
-              <Input placeholder="Name" value={staffName} onChange={(e) => setStaffName(e.target.value)} />
-              <select
-                className="h-10 rounded-xl border border-border bg-bg px-3 text-sm"
-                value={staffRole}
-                onChange={(e) => setStaffRole(e.target.value as EmployeeRole)}
-                aria-label="Role"
-              >
-                {FLOOR_ROLES.map((role) => (
-                  <option key={role} value={role}>
-                    {ROLE_LABEL[role]}
-                  </option>
-                ))}
-              </select>
-              <Input placeholder="PIN (optional)" value={staffPin} onChange={(e) => setStaffPin(e.target.value)} />
-              <Button type="button" onClick={addStaff} disabled={!staffName.trim()}>
-                Add staff
-              </Button>
-              {createdPin && (
-                <p className="text-xs text-muted-foreground sm:col-span-4">Created PIN {createdPin}.</p>
-              )}
-            </div>
-          )}
+          {canStaff && staffEditor(FLOOR_ROLES)}
         </div>
       </div>
     );
@@ -312,40 +455,52 @@ export function OperatorOpsView({
             {stats.staff.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-2 py-2">
                 <span>
-                  {s.name}{" "}
+                  {staffListTitle(s)}{" "}
                   <span className="text-muted-foreground">
-                    · {ROLE_LABEL[s.role]} · {s.pinHash || s.pin ? "PIN set" : "No PIN"}
+                    · {ROLE_LABEL[s.role]}
+                    {s.title ? ` · ${s.title}` : ""}
+                    {s.employmentStatus && s.employmentStatus !== "active" ? ` · ${s.employmentStatus}` : ""}
+                    · {s.pinHash || s.pin ? "PIN set" : "No PIN"}
                   </span>
                 </span>
-                <Button size="sm" variant={s.clockedIn ? "default" : "outline"} onClick={() => clockToggle(s.id)}>
-                  {s.clockedIn ? "Clock out" : "Clock in"}
-                </Button>
+                <span className="flex shrink-0 gap-2">
+                  {canStaff ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingId(s.id);
+                        setStaffRole(s.role);
+                        setStaffError(null);
+                        setStaffDraft({
+                          firstName: s.firstName || "",
+                          lastName: s.lastName || "",
+                          displayName: s.displayName || "",
+                          employeeNumber: s.employeeNumber || "",
+                          payRateType: s.payRateType === "salary" ? "salary" : "hourly",
+                          payAmount: s.payRateCents ? (s.payRateCents / 100).toFixed(2) : "",
+                          hireDate: s.hireDate || "",
+                          employmentStatus: s.employmentStatus || "active",
+                          email: s.email || "",
+                          phone: s.phone || "",
+                          position: s.title || "",
+                        });
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  ) : null}
+                  <Button size="sm" variant={s.clockedIn ? "default" : "outline"} onClick={() => clockToggle(s.id)}>
+                    {s.clockedIn ? "Clock out" : "Clock in"}
+                  </Button>
+                </span>
               </li>
             ))}
             {stats.staff.length === 0 && (
               <li className="py-2 text-sm text-muted-foreground">No staff on this operator yet.</li>
             )}
           </ul>
-          {canStaff && (
-            <div className="mt-3 grid gap-2 sm:grid-cols-4">
-              <Input placeholder="Name" value={staffName} onChange={(e) => setStaffName(e.target.value)} />
-              <select
-                className="h-10 rounded-xl border border-border bg-bg px-3 text-sm"
-                value={staffRole}
-                onChange={(e) => setStaffRole(e.target.value as EmployeeRole)}
-              >
-                <option value="kitchen">Kitchen</option>
-                <option value="bartender">Bartender</option>
-              </select>
-              <Input placeholder="PIN (optional)" value={staffPin} onChange={(e) => setStaffPin(e.target.value)} />
-              <Button type="button" onClick={addStaff} disabled={!staffName.trim()}>
-                Add staff
-              </Button>
-              {createdPin && (
-                <p className="sm:col-span-4 text-xs text-muted-foreground">Created PIN {createdPin}.</p>
-              )}
-            </div>
-          )}
+          {canStaff && <div className="mt-3">{staffEditor(["kitchen", "bartender"])}</div>}
         </div>
 
         <div className="rounded-2xl border border-border bg-surface p-4">

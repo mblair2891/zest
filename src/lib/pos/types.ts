@@ -385,6 +385,21 @@ export interface RestaurantSettings {
 export interface Employee {
   id: string;
   name: string;
+  /** Given name. Existing single names stay here until a last name is entered. */
+  firstName?: string;
+  lastName?: string;
+  /** Blank uses first and last. `name` stays this display string. */
+  displayName?: string;
+  /** Unique at the venue. Required on the staff form for the hours file. */
+  employeeNumber?: string;
+  payRateType?: "hourly" | "salary";
+  /** Hourly cents, or annual salary cents. */
+  payRateCents?: number;
+  /** YYYY-MM-DD */
+  hireDate?: string;
+  employmentStatus?: "active" | "inactive" | "terminated";
+  email?: string;
+  phone?: string;
   pin: string;
   /** SHA-256 of location-scoped PIN. Login prefers this; `pin` is legacy/demo only. */
   pinHash?: string;

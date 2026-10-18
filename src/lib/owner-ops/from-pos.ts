@@ -139,12 +139,18 @@ export function collectOwnerFacts(args: {
       punch.clockOutAt && (punch.regularMinutes != null || punch.otMinutes != null)
         ? (punch.regularMinutes ?? 0) + (punch.otMinutes ?? 0)
         : Math.max(0, Math.round(((punch.clockOutAt ?? args.now) - punch.clockInAt) / 60000));
+    const employee = args.employees.find((row) => row.id === punch.employeeId);
     return [
       {
         entityId,
         businessDate: venueYmd(punch.clockInAt, zone),
         minutes,
         status: punch.clockOutAt ? ("closed" as const) : ("open" as const),
+        employeeId: punch.employeeId,
+        employeeName: employee?.name || punch.employeeName,
+        role: employee?.title?.trim() || employee?.role,
+        payRateType: employee?.payRateType,
+        payRateCents: employee?.payRateCents,
       },
     ];
   });

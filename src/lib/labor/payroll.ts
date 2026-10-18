@@ -1,5 +1,6 @@
 import type { Employee } from "@/lib/pos/types";
 import type { TimePunch } from "@/lib/pos/ops-types";
+import { payRateDollars, resolveStaffName, splitPersonName } from "./staff-record";
 
 const HOST_SCOPE = "host";
 
@@ -18,6 +19,11 @@ export type PayrollRow = {
   tipsCents: number;
   salesCents: number;
   punchCount: number;
+  employeeNumber?: string;
+  firstName?: string;
+  lastName?: string;
+  payRateType?: string;
+  payRateCents?: number;
 };
 
 export function buildPayrollRows(opts: {
@@ -31,13 +37,22 @@ export function buildPayrollRows(opts: {
   const from = opts.from ?? 0;
   const to = opts.to ?? Date.now();
   const byEmp = new Map<string, PayrollRow>();
-  for (const emp of opts.employees.filter((e) => e.active)) {
-    const op = emp.operatorId || HOST_SCOPE;
-    if (opts.operatorId && op !== opts.operatorId) continue;
-    byEmp.set(emp.id, {
-      employeeId: emp.id,
-      name: emp.name,
-      role: emp.role || "",
+  const blank = (emp: Employee | undefined, fallbackName: string, employeeId: string, op: string): PayrollRow => {
+    const who = resolveStaffName({
+      name: emp?.name || fallbackName,
+      firstName: emp?.firstName,
+      lastName: emp?.lastName,
+      displayName: emp?.displayName,
+    });
+    return {
+      employeeId,
+      name: who.name,
+      firstName: who.firstName,
+      lastName: who.lastName,
+      employeeNumber: emp?.employeeNumber || "",
+      payRateType: emp?.payRateType || "",
+      payRateCents: emp?.payRateCents ?? 0,
+      role: emp?.title?.trim() || emp?.role || "",
       operatorId: op,
       operatorName: opts.operatorName(op),
       regularHours: 0,
@@ -46,10 +61,15 @@ export function buildPayrollRows(opts: {
       otDaily: false,
       otWeekly: false,
       otSeventh: false,
-      tipsCents: emp.tipsEarned ?? 0,
-      salesCents: emp.salesTotal ?? 0,
+      tipsCents: emp?.tipsEarned ?? 0,
+      salesCents: emp?.salesTotal ?? 0,
       punchCount: 0,
-    });
+    };
+  };
+  for (const emp of opts.employees.filter((e) => e.active)) {
+    const op = emp.operatorId || HOST_SCOPE;
+    if (opts.operatorId && op !== opts.operatorId) continue;
+    byEmp.set(emp.id, blank(emp, emp.name, emp.id, op));
   }
   for (const p of opts.punches) {
     if (p.status === "open" || p.status === "rejected") continue;
@@ -60,22 +80,7 @@ export function buildPayrollRows(opts: {
     if (opts.operatorId && op !== opts.operatorId) continue;
     let row = byEmp.get(p.employeeId);
     if (!row) {
-      row = {
-        employeeId: p.employeeId,
-        name: p.employeeName,
-        role: emp?.role || "",
-        operatorId: op,
-        operatorName: opts.operatorName(op),
-        regularHours: 0,
-        otHours: 0,
-        otFlag: false,
-        otDaily: false,
-        otWeekly: false,
-        otSeventh: false,
-        tipsCents: emp?.tipsEarned ?? 0,
-        salesCents: emp?.salesTotal ?? 0,
-        punchCount: 0,
-      };
+      row = blank(emp, p.employeeName, p.employeeId, op);
       byEmp.set(p.employeeId, row);
     }
     row.regularHours += (p.regularMinutes ?? 0) / 60;
@@ -90,11 +95,22 @@ export function buildPayrollRows(opts: {
   return [...byEmp.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function csvCell(value: string): string {
+  if (/[",\n]/.test(value)) return `"${value.replaceAll('"', '""')}"`;
+  return value;
+}
+
 export function payrollCsv(rows: PayrollRow[]): string {
   const header = [
-    "employee",
-    "role",
+    "employee_number",
+    "first_name",
+    "last_name",
+    "pay_rate_type",
+    "pay_rate",
+    "hours_worked",
     "entity",
+    "role",
+    "employee",
     "regular_hours",
     "ot_hours",
     "ot_flag",
@@ -103,11 +119,21 @@ export function payrollCsv(rows: PayrollRow[]): string {
     "ot_seventh",
     "punches",
   ];
-  const lines = rows.map((r) =>
-    [
-      r.name,
-      r.role,
-      r.operatorName,
+  const lines = rows.map((r) => {
+    const split = splitPersonName(r.name);
+    const first = r.firstName || split.firstName;
+    const last = r.lastName ?? split.lastName;
+    const hours = r.regularHours + r.otHours;
+    return [
+      csvCell(r.employeeNumber || ""),
+      csvCell(first),
+      csvCell(last),
+      csvCell(r.payRateType || ""),
+      r.payRateCents ? payRateDollars(r.payRateCents) : "",
+      hours.toFixed(2),
+      csvCell(r.operatorName),
+      csvCell(r.role),
+      csvCell(r.name),
       r.regularHours.toFixed(2),
       r.otHours.toFixed(2),
       r.otFlag ? "Y" : "N",
@@ -115,8 +141,8 @@ export function payrollCsv(rows: PayrollRow[]): string {
       r.otWeekly ? "Y" : "N",
       r.otSeventh ? "Y" : "N",
       String(r.punchCount),
-    ].join(","),
-  );
+    ].join(",");
+  });
   return [header.join(","), ...lines].join("\n");
 }
 

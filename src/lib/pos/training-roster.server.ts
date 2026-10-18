@@ -8,6 +8,12 @@ import {
   STARTER_MODIFIERS,
   starterTables,
 } from "@/lib/pos/starter-seed";
+import {
+  hireDateText,
+  parseEmploymentStatus,
+  parsePayRateType,
+  resolveStaffName,
+} from "@/lib/labor/staff-record";
 import type { Employee, EmployeeRole } from "@/lib/pos/types";
 import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
 import {
@@ -37,44 +43,125 @@ function staffRow(locationId: string, pin: string, name: string, role: EmployeeR
   };
 }
 
+type StaffRosterRow = {
+  id: string;
+  name: string;
+  role: string;
+  pin_hash: string | null;
+  pin_display: string | null;
+  operator_id: string | null;
+  active: boolean | string | null;
+  first_name: string;
+  last_name: string;
+  display_name: string;
+  employee_number: string | null;
+  pay_rate_type: string | null;
+  pay_rate_cents: number | null;
+  hire_date: unknown;
+  employment_status: string | null;
+  email: string | null;
+  phone: string | null;
+  position: string | null;
+};
+
+function blankPay(row: {
+  id: string;
+  name: string;
+  role: string;
+  pin_hash: string | null;
+  pin_display?: string | null;
+  operator_id: string | null;
+  active: boolean | string | null;
+}): StaffRosterRow {
+  return {
+    ...row,
+    pin_display: row.pin_display ?? null,
+    first_name: "",
+    last_name: "",
+    display_name: "",
+    employee_number: null,
+    pay_rate_type: null,
+    pay_rate_cents: null,
+    hire_date: null,
+    employment_status: null,
+    email: "",
+    phone: "",
+    position: "",
+  };
+}
+
 export async function listLocationStaff(locationId: string): Promise<Employee[]> {
   const sql = await getSql();
   try {
-    const rows = await sql<{
-      id: string;
-      name: string;
-      role: string;
-      pin_hash: string | null;
-      pin_display: string | null;
-      operator_id: string | null;
-      active: boolean;
-    }>`
-      select id, name, role, pin_hash, pin_display, operator_id, active
-      from location_staff
-      where location_id = ${locationId} and coalesce(active, true) = true
-    `.catch(async () => {
-      const fallback = await sql<{
-        id: string;
-        name: string;
-        role: string;
-        pin_hash: string | null;
-        operator_id: string | null;
-        active: boolean;
-      }>`
-        select id, name, role, pin_hash, operator_id, active
+    let rows: StaffRosterRow[] = [];
+    try {
+      rows = await sql<StaffRosterRow>`
+        select id, name, role, pin_hash, pin_display, operator_id, active,
+          first_name, last_name, display_name, employee_number, pay_rate_type, pay_rate_cents,
+          hire_date, employment_status, email, phone, position
         from location_staff
         where location_id = ${locationId} and coalesce(active, true) = true
       `;
-      return fallback.map((r) => ({ ...r, pin_display: null as string | null }));
-    });
+    } catch {
+      try {
+        const mid = await sql<{
+          id: string;
+          name: string;
+          role: string;
+          pin_hash: string | null;
+          pin_display: string | null;
+          operator_id: string | null;
+          active: boolean | string | null;
+        }>`
+          select id, name, role, pin_hash, pin_display, operator_id, active
+          from location_staff
+          where location_id = ${locationId} and coalesce(active, true) = true
+        `;
+        rows = mid.map((row) => blankPay(row));
+      } catch {
+        const older = await sql<{
+          id: string;
+          name: string;
+          role: string;
+          pin_hash: string | null;
+          operator_id: string | null;
+          active: boolean | string | null;
+        }>`
+          select id, name, role, pin_hash, operator_id, active
+          from location_staff
+          where location_id = ${locationId} and coalesce(active, true) = true
+        `;
+        rows = older.map((row) => blankPay(row));
+      }
+    }
     const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#5C5C5C", "#A61B1B", "#4A5568"];
     return rows.map((r, i) => {
       const display = String(r.pin_display || "").replace(/\D/g, "");
       const repaired =
         display.length === 4 ? hashPin(display, locationId) : r.pin_hash ?? undefined;
+      const who = resolveStaffName({
+        name: r.name,
+        firstName: r.first_name,
+        lastName: r.last_name,
+        displayName: r.display_name,
+      });
+      const stillActive = r.active !== false && String(r.active) !== "f" && String(r.active) !== "false";
+      const employmentStatus = parseEmploymentStatus(r.employment_status, stillActive);
+      const cents = Math.max(0, Math.round(Number(r.pay_rate_cents) || 0));
       return {
         id: r.id,
-        name: r.name,
+        name: who.name,
+        firstName: who.firstName || undefined,
+        lastName: who.lastName || undefined,
+        displayName: who.displayName || undefined,
+        employeeNumber: r.employee_number?.trim() || undefined,
+        payRateType: r.pay_rate_type ? parsePayRateType(r.pay_rate_type) : undefined,
+        payRateCents: cents > 0 ? cents : undefined,
+        hireDate: hireDateText(r.hire_date) || undefined,
+        employmentStatus,
+        email: r.email?.trim() || undefined,
+        phone: r.phone?.trim() || undefined,
+        title: r.position?.trim() || undefined,
         pin: "",
         pinHash: r.pin_hash || repaired,
         role: (r.role as EmployeeRole) || "server",
@@ -82,7 +169,7 @@ export async function listLocationStaff(locationId: string): Promise<Employee[]>
         clockedIn: false,
         tipsEarned: 0,
         salesTotal: 0,
-        active: r.active !== false,
+        active: employmentStatus === "active",
         homeSectionIds: [],
         operatorId: r.operator_id || undefined,
       };

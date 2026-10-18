@@ -26,12 +26,34 @@ import {
 } from "./tenant-users";
 import { locationAdminMail, passwordResetMail, plainTextHtml } from "./email-notices";
 import type { SendEmailResult } from "./email.server";
+import {
+  employmentIsActive,
+  hireDateText,
+  parseEmploymentStatus,
+  parsePayRateCents,
+  parsePayRateType,
+  resolveStaffName,
+  validateStaffPay,
+} from "@/lib/labor/staff-record";
 
 async function requireVenueUsersAccess(userId: string, orgId: string): Promise<void> {
   if (await isPlatformAdmin(userId)) return;
   const access = await requireMembership(userId, orgId, ["owner", "manager"]);
   if (access.operatorId) {
     throw new ForbiddenError("Entity admins cannot manage venue users");
+  }
+}
+
+async function requireStaffWrite(
+  userId: string,
+  orgId: string,
+  homeEntityId: string | null,
+): Promise<void> {
+  if (await isPlatformAdmin(userId)) return;
+  const access = await requireMembership(userId, orgId, ["owner", "manager", "vendor"]);
+  if (!access.operatorId) return;
+  if (access.operatorId !== (homeEntityId || "")) {
+    throw new ForbiddenError("You can only edit staff for your entity");
   }
 }
 
@@ -161,24 +183,31 @@ export async function listTenantUsers(
   `;
   const opName = new Map(ops.map((o) => [o.id, o.dba || o.legal_name]));
 
-  let staff: Array<{
+  type StaffListRow = {
     id: string;
     name: string;
     role: string;
     operator_id: string | null;
     active: boolean;
     pin_display: string | null;
-  }> = [];
+    first_name: string;
+    last_name: string;
+    display_name: string;
+    employee_number: string | null;
+    pay_rate_type: string | null;
+    pay_rate_cents: number | null;
+    hire_date: unknown;
+    employment_status: string | null;
+    email: string | null;
+    phone: string | null;
+    position: string | null;
+  };
+  let staff: StaffListRow[] = [];
   try {
-    staff = await sql<{
-      id: string;
-      name: string;
-      role: string;
-      operator_id: string | null;
-      active: boolean;
-      pin_display: string | null;
-    }>`
-      select id, name, role, operator_id, active, pin_display
+    staff = await sql<StaffListRow>`
+      select id, name, role, operator_id, active, pin_display,
+        first_name, last_name, display_name, employee_number,
+        pay_rate_type, pay_rate_cents, hire_date, employment_status, email, phone, position
       from location_staff
       where location_id = ${locationId}
       order by created_at asc
@@ -191,15 +220,59 @@ export async function listTenantUsers(
         role: string;
         operator_id: string | null;
         active: boolean;
+        pin_display: string | null;
       }>`
-        select id, name, role, operator_id, active
+        select id, name, role, operator_id, active, pin_display
         from location_staff
         where location_id = ${locationId}
         order by created_at asc
       `;
-      staff = fallback.map((s) => ({ ...s, pin_display: null }));
+      staff = fallback.map((s) => ({
+        ...s,
+        first_name: "",
+        last_name: "",
+        display_name: "",
+        employee_number: null,
+        pay_rate_type: "hourly",
+        pay_rate_cents: 0,
+        hire_date: null,
+        employment_status: s.active === false ? "inactive" : "active",
+        email: "",
+        phone: "",
+        position: "",
+      }));
     } catch {
-      staff = [];
+      try {
+        const older = await sql<{
+          id: string;
+          name: string;
+          role: string;
+          operator_id: string | null;
+          active: boolean;
+        }>`
+          select id, name, role, operator_id, active
+          from location_staff
+          where location_id = ${locationId}
+          order by created_at asc
+        `;
+        staff = older.map((s) => ({
+          ...s,
+          pin_display: null,
+          first_name: "",
+          last_name: "",
+          display_name: "",
+          employee_number: null,
+          pay_rate_type: "hourly",
+          pay_rate_cents: 0,
+          hire_date: null,
+          employment_status: s.active === false ? "inactive" : "active",
+          email: "",
+          phone: "",
+          position: "",
+        }));
+      } catch {
+        staff = [];
+      }
     }
   }
 
@@ -231,18 +304,38 @@ export async function listTenantUsers(
     homeEntityName: m.operator_id ? (opName.get(m.operator_id) ?? m.operator_id) : null,
   }));
 
-  const floor: TenantUserRow[] = staff.map((s) => ({
-    id: s.id,
-    kind: "floor" as const,
-    name: s.name,
-    role: s.role,
-    status: s.active === false ? "disabled" : "active",
-    homeEntityId: s.operator_id,
-    homeEntityName: s.operator_id ? (opName.get(s.operator_id) ?? s.operator_id) : null,
-    locationId,
-    pin: s.pin_display || null,
-    clockedIn: clocked.has(s.id),
-  }));
+  const floor: TenantUserRow[] = staff.map((s) => {
+    const who = resolveStaffName({
+      name: s.name,
+      firstName: s.first_name,
+      lastName: s.last_name,
+      displayName: s.display_name,
+    });
+    const employmentStatus = parseEmploymentStatus(s.employment_status, s.active !== false);
+    return {
+      id: s.id,
+      kind: "floor" as const,
+      name: who.name,
+      firstName: who.firstName,
+      lastName: who.lastName,
+      displayName: who.displayName,
+      employeeNumber: s.employee_number,
+      payRateType: parsePayRateType(s.pay_rate_type),
+      payRateCents: Math.max(0, Math.round(Number(s.pay_rate_cents) || 0)),
+      hireDate: hireDateText(s.hire_date),
+      employmentStatus,
+      email: s.email || "",
+      phone: s.phone || "",
+      position: s.position || "",
+      role: s.role,
+      status: employmentIsActive(employmentStatus) ? "active" : "disabled",
+      homeEntityId: s.operator_id,
+      homeEntityName: s.operator_id ? (opName.get(s.operator_id) ?? s.operator_id) : null,
+      locationId,
+      pin: s.pin_display || null,
+      clockedIn: clocked.has(s.id),
+    };
+  });
 
   return [...login, ...floor];
 }
@@ -442,16 +535,43 @@ export async function addFloorStaff(
   input: {
     orgId: string;
     locationId: string;
-    name: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    displayName?: string;
+    employeeNumber?: string;
+    payRateType?: string;
+    payAmount?: string;
+    hireDate?: string | null;
+    employmentStatus?: string;
+    email?: string;
+    phone?: string;
+    position?: string;
     pin: string;
     role: string;
     homeEntityId?: string | null;
   },
 ): Promise<{ id: string; pin: string }> {
-  await requireVenueUsersAccess(actorId, input.orgId);
+  await requireStaffWrite(actorId, input.orgId, input.homeEntityId?.trim() || null);
   await assertOrgLocation(input.orgId, input.locationId);
-  const name = input.name.trim().slice(0, 80);
-  if (!name) throw new Error("Name is required.");
+  const who = resolveStaffName(input);
+  const payError = validateStaffPay({
+    firstName: who.firstName,
+    lastName: who.lastName,
+    employeeNumber: String(input.employeeNumber ?? ""),
+    payAmount: String(input.payAmount ?? ""),
+  });
+  if (payError) throw new Error(payError);
+  const employeeNumber = String(input.employeeNumber ?? "").trim().slice(0, 40);
+  const payRateType = parsePayRateType(input.payRateType);
+  const payRateCents = parsePayRateCents(input.payAmount) ?? 0;
+  const employmentStatus = parseEmploymentStatus(input.employmentStatus, true);
+  const active = employmentIsActive(employmentStatus);
+  const email = String(input.email ?? "").trim().slice(0, 160);
+  const phone = String(input.phone ?? "").trim().slice(0, 40);
+  const position = String(input.position ?? "").trim().slice(0, 80);
+  const hireDate = hireDateText(input.hireDate);
+  const name = who.name.slice(0, 80);
   const role = parseTenantFloorRole(input.role);
   const sql = await getSql();
   const home = input.homeEntityId?.trim() || null;
@@ -482,14 +602,26 @@ export async function addFloorStaff(
     limit 1
   `;
   if (taken[0]) throw new Error("That PIN is already in use at this location.");
+  const numberTaken = await sql<{ id: string }>`
+    select id from location_staff
+    where location_id = ${input.locationId}
+      and lower(employee_number) = ${employeeNumber.toLowerCase()}
+    limit 1
+  `;
+  if (numberTaken[0]) throw new Error("That employee number is already used at this venue.");
 
   const id = newId("emp");
   await sql`
     insert into location_staff (
-      id, location_id, operator_id, name, role, pin_hash, pin_display, active
+      id, location_id, operator_id, name, role, pin_hash, pin_display, active,
+      first_name, last_name, display_name, employee_number, pay_rate_type, pay_rate_cents,
+      hire_date, employment_status, email, phone, position
     )
     values (
-      ${id}, ${input.locationId}, ${home}, ${name}, ${role}, ${pinHash}, ${pin}, ${true}
+      ${id}, ${input.locationId}, ${home}, ${name}, ${role}, ${pinHash}, ${pin}, ${active},
+      ${who.firstName.slice(0, 80)}, ${who.lastName.slice(0, 80)}, ${who.displayName.slice(0, 80)},
+      ${employeeNumber}, ${payRateType}, ${payRateCents}, ${hireDate}, ${employmentStatus}, ${email}, ${phone},
+      ${position}
     )
   `;
   await writeAudit({
@@ -511,9 +643,22 @@ export async function updateTenantUser(
     role?: string;
     status?: "active" | "disabled";
     homeEntityId?: string | null;
+    firstName?: string;
+    lastName?: string;
+    displayName?: string;
+    employeeNumber?: string;
+    payRateType?: string;
+    payAmount?: string;
+    hireDate?: string | null;
+    employmentStatus?: string;
+    email?: string;
+    phone?: string;
+    position?: string;
   },
 ): Promise<{ ok: true }> {
-  await requireVenueUsersAccess(actorId, input.orgId);
+  if (input.kind !== "floor") {
+    await requireVenueUsersAccess(actorId, input.orgId);
+  }
   await assertOrgLocation(input.orgId, input.locationId);
   const sql = await getSql();
 
@@ -568,38 +713,76 @@ export async function updateTenantUser(
     return { ok: true };
   }
 
-  const staff = await sql<{ id: string }>`
-    select id from location_staff
+  const staff = await sql<{ id: string; operator_id: string | null }>`
+    select id, operator_id from location_staff
     where id = ${input.id} and location_id = ${input.locationId}
     limit 1
   `;
   if (!staff[0]) throw new Error("Staff not found.");
+  const nextHome = input.homeEntityId === undefined ? staff[0].operator_id : input.homeEntityId || null;
+  await requireStaffWrite(actorId, input.orgId, nextHome);
   const nextRole = input.role ? parseTenantFloorRole(input.role) : null;
-  const active =
+  let employmentStatus: ReturnType<typeof parseEmploymentStatus> | null = null;
+  let active: boolean | null =
     input.status === "disabled" ? false : input.status === "active" ? true : null;
-  const home = input.homeEntityId;
-  if (home) {
+  if (input.employmentStatus) {
+    employmentStatus = parseEmploymentStatus(input.employmentStatus, true);
+    active = employmentIsActive(employmentStatus);
+  } else if (input.status === "disabled") employmentStatus = "inactive";
+  else if (input.status === "active") employmentStatus = "active";
+  if (nextHome) {
     const op = await sql<{ id: string }>`
-      select id from operators where id = ${home} and org_id = ${input.orgId} limit 1
+      select id from operators where id = ${nextHome} and org_id = ${input.orgId} limit 1
     `;
     if (!op[0]) throw new Error("Home entity not found on this tenant.");
   }
-  if (home === undefined) {
+  if (input.firstName !== undefined) {
+    const who = resolveStaffName(input);
+    const payError = validateStaffPay({
+      firstName: who.firstName,
+      lastName: who.lastName,
+      employeeNumber: String(input.employeeNumber ?? ""),
+      payAmount: String(input.payAmount ?? ""),
+    });
+    if (payError) throw new Error(payError);
+    const employeeNumber = String(input.employeeNumber ?? "").trim().slice(0, 40);
+    const clash = await sql<{ id: string }>`
+      select id from location_staff
+      where location_id = ${input.locationId}
+        and lower(employee_number) = ${employeeNumber.toLowerCase()}
+        and id <> ${input.id}
+      limit 1
+    `;
+    if (clash[0]) throw new Error("That employee number is already used at this venue.");
     await sql`
       update location_staff
-      set role = coalesce(${nextRole}, role),
-          active = coalesce(${active}, active)
+      set name = ${who.name.slice(0, 80)},
+          first_name = ${who.firstName.slice(0, 80)},
+          last_name = ${who.lastName.slice(0, 80)},
+          display_name = ${who.displayName.slice(0, 80)},
+          employee_number = ${employeeNumber},
+          pay_rate_type = ${parsePayRateType(input.payRateType)},
+          pay_rate_cents = ${parsePayRateCents(input.payAmount) ?? 0},
+          hire_date = ${hireDateText(input.hireDate)},
+          employment_status = ${employmentStatus ?? "active"},
+          email = ${String(input.email ?? "").trim().slice(0, 160)},
+          phone = ${String(input.phone ?? "").trim().slice(0, 40)},
+          position = ${String(input.position ?? "").trim().slice(0, 80)},
+          role = coalesce(${nextRole}, role),
+          active = ${active ?? true},
+          operator_id = ${nextHome}
       where id = ${input.id}
     `;
-  } else {
-    await sql`
-      update location_staff
-      set role = coalesce(${nextRole}, role),
-          active = coalesce(${active}, active),
-          operator_id = ${home || null}
-      where id = ${input.id}
-    `;
+    return { ok: true };
   }
+  await sql`
+    update location_staff
+    set role = coalesce(${nextRole}, role),
+        active = coalesce(${active}, active),
+        employment_status = coalesce(${employmentStatus}, employment_status),
+        operator_id = ${nextHome}
+    where id = ${input.id}
+  `;
   return { ok: true };
 }
 

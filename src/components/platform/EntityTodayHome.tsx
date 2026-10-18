@@ -24,6 +24,7 @@ export function EntityTodayHome({
   onOpen: (tab: VenueDashTabId) => void;
 }) {
   const orders = usePosStore((s) => s.orders);
+  const employees = usePosStore((s) => s.employees);
   const menuItems = usePosStore((s) => s.menuItems);
   const settings = usePosStore((s) => s.settings);
   const vendors = usePosStore((s) => s.vendors);
@@ -37,6 +38,21 @@ export function EntityTodayHome({
   const entityName = vendors.find((v) => v.id === entityId)?.name || "This entity";
   const wage = wageBook || laborByEntity[entityId]?.minWageCents || labor.minWageCents || 0;
 
+  const ratedPunches = useMemo(
+    () =>
+      punches.map((punch) => {
+        const person = employees.find((row) => row.id === punch.employeeId);
+        return {
+          ...punch,
+          employeeName: person?.name || punch.employeeName,
+          role: person?.title?.trim() || person?.role,
+          payRateType: person?.payRateType,
+          payRateCents: person?.payRateCents,
+        };
+      }),
+    [punches, employees],
+  );
+
   const snap: EntityTodaySnapshot = useMemo(
     () =>
       entityToday({
@@ -45,11 +61,11 @@ export function EntityTodayHome({
         todayYmd: today,
         timeZone: tz,
         orders,
-        punches,
+        punches: ratedPunches,
         wageCentsPerHour: wage,
         items: menuItems,
       }),
-    [entityId, day, today, tz, orders, punches, wage, menuItems],
+    [entityId, day, today, tz, orders, ratedPunches, wage, menuItems],
   );
 
   const peak = Math.max(1, ...snap.hourlyCents);
@@ -125,6 +141,12 @@ export function EntityTodayHome({
           onClick={() => onOpen("schedule")}
         />
         <Card
+          label="Labor cost"
+          value={formatCurrency(snap.laborCents)}
+          testId="today-labor-cost"
+          onClick={() => onOpen("schedule")}
+        />
+        <Card
           label="Top items"
           value={snap.topItems[0]?.name ?? "—"}
           testId="today-items"
@@ -132,6 +154,33 @@ export function EntityTodayHome({
         />
         <Card label="86 count" value={String(snap.eightySixCount)} testId="today-86" onClick={() => onOpen("menu")} />
       </div>
+
+      {snap.laborByRole.length > 0 || snap.laborByEmployee.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2" data-today-labor-groups="">
+          <div className="rounded-2xl border border-border bg-surface p-3">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Labor by role</p>
+            <ul className="space-y-1 text-sm">
+              {snap.laborByRole.map((row) => (
+                <li key={row.role} className="flex justify-between gap-3">
+                  <span className="truncate">{row.role}</span>
+                  <span className="tabular text-muted-foreground">{formatCurrency(row.cents)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-border bg-surface p-3">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Labor by employee</p>
+            <ul className="space-y-1 text-sm">
+              {snap.laborByEmployee.map((row) => (
+                <li key={row.employeeId} className="flex justify-between gap-3">
+                  <span className="truncate">{row.name}</span>
+                  <span className="tabular text-muted-foreground">{formatCurrency(row.cents)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-border bg-surface p-3">
         <p className="mb-2 text-xs font-medium text-muted-foreground">Top items</p>

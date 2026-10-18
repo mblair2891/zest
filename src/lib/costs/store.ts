@@ -6,6 +6,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { parseJurisdiction } from "@/lib/pos/jurisdiction";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { parseLaborRules } from "@/lib/labor/rules";
+import { laborCostCents } from "@/lib/labor/staff-record";
 import { laborBasisLabel, salesForLaborBasis } from "@/lib/labor/revenue-basis";
 import {
   laborSalesIncludingShare,
@@ -1685,7 +1686,24 @@ export const useCostStore = create<CostState>()(
             (s, p) => s + (p.regularMinutes ?? 0) + (p.otMinutes ?? 0),
             0,
           );
-          const laborCents = Math.round((mins / 60) * 1800);
+          const rated = punches.some((p) => {
+            const person = pos.employees.find((e) => e.id === p.employeeId);
+            return Math.round(Number(person?.payRateCents) || 0) > 0;
+          });
+          const laborCents = rated
+            ? punches.reduce((s, p) => {
+                const person = pos.employees.find((e) => e.id === p.employeeId);
+                return (
+                  s +
+                  laborCostCents({
+                    payRateType: person?.payRateType,
+                    payRateCents: person?.payRateCents,
+                    minutes: (p.regularMinutes ?? 0) + (p.otMinutes ?? 0),
+                    fallbackWageCentsPerHour: 1800,
+                  })
+                );
+              }, 0)
+            : Math.round((mins / 60) * 1800);
           laborPct = salesCents > 0 ? Math.round((laborCents / salesCents) * 1000) / 10 : null;
         }
         const categoryMargins = COST_CATEGORIES.map((cat) => {

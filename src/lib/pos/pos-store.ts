@@ -516,12 +516,44 @@ export interface PosStore {
     >,
   ) => void;
   createEmployee: (input: {
-    name: string;
+    id?: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    displayName?: string;
+    employeeNumber?: string;
+    payRateType?: "hourly" | "salary";
+    payRateCents?: number;
+    payAmount?: string;
+    hireDate?: string | null;
+    employmentStatus?: "active" | "inactive" | "terminated";
+    email?: string;
+    phone?: string;
     role: EmployeeRole;
     pin?: string;
     operatorId?: string;
     title?: string;
-  }) => { id: string; pin: string };
+  }) => { id: string; pin: string; error?: string };
+  updateEmployee: (
+    id: string,
+    patch: {
+      name?: string;
+      firstName?: string;
+      lastName?: string;
+      displayName?: string;
+      employeeNumber?: string;
+      payRateType?: "hourly" | "salary";
+      payRateCents?: number;
+      payAmount?: string;
+      hireDate?: string | null;
+      employmentStatus?: "active" | "inactive" | "terminated";
+      email?: string;
+      phone?: string;
+      role?: EmployeeRole;
+      operatorId?: string;
+      title?: string;
+    },
+  ) => { ok: boolean; error?: string };
   receiveInventory: (id: string, qty: number) => void;
   updateInventory: (id: string, patch: Partial<InventoryItem>) => void;
   updateTableLayout: (id: string, patch: Partial<Table>) => void;

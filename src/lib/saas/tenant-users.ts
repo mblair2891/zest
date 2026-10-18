@@ -144,6 +144,17 @@ export type TenantUserRow = {
   /** Floor PIN for venue admin. Never a Better Auth password. */
   pin?: string | null;
   clockedIn?: boolean;
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+  employeeNumber?: string | null;
+  payRateType?: "hourly" | "salary";
+  payRateCents?: number;
+  hireDate?: string | null;
+  employmentStatus?: "active" | "inactive" | "terminated";
+  phone?: string;
+  /** Free-text job name. The floor role stays the permission. */
+  position?: string;
 };
 
 export function assertNotPlatformAdminRole(role: string): void {

@@ -2,6 +2,7 @@
  * Owner ops for one selling entity.
  * Summex does not process payroll. A price test does not change the menu price.
  */
+import { sumLaborCents } from "../labor/staff-record.ts";
 
 export type AvtMark = "event" | "take_home" | "count_error" | "investigate";
 
@@ -46,6 +47,11 @@ export type OwnerPunch = {
   minutes: number;
   /** Rejected punches are omitted by the caller. */
   status: "open" | "closed";
+  employeeId?: string;
+  employeeName?: string;
+  role?: string;
+  payRateType?: string | null;
+  payRateCents?: number | null;
 };
 
 export type OwnerSku = {
@@ -284,8 +290,19 @@ function metrics(
       foodCostCents += cost;
     }
   }
-  const minutes = windowPunches.reduce((sum, row) => sum + row.minutes, 0);
-  const laborCents = Math.round((minutes / 60) * wageCentsPerHour);
+  const labor = sumLaborCents(
+    windowPunches.map((row) => ({
+      minutes: row.minutes,
+      payRateType: row.payRateType,
+      payRateCents: row.payRateCents,
+      employeeId: row.employeeId,
+      employeeName: row.employeeName,
+      role: row.role,
+      entityId: row.entityId,
+    })),
+    wageCentsPerHour,
+  );
+  const laborCents = labor.cents;
   const primeCents = foodCostCents + bevCostCents + laborCents;
   return {
     netSalesCents,

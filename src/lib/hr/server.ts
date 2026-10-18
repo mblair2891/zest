@@ -943,16 +943,35 @@ export async function buildPayrollExport(
     select name from locations where id = ${ctx.locationId} limit 1
   `;
   const locationName = loc[0]?.name || "Location";
-  const staff = await sql<{
+  type PayrollStaffRow = {
     id: string;
     name: string;
     role: string | null;
     operator_id: string | null;
-  }>`
-    select id, name, role, operator_id from location_staff
-    where location_id = ${ctx.locationId}
-      and (operator_id = ${data.employerId} or (${data.employerId} = ${"host"} and (operator_id is null or operator_id = ${"host"})))
-  `;
+    first_name?: string | null;
+    last_name?: string | null;
+    display_name?: string | null;
+    employee_number?: string | null;
+    pay_rate_type?: string | null;
+    pay_rate_cents?: number | null;
+    position?: string | null;
+  };
+  let staff: PayrollStaffRow[] = [];
+  try {
+    staff = await sql<PayrollStaffRow>`
+      select id, name, role, operator_id, first_name, last_name, display_name,
+        employee_number, pay_rate_type, pay_rate_cents, position
+      from location_staff
+      where location_id = ${ctx.locationId}
+        and (operator_id = ${data.employerId} or (${data.employerId} = ${"host"} and (operator_id is null or operator_id = ${"host"})))
+    `;
+  } catch {
+    staff = await sql<PayrollStaffRow>`
+      select id, name, role, operator_id from location_staff
+      where location_id = ${ctx.locationId}
+        and (operator_id = ${data.employerId} or (${data.employerId} = ${"host"} and (operator_id is null or operator_id = ${"host"})))
+    `;
+  }
   const punches = await sql<{
     employee_id: string;
     employee_name: string;
@@ -1013,17 +1032,31 @@ export async function buildPayrollExport(
   const payout = resolveCcTipPayout(locationPayout, cfg.ccTipPayout, laborPayout);
   const includeCc = payrollIncludesCardTips(payout);
   const provider = cfg.payrollProvider === "none" ? "csv" : cfg.payrollProvider;
+  const { resolveStaffName } = await import("@/lib/labor/staff-record");
   const lines = [...hours.entries()]
     .map(([id, h]) => {
       const st = staff.find((s) => s.id === id);
       const role = st?.role || "";
+      const position = String(st?.position ?? "").trim();
       const split = tips.get(id) ?? { declaredCents: 0, ccCents: 0 };
+      const who = resolveStaffName({
+        name: h.name,
+        firstName: st?.first_name,
+        lastName: st?.last_name,
+        displayName: st?.display_name,
+      });
       return {
         employeeId: id,
-        employeeName: h.name,
+        employeeName: who.name,
+        employeeNumber: st?.employee_number?.trim() || "",
+        firstName: who.firstName,
+        lastName: who.lastName,
+        payRateType: st?.pay_rate_type ? String(st.pay_rate_type) : "",
+        payRateCents: Math.max(0, Math.round(Number(st?.pay_rate_cents) || 0)),
+        entityName: data.employerName || data.employerId,
         providerEmployeeId: mapBy.get(id) ?? null,
         department: departmentForRole(role),
-        jobTitle: role || "staff",
+        jobTitle: position || role || "staff",
         workLocation: locationName,
         regularHours: h.regular,
         otHours: h.ot,

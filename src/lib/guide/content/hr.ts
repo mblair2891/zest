@@ -47,6 +47,9 @@ export const HR_TOPICS: GuideTopic[] = [
         "The house already has a payroll product. Summex records time, jobs, OT flags, and tips, then hands a file to that product.",
       ),
       ul(
+        "On Users, or on the entity Staff tab, enter a first name, a last name, an employee number unique at this venue, and a pay rate. Hourly is the amount per hour. Salary is the annual amount. Hire date and status (active, inactive, or terminated) are on the same form. Display name, email, and phone are optional. A blank display name shows as first and last. PIN, role, and entity stay. An optional position names the job on the list and on the hours file.",
+        "The hours file lists the employee number, first name, last name, pay rate type, pay rate, hours worked, entity, and role, then the existing hours, overtime flags, and tips. Hours worked are the clock punches for that pay period. Labor cost uses that rate: hourly times hours, or the annual salary times hours divided by 2,080. Reports can group that cost by entity, role, and employee.",
+        "An older staff row that only had one name splits on the last word. A single word stays the first name until someone enters a last name. Summex does not invent an employee number for those rows.",
         "Reports → Payroll export (and Labor → Hours export) is entity-scoped: employees, role, entity, regular vs OT hours, OT flags (daily / weekly / seventh-day from owner-entered venue rules), declared and card tips, pay period. Card tips already cashed out at closeout are omitted from the file.",
         "Formats: generic CSV and a hours PDF always. Intuit QuickBooks Payroll and ADP when keys are set. Other payroll products import the same CSV. The PDF is not a paycheck.",
         "HR → Flags: destination None, CSV only, Intuit, ADP, or Other. Map local staff to the provider employee id — never a Social Security number.",
@@ -54,7 +57,8 @@ export const HR_TOPICS: GuideTopic[] = [
         "Host and tenant isolation: you export only that employer’s staff unless hours visibility allows the host.",
       ),
       steps(
-        "Pick the pay period. Review hours, OT, declared tips, and CC tips.",
+        "Open Users or the entity Staff tab. Enter first name, last name, employee number, pay rate type, and the amount. Save. The list shows first and last, plus the employee number.",
+        "Pick the pay period. Review hours, OT, declared tips, and CC tips. The file includes the employee number and the pay rate.",
         "Download CSV or PDF (always). If Intuit or ADP keys exist, Send hours to provider.",
         "Import the file in ADP, QuickBooks Payroll, or your other processor. They run payroll and file taxes.",
       ),

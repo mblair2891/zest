@@ -215,7 +215,7 @@ import { orderEntityForRoom, staffMayTakeSection } from "./room-owner";
 import { employeesForVenue, venueById } from "./entities";
 import { useSaasStore } from "./saas-store";
 import { starterPosSlice } from "./starter-seed";
-import type { Course, VenueEntityId } from "./types";
+import type { Course, Employee, VenueEntityId } from "./types";
 import type { PosStore, PosStorePersist } from "./pos-store";
 import {
   HOST_SCOPE,
@@ -232,6 +232,15 @@ import {
   staffMatchingPin,
   withHashedPin,
 } from "./pin";
+import {
+  duplicateEmployeeNumber,
+  employmentIsActive,
+  parseEmploymentStatus,
+  parsePayRateCents,
+  parsePayRateType,
+  resolveStaffName,
+  validateStaffPay,
+} from "@/lib/labor/staff-record";
 import {
   AUDIT_MAX_ENTRIES,
   canRoleApproveGate,
@@ -4616,6 +4625,33 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				role: input.role === "bartender" || input.role === "kitchen" ? input.role : "kitchen",
 			};
 		}
+		const who = resolveStaffName({
+			name: input.name,
+			firstName: input.firstName,
+			lastName: input.lastName,
+			displayName: input.displayName,
+		});
+		const payrollForm =
+			input.firstName !== undefined ||
+			input.lastName !== undefined ||
+			input.employeeNumber !== undefined ||
+			input.payAmount !== undefined;
+		const payAmount =
+			input.payAmount ??
+			(input.payRateCents != null ? (input.payRateCents / 100).toFixed(2) : "");
+		const employeeNumber = String(input.employeeNumber ?? "").trim();
+		if (payrollForm) {
+			const payError = validateStaffPay({
+				firstName: who.firstName,
+				lastName: who.lastName,
+				employeeNumber,
+				payAmount,
+			});
+			if (payError) return { id: "", pin: "", error: payError };
+			if (duplicateEmployeeNumber(get().employees, input.id || "", employeeNumber)) {
+				return { id: "", pin: "", error: "That employee number is already used at this venue." };
+			}
+		}
 		const locForPin = get().tenantLocationId || get().activeEntityId || "loc";
 		let pin = (input.pin || "").replace(/\D/g, "").slice(0, 4);
 		if (pin.length < 4 || pinTakenByOther(get().employees, "", pin, locForPin)) {
@@ -4623,15 +4659,28 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				pin = String(1000 + Math.floor(Math.random() * 9000));
 			} while (pinTakenByOther(get().employees, "", pin, locForPin));
 		}
-		const id = uid("emp");
+		const id = input.id?.trim() || uid("emp");
 		const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#5C5C5C"];
 		const loc = get().tenantLocationId || get().activeEntityId || "loc";
+		const employmentStatus = input.employmentStatus
+			? parseEmploymentStatus(input.employmentStatus, true)
+			: undefined;
 		set({
 			employees: [
-				...get().employees,
+				...get().employees.filter((row: Employee) => row.id !== id),
 				{
 					id,
-					name: input.name.trim() || "Staff",
+					name: who.name,
+					firstName: who.firstName || undefined,
+					lastName: who.lastName || undefined,
+					displayName: who.displayName || undefined,
+					employeeNumber: employeeNumber || undefined,
+					payRateType: payrollForm || input.payRateType ? parsePayRateType(input.payRateType) : undefined,
+					payRateCents: payrollForm ? (parsePayRateCents(payAmount) ?? 0) : input.payRateCents,
+					hireDate: input.hireDate || undefined,
+					employmentStatus,
+					email: input.email?.trim() || undefined,
+					phone: input.phone?.trim() || undefined,
 					pin: "",
 					pinHash: hashPin(pin, loc),
 					role: input.role,
@@ -4639,15 +4688,80 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					clockedIn: false,
 					tipsEarned: 0,
 					salesTotal: 0,
-					active: true,
+					active: employmentStatus ? employmentIsActive(employmentStatus) : true,
 					homeSectionIds: [],
 					operatorId: input.operatorId,
-					title: input.title,
+					title: input.title?.trim() || undefined,
 				},
 			],
 		});
-		get().audit("staff", `${input.name} · ${input.role}`);
+		get().audit("staff", `${who.name} · ${input.role}`);
 		return { id, pin };
+	},
+	updateEmployee: (id, patch) => {
+		const current = get().employees.find((row: Employee) => row.id === id);
+		if (!current) return { ok: false, error: "Staff not found." };
+		const who = resolveStaffName({
+			name: patch.name ?? current.name,
+			firstName: patch.firstName !== undefined ? patch.firstName : current.firstName,
+			lastName: patch.lastName !== undefined ? patch.lastName : current.lastName,
+			displayName: patch.displayName !== undefined ? patch.displayName : current.displayName,
+		});
+		const employeeNumber =
+			patch.employeeNumber !== undefined ? patch.employeeNumber.trim() : String(current.employeeNumber ?? "");
+		const payAmount =
+			patch.payAmount ??
+			(patch.payRateCents != null
+				? (patch.payRateCents / 100).toFixed(2)
+				: current.payRateCents != null
+					? (current.payRateCents / 100).toFixed(2)
+					: "");
+		if (patch.firstName !== undefined || patch.employeeNumber !== undefined || patch.payAmount !== undefined) {
+			const payError = validateStaffPay({
+				firstName: who.firstName,
+				lastName: who.lastName,
+				employeeNumber,
+				payAmount,
+			});
+			if (payError) return { ok: false, error: payError };
+			if (duplicateEmployeeNumber(get().employees, id, employeeNumber)) {
+				return { ok: false, error: "That employee number is already used at this venue." };
+			}
+		}
+		const employmentStatus = patch.employmentStatus
+			? parseEmploymentStatus(patch.employmentStatus, true)
+			: current.employmentStatus;
+		const payRateCents =
+			patch.payAmount !== undefined
+				? (parsePayRateCents(patch.payAmount) ?? 0)
+				: patch.payRateCents !== undefined
+					? patch.payRateCents
+					: current.payRateCents;
+		set({
+			employees: get().employees.map((row: Employee) =>
+				row.id === id
+					? {
+							...row,
+							name: who.name,
+							firstName: who.firstName || undefined,
+							lastName: who.lastName || undefined,
+							displayName: who.displayName || undefined,
+							employeeNumber: employeeNumber.trim() || undefined,
+							payRateType: patch.payRateType ? parsePayRateType(patch.payRateType) : row.payRateType,
+							payRateCents,
+							hireDate: patch.hireDate !== undefined ? patch.hireDate || undefined : row.hireDate,
+							employmentStatus,
+							email: patch.email !== undefined ? patch.email.trim() || undefined : row.email,
+							phone: patch.phone !== undefined ? patch.phone.trim() || undefined : row.phone,
+							role: patch.role ?? row.role,
+							title: patch.title !== undefined ? patch.title.trim() || undefined : row.title,
+							operatorId: patch.operatorId !== undefined ? patch.operatorId : row.operatorId,
+							active: employmentStatus ? employmentIsActive(employmentStatus) : row.active,
+						}
+					: row,
+			),
+		});
+		return { ok: true };
 	},
 	receiveInventory: (id, qty) => {
 		set({ inventory: get().inventory.map((i: any) => i.id === id ? {

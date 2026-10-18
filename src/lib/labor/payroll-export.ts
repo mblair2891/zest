@@ -37,6 +37,12 @@ export type PayrollExportLine = {
   netTipsCents?: number;
   poolInCents?: number;
   poolOutCents?: number;
+  employeeNumber?: string;
+  firstName?: string;
+  lastName?: string;
+  payRateType?: string;
+  payRateCents?: number;
+  entityName?: string;
 };
 
 export type PayrollExportBatch = {
@@ -66,6 +72,14 @@ export function csvEscape(value: string): string {
 /** Generic hours file. No SSN, no net pay, no tax columns. */
 export function genericPayrollCsv(batch: PayrollExportBatch): string {
   const header = [
+    "employee_number",
+    "first_name",
+    "last_name",
+    "pay_rate_type",
+    "pay_rate",
+    "hours_worked",
+    "entity",
+    "role",
     "employee_id",
     "provider_employee_id",
     "employee_name",
@@ -87,6 +101,14 @@ export function genericPayrollCsv(batch: PayrollExportBatch): string {
   ];
   const lines = batch.lines.map((r) =>
     [
+      csvEscape(r.employeeNumber ?? ""),
+      csvEscape(r.firstName ?? ""),
+      csvEscape(r.lastName ?? ""),
+      csvEscape(r.payRateType ?? ""),
+      r.payRateCents ? (r.payRateCents / 100).toFixed(2) : "",
+      (r.regularHours + r.otHours).toFixed(2),
+      csvEscape(r.entityName || batch.employerName),
+      csvEscape(r.jobTitle),
       csvEscape(r.employeeId),
       csvEscape(r.providerEmployeeId ?? ""),
       csvEscape(r.employeeName),
