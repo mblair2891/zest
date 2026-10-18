@@ -1,4 +1,5 @@
 import { entityMarksForPrint } from "@/lib/brand/logos";
+import { guestStaffName } from "@/lib/labor/staff-record";
 import { partyHeader } from "@/lib/pos/table-combine";
 import { computeDualTotals, computeTotals, lineCardCents, lineCashCents, linePrintedCents, policyForLine } from "@/lib/pos/calculations";
 import { lineActionReason, linePrintName } from "@/lib/pos/check-actions";
@@ -198,7 +199,18 @@ function guestCheckJob(
     tableLabel: order.tableId
       ? partyHeader(s.tables, order.tableId)
       : (table?.label ?? order.tabName ?? order.type.replace("_", " ")),
-    serverName: order.serverName,
+    serverName: guestStaffName(
+      (() => {
+        const person = s.employees.find((row) => row.id === order.serverId);
+        return person
+          ? {
+              firstName: person.firstName,
+              lastName: person.lastName,
+              name: person.name || order.serverName,
+            }
+          : order.serverName;
+      })(),
+    ),
     copy: "guest",
     items,
     guestCheckNote: GUEST_CHECK_FOOTER,

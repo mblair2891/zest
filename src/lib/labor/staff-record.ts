@@ -91,6 +91,28 @@ export function staffListTitle(input: {
   return number ? `${who.name} · ${number}` : who.name;
 }
 
+/** Guest check name: first name and last initial. A single name stays as typed. */
+export function guestStaffName(
+  input:
+    | string
+    | null
+    | undefined
+    | {
+        firstName?: string | null;
+        lastName?: string | null;
+        name?: string | null;
+      },
+): string {
+  const raw =
+    typeof input === "string" || input == null ? { name: String(input ?? "") } : input;
+  const who = resolveStaffName(raw);
+  const first = who.firstName.trim();
+  const last = who.lastName.trim().replace(/\.+$/, "");
+  const initial = last[0]?.toLocaleUpperCase() ?? "";
+  if (first && initial) return `${first} ${initial}.`;
+  return first || who.name.trim() || "Staff";
+}
+
 export function parsePayRateType(raw: unknown): PayRateType {
   return String(raw ?? "").trim().toLowerCase() === "salary" ? "salary" : "hourly";
 }

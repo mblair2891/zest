@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_290_ticket_strip",
+    date: "2026-10-18",
+    title: "Compact ticket-strip check",
+    summary:
+      "The open check is a compact ticket strip. Each line shows cash and card, and a colored edge marks the entity.",
+    body: "The open check sits beside or over the menu as a narrow ticket. Each line shows the quantity and the name, with the cash price and the card price on that line. A thin colored edge marks the selling entity. A sent line is muted. Cash and card totals stay at the bottom with Send, Print check, and Pay. Guest checks show the server as a first name and last initial.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "kitchen-bar-routing",
+    tags: ["floor", "orders"],
+  },
+  {
     id: "upd_2026_10_289_staff_payroll",
     date: "2026-10-18",
     title: "Staff pay rate and employee number",

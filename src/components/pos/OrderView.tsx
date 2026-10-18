@@ -12,6 +12,8 @@ import {
   StickyNote,
   Gift,
 } from "lucide-react";
+import { OrderClockBanner } from "./OrderClockBanner";
+import { TicketStripLines } from "./TicketStrip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -29,8 +31,6 @@ import {
   computeDualTotals,
   computeTotals,
   isHappyHour,
-  linePrintedCents,
-  policyForLine,
   printedItemPriceCents,
 } from "@/lib/pos/calculations";
 import {
@@ -58,7 +58,7 @@ import { RecipeLookupButton } from "@/components/recipes/RecipeLookup";
 import { CheckOpsDialog } from "./CheckOpsDialog";
 import { Split } from "lucide-react";
 import { canEmployee } from "@/lib/access/permissions";
-import { groupLinesByEntity } from "@/lib/payments/entity-split";
+
 import {
   DISCOUNT_REASONS,
   REOPEN_REASONS,
@@ -74,7 +74,6 @@ import {
   canRemoveLine,
   canVoidOrCompCheck,
   canVoidOrCompLine,
-  lineActionReason,
 } from "@/lib/pos/check-actions";
 import {
   deviceRoleFromSessionMode,
@@ -294,13 +293,16 @@ export function OrderView({
 
   if (busyNight && !order) {
     return (
-      <div className="grid h-full place-items-center p-6 text-center" data-busy-menu>
+      <div className="flex h-full min-h-0 flex-col" data-busy-menu>
+        <OrderClockBanner />
+        <div className="grid flex-1 place-items-center p-6 text-center">
         <div className="space-y-3">
           <p className="text-lg font-semibold">No check yet</p>
           <p className="text-sm text-muted-foreground">Seat a table on the floor, then add the first item.</p>
           <Button className="station-touch h-16 px-8 text-lg" onClick={() => onNeedFloor?.()}>
             Floor
           </Button>
+        </div>
         </div>
       </div>
     );
@@ -360,10 +362,9 @@ export function OrderView({
     );
     const jobOnlyTicket = stationJob === "new_ticket";
     return (
-      <div
-        className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center"
-        data-demo="station-home-queue"
-      >
+      <div className="flex h-full min-h-0 flex-col" data-demo="station-home-queue">
+      <OrderClockBanner />
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
         <p className="text-lg font-medium">Ticket queue</p>
         <p className="max-w-sm text-sm text-muted-foreground">
           Open a ticket or to-go check. This house has no dining floor.
@@ -428,6 +429,7 @@ export function OrderView({
             })}
           </div>
         )}
+      </div>
       </div>
     );
   }
@@ -756,53 +758,15 @@ export function OrderView({
     </div>
   ) : null;
   const liveCheckList = (
-    <ul className="space-y-1" data-live-check>
-      {liveLines.length === 0 && (
-        <li className="py-3 text-center text-xs text-muted-foreground">
-          Tap the menu — lines land here
-        </li>
-      )}
-      {groupLinesByEntity(liveLines, settings.name).map((group) => (
-        <li key={group.entityId}>
-          <p className="px-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {group.displayName}
-          </p>
-          <ul className="space-y-0.5">
-            {group.lines.map((line) => {
-              const reason = lineActionReason(line);
-              return (
-              <li
-                key={line.id}
-                className={cn(
-                  "flex items-start justify-between gap-2 rounded-lg px-1 py-0.5 text-sm",
-                  line.voided && "line-through opacity-60",
-                  line.comped && "opacity-70",
-                )}
-              >
-                <span className="min-w-0">
-                  <span className="font-medium">
-                    {line.quantity}× {line.name}
-                  </span>
-                  <span className="ml-1 text-[10px] text-muted-foreground">
-                    {line.vendorName || group.displayName}
-                    {line.voided ? " · VOID" : ""}
-                    {line.comped ? " · COMP" : ""}
-                    {reason && (line.voided || line.comped) ? ` · ${reason}` : ""}
-                  </span>
-                </span>
-                <span className="flex shrink-0 items-center gap-1">
-                  {lineActionButtons(line)}
-                  <span className="text-right tabular text-xs">
-                    {formatCurrency(linePrintedCents(line, policyForLine(settings, line, "card")))}
-                  </span>
-                </span>
-              </li>
-              );
-            })}
-          </ul>
-        </li>
-      ))}
-    </ul>
+    <TicketStripLines
+      lines={liveLines}
+      vendors={vendors}
+      settings={settings}
+      selectedLineId={selectedLineId}
+      onSelect={setSelectedLine}
+      renderActions={lineActionButtons}
+      empty="Tap the menu — lines land here"
+    />
   );
 
   const checkActionDialogs = (
@@ -894,6 +858,7 @@ export function OrderView({
     };
     return (
       <div className="flex h-full min-h-0 flex-col bg-bg" data-busy-menu>
+        <OrderClockBanner />
         <div className="flex gap-2 overflow-x-auto p-2" data-menu-categories>
           {cats.map((c) => (
             <Button
@@ -959,13 +924,23 @@ export function OrderView({
             })}
           </div>
         </div>
-        <div className="shrink-0 border-t border-border bg-surface" data-live-pad>
-          <div className="max-h-32 overflow-y-auto px-2 py-1">{liveCheckList}</div>
+        <div className="shrink-0 border-t border-border bg-surface" data-live-pad data-ticket-strip>
+          <div className="max-h-40 overflow-y-auto">{liveCheckList}</div>
           {dual && (
-            <p className="flex justify-between px-3 text-base font-semibold tabular">
-              <span>Total</span>
-              <span>{formatCurrency(dual.enabled ? dual.card.totalCents : dual.cash.totalCents)}</span>
-            </p>
+            <div className="flex items-end justify-between px-3 py-1" data-ticket-totals>
+              <div>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Cash</p>
+                <p className="text-lg font-semibold tabular leading-none">
+                  {formatCurrency(dual.cash.totalCents)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Card</p>
+                <p className="text-lg font-semibold tabular leading-none">
+                  Card · {formatCurrency(dual.card.totalCents)}
+                </p>
+              </div>
+            </div>
           )}
           {checkLevelActions}
           <div className="p-2">
@@ -995,11 +970,12 @@ export function OrderView({
 
   const checkPane = (
       <aside
+        data-ticket-strip
         className={cn(
-          "flex min-h-0 flex-col bg-surface",
+          "flex min-h-0 flex-col overflow-hidden bg-surface",
           checkOverlay
             ? "h-full w-full"
-            : "h-full w-[min(22rem,40%)] shrink-0 border-r border-border",
+            : "h-full w-[min(18rem,36%)] shrink-0 border-r border-border",
         )}
       >
         {!mayPrintCheck && (
@@ -1069,142 +1045,19 @@ export function OrderView({
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          {order.lines.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Tap menu items · mix vendors on one check · one payment
-            </p>
-          )}
-          <ul className="space-y-2">
-            {(() => {
-              const groups = groupLinesByEntity(order.lines, settings.name);
-              const multi = groups.length > 1;
-              return groups.map((group) => (
-              <li key={group.entityId}>
-                {multi ? (
-                  <p className="flex justify-between px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <span>{group.displayName}</span>
-                    <span className="tabular">
-                      {formatCurrency(
-                        group.lines
-                          .filter((l) => !l.voided && !l.comped)
-                          .reduce((s, l) => s + linePrintedCents(l), 0),
-                      )}
-                    </span>
-                  </p>
-                ) : null}
-                <ul className="space-y-1">
-            {group.lines.map((line) => (
-              <li key={line.id}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedLine(line.id)}
-                  className={cn(
-                    "w-full rounded-xl border px-2.5 py-2 text-left text-sm transition",
-                    selectedLineId === line.id
-                      ? "border-primary bg-surface-2"
-                      : "border-transparent hover:bg-surface-2/60",
-                    line.voided && "opacity-40 line-through",
-                    line.comped && "opacity-70",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span>
-                      <span className="font-medium">
-                        {line.quantity}× {line.name}
-                      </span>
-                      {line.modifiers.length > 0 && (
-                        <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                          {line.modifiers.map((m) => m.optionName).join(", ")}
-                        </span>
-                      )}
-                      {line.note && line.note !== lineActionReason(line) && (
-                        <span className="mt-0.5 block text-[11px] text-warn">
-                          {line.note}
-                        </span>
-                      )}
-                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                        {line.sent ? "Sent → vendor" : "On check"}
-                        {line.held ? " · fire later" : ""}
-                        {line.seat ? ` · seat ${line.seat}` : ""}
-                        {line.voided ? " · VOID" : ""}
-                        {line.comped ? " · COMP" : ""}
-                        {(line.voided || line.comped) && lineActionReason(line)
-                          ? ` · ${lineActionReason(line)}`
-                          : ""}
-                        {line.pendingAction ? ` · ${line.pendingAction} pending` : ""}
-                      </span>
-                    </span>
-                    <span className="flex shrink-0 flex-col items-end gap-1 text-right tabular text-sm">
-                      <span className="block">
-                        {formatCurrency(linePrintedCents(line, policyForLine(settings, line, "card")))}
-                      </span>
-                      {lineActionButtons(line)}
-                    </span>
-                  </div>
-                </button>
-              </li>
-            ))}
-                </ul>
-              </li>
-              ));
-            })()}
-          </ul>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <TicketStripLines
+            lines={order.lines}
+            vendors={vendors}
+            settings={settings}
+            selectedLineId={selectedLineId}
+            onSelect={setSelectedLine}
+            renderActions={lineActionButtons}
+            empty="Tap the menu — lines land here"
+          />
         </div>
 
-        {totals && (
-          <div className="space-y-1 border-t border-border px-3 py-2 text-sm">
-            <div className="flex justify-between text-muted-foreground">
-              <span>Subtotal</span>
-              <span className="tabular">
-                {formatCurrency(totals.subtotalCents)}
-              </span>
-            </div>
-            {totals.discountCents > 0 && (
-              <div className="flex justify-between text-success">
-                <span>Discount</span>
-                <span className="tabular">
-                  −{formatCurrency(totals.discountCents)}
-                </span>
-              </div>
-            )}
-            {(totals.taxLines?.length
-              ? totals.taxLines
-              : totals.taxCents > 0
-                ? [{ id: "tax", name: "Tax", cents: totals.taxCents }]
-                : []
-            ).map((line) => (
-              <div key={line.id} className="flex justify-between text-muted-foreground">
-                <span>{line.name}</span>
-                <span className="tabular">{formatCurrency(line.cents)}</span>
-              </div>
-            ))}
-            {totals.serviceChargeCents > 0 && (
-              <div className="flex justify-between text-muted-foreground">
-                <span>{settings.serviceChargeLabel}</span>
-                <span className="tabular">
-                  {formatCurrency(totals.serviceChargeCents)}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between text-base font-semibold">
-              <span>Total</span>
-              <span className="tabular">
-                {formatCurrency(totals.totalCents)}
-              </span>
-            </div>
-
-            {totals.balanceCents < totals.totalCents && (
-              <div className="flex justify-between text-muted-foreground">
-                <span>Balance</span>
-                <span className="tabular">
-                  {formatCurrency(totals.balanceCents)}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
+        <div className="max-h-[38%] min-h-0 shrink overflow-y-auto">
         {selectedLineId &&
           order.lines.find((l) => l.id === selectedLineId)?.menuItemId && (
             <div className="border-t border-border px-2 pt-2">
@@ -1335,10 +1188,8 @@ export function OrderView({
             <Percent className="h-3.5 w-3.5" />
             Disc
           </Button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
           <Button
+            size="sm"
             variant="outline"
             className="station-touch"
             onClick={() => {
@@ -1346,26 +1197,73 @@ export function OrderView({
               setNoteOpen(true);
             }}
           >
-            <StickyNote className="h-4 w-4" />
+            <StickyNote className="h-3.5 w-3.5" />
             Note
           </Button>
           {canEmployee(emp, "checks:mutate") && (
-            <Button variant="outline" className="station-touch" onClick={() => setOpsOpen(true)}>
-              <Split className="h-4 w-4" />
+            <Button size="sm" variant="outline" className="station-touch" onClick={() => setOpsOpen(true)}>
+              <Split className="h-3.5 w-3.5" />
               Split / move
             </Button>
           )}
+        </div>
+        </div>
+
+        <div className="shrink-0 border-t border-border bg-surface">
+        {dual && (
+          <div className="px-3 py-2" data-ticket-totals>
+            {dual.card.discountCents > 0 && (
+              <p className="flex justify-between text-[11px] text-success">
+                <span>Discount</span>
+                <span className="tabular">−{formatCurrency(dual.card.discountCents)}</span>
+              </p>
+            )}
+            {(dual.card.taxCents > 0 || dual.cash.taxCents > 0) && (
+              <p className="flex justify-between text-[11px] text-muted-foreground">
+                <span>Tax</span>
+                <span className="tabular">
+                  {formatCurrency(dual.cash.taxCents)} cash · {formatCurrency(dual.card.taxCents)} card
+                </span>
+              </p>
+            )}
+            {dual.card.serviceChargeCents > 0 && (
+              <p className="flex justify-between text-[11px] text-muted-foreground">
+                <span>{settings.serviceChargeLabel}</span>
+                <span className="tabular">{formatCurrency(dual.card.serviceChargeCents)}</span>
+              </p>
+            )}
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Cash
+                </p>
+                <p className="text-xl font-semibold tabular leading-none">
+                  {formatCurrency(dual.cash.balanceCents || dual.cash.totalCents)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Card
+                </p>
+                <p className="text-xl font-semibold tabular leading-none">
+                  Card · {formatCurrency(dual.card.balanceCents || dual.card.totalCents)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2 p-2">
           {mayPrintCheck && (
           <Button
             variant="outline"
-            className="station-touch"
+            className="station-touch min-h-12"
             onClick={() => runPrintCheck()}
           >
             <Printer className="h-4 w-4" />
             Print check
           </Button>
           )}
-          <Button className="station-touch" disabled={!unsent} onClick={() => sendOrder()}>
+          <Button className="station-touch min-h-12" disabled={!unsent} onClick={() => sendOrder()}>
             <Send className="h-4 w-4" />
             Send
           </Button>
@@ -1415,16 +1313,19 @@ export function OrderView({
             {printMsg}
           </p>
         )}
+        </div>
       </aside>
   );
 
   return (
-    <div
-      className={cn(
-        "relative flex h-full min-h-0 w-full min-w-0 overflow-hidden",
-        checkOverlay ? "flex-col" : "flex-row",
-      )}
-    >
+    <div className="relative flex h-full min-h-0 w-full min-w-0 overflow-hidden flex-col">
+      <OrderClockBanner />
+      <div
+        className={cn(
+          "relative flex min-h-0 min-w-0 flex-1 overflow-hidden",
+          checkOverlay ? "flex-col" : "flex-row",
+        )}
+      >
       {!checkOverlay ? checkPane : null}
 
       <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-bg">
@@ -1606,20 +1507,33 @@ export function OrderView({
             </div>
           )}
           <div
-            className="max-h-[38%] min-h-[6.5rem] overflow-y-auto border-t border-border bg-surface px-2 py-1.5"
+            className="max-h-[32%] min-h-[4.5rem] overflow-y-auto border-t border-border bg-surface px-2 py-1"
             data-live-check-strip
           >
             {liveCheckList}
-            {dual && liveLines.length > 0 && (
-              <p className="mt-1 flex justify-between px-1 text-[11px] font-semibold">
-                <span>Total</span>
-                <span>{formatCurrency(dual.enabled ? dual.card.totalCents : dual.cash.totalCents)}</span>
-              </p>
-            )}
-            {printMsg && (
-              <p className="px-1 pt-1 text-[11px] text-muted-foreground">{printMsg}</p>
-            )}
           </div>
+          {dual && liveLines.length > 0 && (
+            <div
+              className="flex shrink-0 items-end justify-between border-t border-border bg-surface px-3 py-1.5"
+              data-ticket-totals
+            >
+              <div>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Cash</p>
+                <p className="text-lg font-semibold tabular leading-none">
+                  {formatCurrency(dual.cash.totalCents)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Card</p>
+                <p className="text-lg font-semibold tabular leading-none">
+                  Card · {formatCurrency(dual.card.totalCents)}
+                </p>
+              </div>
+            </div>
+          )}
+          {printMsg && (
+            <p className="shrink-0 bg-surface px-3 pb-1 text-[11px] text-muted-foreground">{printMsg}</p>
+          )}
           <div className="grid grid-cols-2 gap-2 border-t border-border bg-surface p-2 safe-bottom">
             {mayPrintCheck && (
             <Button
@@ -1805,6 +1719,7 @@ export function OrderView({
       {order && (
         <CheckOpsDialog open={opsOpen} onOpenChange={setOpsOpen} orderId={order.id} />
       )}
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import { receiptItemLine } from "@/lib/payments/finix-events";
 import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
 import { formatVenueTime } from "@/lib/pos/venue-time";
+import { guestStaffName } from "@/lib/labor/staff-record";
 
 function esc(s: string): string {
   return s
@@ -129,6 +130,7 @@ export function ticketHtml(job: PrintJob): string {
         </div>`
       : "";
   const roomy = job.kind === "guest_check" || job.kind === "receipt" || job.kind === "tip_slip";
+  const staffLabel = job.kind === "guest_check" ? guestStaffName(job.serverName) : job.serverName;
   const totals = job.kind === "tip_slip" ? "" : job.totals
     ? `<div class="rule"></div>
        <div class="row"><span>Subtotal</span><span>${formatCurrency(job.totals.subtotalCents)}</span></div>
@@ -200,7 +202,7 @@ export function ticketHtml(job: PrintJob): string {
   <h1>${esc(job.locationName)}</h1>
   <h2>${esc(title)}${job.copy === "merchant" ? " | merchant" : ""}</h2>
   <div class="row"><span>#${esc(String(job.checkNumber))}</span><span>${esc(job.tableLabel)}</span></div>
-  <div class="row"><span>${esc(job.serverName)}</span><span>${esc(formatVenueTime(job.at, job.timezone))}</span></div>
+  <div class="row"><span>${esc(staffLabel)}</span><span>${esc(formatVenueTime(job.at, job.timezone))}</span></div>
   ${job.diningOption ? `<div>${esc(job.diningOption)}</div>` : ""}
   ${job.guestName ? `<div>${esc(job.guestName)}</div>` : ""}
   ${job.guestPhone ? `<div>${esc(job.guestPhone)}</div>` : ""}

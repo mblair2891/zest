@@ -16,6 +16,7 @@ import {
 } from "./printer-models";
 import { buildStarSp700Bytes } from "./star-impact";
 import { entitySlipMark, escposRasterBytes, guestCheckHeader } from "@/lib/brand/logos";
+import { guestStaffName } from "@/lib/labor/staff-record";
 
 const ENC = new TextEncoder();
 
@@ -387,7 +388,7 @@ function buildGuestCheckEscPos(
     feeds(SECTION_FEEDS),
     ALIGN_LT,
     tallPlain(job.tableLabel || "", String(job.checkNumber), width),
-    tallPlain(job.serverName, formatVenueTime(job.at, job.timezone || "America/Los_Angeles"), width),
+    tallPlain(guestStaffName(job.serverName), formatVenueTime(job.at, job.timezone || "America/Los_Angeles"), width),
     text("-".repeat(width)),
     FEED,
     feeds(SECTION_FEEDS),

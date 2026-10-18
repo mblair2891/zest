@@ -9,6 +9,20 @@ test("order pad always shows live check lines; Print check is not the only view"
   assert.match(ui, /Print check/);
   assert.match(ui, /printGuestCheck/);
   assert.match(ui, /Tap the menu — lines land here/);
+  assert.match(ui, /data-ticket-strip/);
+  assert.match(ui, /data-ticket-totals/);
+  assert.match(ui, /OrderClockBanner/);
+  const clock = readFileSync("src/components/pos/OrderClockBanner.tsx", "utf8");
+  assert.match(clock, /NOT CLOCKED IN/);
+  assert.match(clock, /Clocked in:/);
+  assert.match(clock, /data-clock-in/);
+  const strip = readFileSync("src/components/pos/TicketStrip.tsx", "utf8");
+  assert.match(strip, /data-line-sent/);
+  assert.match(strip, /Card ·/);
+  const names = readFileSync("src/lib/labor/staff-record.ts", "utf8");
+  assert.match(names, /export function guestStaffName/);
+  const guest = readFileSync("src/lib/print/from-store.ts", "utf8");
+  assert.match(guest, /guestStaffName/);
   assert.match(ui, /hasBoundReceipt/);
   assert.match(ui, /ADD_RECEIPT_PRINTER/);
 });
@@ -84,7 +98,7 @@ test("guide covers pay QR, venue timezone, named taxes", () => {
   assert.match(roles, /named tax rates/);
   assert.match(roles, /IANA timezone/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.289/);
+  assert.match(types, /2026\.10\.290/);
 });
 
 test("guide covers live pad, print check, impact, receipt path", () => {
@@ -100,5 +114,5 @@ test("guide covers live pad, print check, impact, receipt path", () => {
   assert.match(devices, /table.s section/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
   assert.match(types, /GUIDE_VERSION/);
-  assert.match(types, /2026\.10\.289/);
+  assert.match(types, /2026\.10\.290/);
 });

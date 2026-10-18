@@ -15,6 +15,7 @@ import { useMarketingStore } from "@/lib/pos/marketing-store";
 import { CardTipRow } from "@/components/pos/CardTipRow";
 import { cardAuthorizationCents, cardPayDueCents, computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { tipCentsForChoice, type CardTipChoice } from "@/lib/pos/card-tip";
+import { guestStaffName } from "@/lib/labor/staff-record";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { CardAuthHold, PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
@@ -1645,7 +1646,18 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               });
               return (
                 <div className="rounded-xl border border-border bg-bg p-3 text-left">
-                  <GuestCheckByVendor view={view} compact />
+                  <GuestCheckByVendor
+                    view={view}
+                    compact
+                    serverLabel={guestStaffName(
+                      (() => {
+                        const person = usePosStore.getState().employees.find((row) => row.id === order.serverId);
+                        return person
+                          ? { firstName: person.firstName, lastName: person.lastName, name: person.name || order.serverName }
+                          : order.serverName;
+                      })(),
+                    )}
+                  />
                   {view.vendors.length > 1 ? (
                     <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                       {view.allocations.map((a) => (
@@ -1915,7 +1927,17 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             )}
             {guestSlip && guestSlip.vendors.length > 0 && (
               <div className="rounded-xl border border-border bg-bg p-3 text-left">
-                <GuestCheckByVendor view={guestSlip} />
+                <GuestCheckByVendor
+                  view={guestSlip}
+                  serverLabel={guestStaffName(
+                    (() => {
+                      const person = usePosStore.getState().employees.find((row) => row.id === order.serverId);
+                      return person
+                        ? { firstName: person.firstName, lastName: person.lastName, name: person.name || order.serverName }
+                        : order.serverName;
+                    })(),
+                  )}
+                />
               </div>
             )}
             {mayPrintCheck ? (

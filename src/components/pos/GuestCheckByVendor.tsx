@@ -4,15 +4,23 @@ import { cn, formatCurrency } from "@/lib/utils";
 export function GuestCheckByVendor({
   view,
   compact,
+  serverLabel,
 }: {
   view: GuestCheckView;
   compact?: boolean;
+  /** Guest-facing staff name: first name and last initial. */
+  serverLabel?: string;
 }) {
   return (
     <div className={cn("space-y-2 text-sm", compact && "space-y-1.5")} data-guest-check-slip>
       <p className="text-center text-base font-semibold" data-guest-check-location>
         {view.locationName}
       </p>
+      {serverLabel ? (
+        <p className="text-center text-xs text-muted-foreground" data-guest-server>
+          {serverLabel}
+        </p>
+      ) : null}
       {view.vendors.map((v) => (
         <div key={v.entityId}>
           <p

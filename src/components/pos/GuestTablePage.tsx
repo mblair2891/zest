@@ -11,6 +11,7 @@ import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { computeTotals, linePrintedCents, policyForLine, printedItemPriceCents, tipSuggestions } from "@/lib/pos/calculations";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import type { MenuItem, Order, OrderLine, Table } from "@/lib/pos/types";
+import { guestStaffName } from "@/lib/labor/staff-record";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import { partyHeader } from "@/lib/pos/table-combine";
 import {
@@ -574,13 +575,22 @@ function GuestDone({
 
 function VendorCheck({ order, hostName }: { order: Order; hostName: string }) {
   const settings = usePosStore((s) => s.settings);
+  const server = usePosStore((s) => s.employees.find((row) => row.id === order.serverId));
+  const serverLabel = guestStaffName(
+    server
+      ? { firstName: server.firstName, lastName: server.lastName, name: server.name || order.serverName }
+      : order.serverName,
+  );
   const groups = groupLinesByEntity(
     order.lines.filter((l) => !l.voided),
     hostName,
   );
   const multi = groups.length > 1;
   return (
-    <div className="mt-2 space-y-2 text-sm">
+    <div className="mt-2 space-y-2 text-sm" data-guest-check>
+      <p className="text-xs text-muted-foreground" data-guest-server>
+        {serverLabel}
+      </p>
       {groups.map((g) => (
         <div key={g.entityId}>
           {multi ? (

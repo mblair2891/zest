@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { payrollCsv, type PayrollRow } from "../src/lib/labor/payroll.ts";
 import {
+  guestStaffName,
   laborCostByGroup,
   laborCostCents,
   resolveStaffName,
@@ -22,6 +23,14 @@ test("a single name splits into first and last", () => {
   assert.equal(resolved.firstName, "Ada");
   assert.equal(resolved.lastName, "Lovelace");
   assert.equal(resolved.name, "Ada Lovelace");
+});
+
+test("guest checks use a first name and last initial", () => {
+  assert.equal(guestStaffName({ firstName: "Ada", lastName: "Lovelace" }), "Ada L.");
+  assert.equal(guestStaffName({ firstName: "Mary Ann", lastName: "Evans" }), "Mary Ann E.");
+  assert.equal(guestStaffName("Ada"), "Ada");
+  assert.equal(guestStaffName("Ada L."), "Ada L.");
+  assert.equal(guestStaffName({ name: "Ada Lovelace" }), "Ada L.");
 });
 
 test("hourly and salary labor use the staff rate", () => {
@@ -149,6 +158,6 @@ test("the operators guide explains the employee number and the pay rate", () => 
   assert.match(hr, /2,080/);
   assert.match(hr, /Summex does not process payroll/);
   const guide = readFileSync("docs/operators-guide.md", "utf8");
-  assert.match(guide, /Guide v2026\.10\.289/);
+  assert.match(guide, /Guide v2026\.10\.290/);
   assert.match(guide, /employee number unique at the venue/);
 });
