@@ -709,7 +709,9 @@ export function OrderView({
     return null;
   };
 
-  const checkOverlay = !layout.twoCol;
+  /** Tablet order screen, portrait or landscape: check on the left third, menu on the right two-thirds. A phone keeps the check over the menu. */
+  const orderSplit = layout.width >= 640;
+  const checkOverlay = !orderSplit;
 
   const runPrintCheck = () => {
     if (!mayPrintCheck) {
@@ -856,9 +858,75 @@ export function OrderView({
       const res = sendOrder();
       if (res?.ok) onSent?.();
     };
+    const busyCheck = (
+      <div
+        className={cn(
+          "flex min-h-0 flex-col bg-surface",
+          orderSplit
+            ? "h-full w-1/3 shrink-0 overflow-hidden border-r border-border"
+            : "max-h-[40%] shrink-0 border-t border-border",
+        )}
+        data-live-pad
+        data-ticket-strip
+        data-order-check
+      >
+        <div
+          className={cn("min-h-0 overflow-y-auto", orderSplit ? "flex-1" : "max-h-40")}
+          data-order-check-scroll
+        >
+          {liveCheckList}
+        </div>
+        {dual && (
+          <div className="flex items-end justify-between px-3 py-1" data-ticket-totals>
+            <div>
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Cash</p>
+              <p className="text-lg font-semibold tabular leading-none">
+                {formatCurrency(dual.cash.totalCents)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Card</p>
+              <p className="text-lg font-semibold tabular leading-none">
+                Card · {formatCurrency(dual.card.totalCents)}
+              </p>
+            </div>
+          </div>
+        )}
+        {checkLevelActions}
+        <div className="p-2">
+          <Button
+            className="station-touch h-16 w-full text-xl font-semibold"
+            disabled={!unsent}
+            onClick={fireSend}
+            data-send
+          >
+            <Send className="h-5 w-5" />
+            Send
+          </Button>
+        </div>
+      </div>
+    );
     return (
-      <div className="flex h-full min-h-0 flex-col bg-bg" data-busy-menu>
+      <div
+        className="flex h-full min-h-0 flex-col bg-bg"
+        data-busy-menu
+        data-order-layout={orderSplit ? "thirds" : "stack"}
+      >
         <OrderClockBanner />
+        <div
+          className={cn(
+            "flex min-h-0 min-w-0 flex-1 overflow-hidden",
+            orderSplit ? "flex-row" : "flex-col",
+          )}
+        >
+          {orderSplit ? busyCheck : null}
+          <section
+            className={cn(
+              "flex min-h-0 min-w-0 flex-col",
+              orderSplit ? "h-full w-2/3" : "flex-1",
+            )}
+            data-order-menu
+          >
         <div className="flex gap-2 overflow-x-auto p-2" data-menu-categories>
           {cats.map((c) => (
             <Button
@@ -875,7 +943,7 @@ export function OrderView({
           ))}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 min-[1100px]:grid-cols-3">
             {tiles.map((tile) => {
               if (tile.kind === "spirit") {
                 return (
@@ -924,36 +992,8 @@ export function OrderView({
             })}
           </div>
         </div>
-        <div className="shrink-0 border-t border-border bg-surface" data-live-pad data-ticket-strip>
-          <div className="max-h-40 overflow-y-auto">{liveCheckList}</div>
-          {dual && (
-            <div className="flex items-end justify-between px-3 py-1" data-ticket-totals>
-              <div>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Cash</p>
-                <p className="text-lg font-semibold tabular leading-none">
-                  {formatCurrency(dual.cash.totalCents)}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Card</p>
-                <p className="text-lg font-semibold tabular leading-none">
-                  Card · {formatCurrency(dual.card.totalCents)}
-                </p>
-              </div>
-            </div>
-          )}
-          {checkLevelActions}
-          <div className="p-2">
-            <Button
-              className="station-touch h-16 w-full text-xl font-semibold"
-              disabled={!unsent}
-              onClick={fireSend}
-              data-send
-            >
-              <Send className="h-5 w-5" />
-              Send
-            </Button>
-          </div>
+          </section>
+          {orderSplit ? null : busyCheck}
         </div>
         <ModifierDialog
           open={modOpen}
@@ -971,11 +1011,12 @@ export function OrderView({
   const checkPane = (
       <aside
         data-ticket-strip
+        data-order-check
         className={cn(
           "flex min-h-0 flex-col overflow-hidden bg-surface",
           checkOverlay
             ? "h-full w-full"
-            : "h-full w-[min(18rem,36%)] shrink-0 border-r border-border",
+            : "h-full w-1/3 min-w-0 shrink-0 basis-1/3 border-r border-border",
         )}
       >
         {!mayPrintCheck && (
@@ -1045,7 +1086,7 @@ export function OrderView({
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto" data-order-check-scroll>
           <TicketStripLines
             lines={order.lines}
             vendors={vendors}
@@ -1109,7 +1150,7 @@ export function OrderView({
           <p className="px-3 py-1 text-xs text-danger">{gateError}</p>
         )}
         {checkLevelActions}
-        <div className="grid grid-cols-2 gap-2 border-t border-border p-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
           {(() => {
             const selected = selectedLineId
               ? order.lines.find((l) => l.id === selectedLineId)
@@ -1325,10 +1366,17 @@ export function OrderView({
           "relative flex min-h-0 min-w-0 flex-1 overflow-hidden",
           checkOverlay ? "flex-col" : "flex-row",
         )}
+        data-order-layout={checkOverlay ? "overlay" : "thirds"}
       >
       {!checkOverlay ? checkPane : null}
 
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-bg">
+      <section
+        className={cn(
+          "flex min-h-0 min-w-0 flex-col bg-bg",
+          checkOverlay ? "flex-1" : "h-full w-2/3 min-w-0 basis-2/3",
+        )}
+        data-order-menu
+      >
         {orderLocked && table && (
           <div className="border-b border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn-foreground">
             View only — {table.label} is in {table.section}, not your section.
@@ -1410,7 +1458,9 @@ export function OrderView({
           <div
             className={cn(
               "grid gap-2",
-              checkOverlay ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4",
+              checkOverlay
+                ? "grid-cols-2"
+                : "grid-cols-2 min-[1100px]:grid-cols-3 min-[1500px]:grid-cols-4",
             )}
           >
             {menuItems.length === 0 && (

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_297_order_split",
+    date: "2026-10-18",
+    title: "Order screen check on the left",
+    summary:
+      "The open check sits on the left third and the menu fills the right two-thirds.",
+    body: "With a check open, the ticket stays on the left third of the order screen. Categories, items, and modifiers fill the right two-thirds. The check scrolls on its own, so the ticket stays in view while items are added. Send, Print check, and Pay stay on the check. Portrait and landscape tablets use the same split.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "kitchen-bar-routing",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_296_ticket_print",
     date: "2026-10-18",
     title: "Compact ticket-strip guest check",

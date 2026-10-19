@@ -4,7 +4,9 @@ import { useLayoutEffect, useState } from "react";
  * Station chrome by physical viewport — not by PIN role.
  *
  * Typical 8" Android handheld portrait is ~600–800 CSS px wide and tall.
- * A 10–11" tablet in landscape is two columns (check + menu), not a
+ * Floor stays one column there. The order screen puts the open check on
+ * the left third whenever the width is at least a tablet.
+ * A 10–11" tablet in landscape is two columns for the floor, not a
  * skinny third nav column. Counter 15"+ keeps the side nav.
  */
 
@@ -16,9 +18,9 @@ export type StationLayout = {
   portrait: boolean;
   short: boolean;
   narrow: boolean;
-  /** Portrait handheld / phone: single column, check in a slide-over. */
+  /** Portrait handheld / phone: floor stays one column. */
   handheld: boolean;
-  /** Check + menu side by side. Never a third skinny column. */
+  /** Floor side by side. The order screen uses its own left-third check. */
   twoCol: boolean;
   /** 15"+ counter: side nav + check + menu. */
   counter: boolean;

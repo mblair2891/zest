@@ -73,12 +73,12 @@ export function TicketStripLines({
           >
             <button
               type="button"
-              className="flex w-full items-baseline gap-2 text-left"
+              className="flex w-full flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-left"
               onClick={() => onSelect?.(line.id)}
             >
               <span
                 className={cn(
-                  "min-w-0 flex-1 text-[13px] leading-tight",
+                  "min-w-0 max-w-full flex-1 break-words text-[13px] leading-tight",
                   line.sent ? "text-muted-foreground" : "font-medium",
                 )}
               >

@@ -6,6 +6,10 @@ test("order pad always shows live check lines; Print check is not the only view"
   const ui = readFileSync("src/components/pos/OrderView.tsx", "utf8");
   assert.match(ui, /data-live-check/);
   assert.match(ui, /data-live-check-strip/);
+  assert.match(ui, /data-order-layout/);
+  assert.match(ui, /w-1\/3/);
+  assert.match(ui, /w-2\/3/);
+  assert.match(ui, /data-order-check-scroll/);
   assert.match(ui, /Print check/);
   assert.match(ui, /printGuestCheck/);
   assert.match(ui, /Tap the menu — lines land here/);
@@ -98,12 +102,13 @@ test("guide covers pay QR, venue timezone, named taxes", () => {
   assert.match(roles, /named tax rates/);
   assert.match(roles, /IANA timezone/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.296/);
+  assert.match(types, /2026\.10\.297/);
 });
 
 test("guide covers live pad, print check, impact, receipt path", () => {
   const orders = readFileSync("src/lib/guide/content/orders.ts", "utf8");
-  assert.match(orders, /beside or under the menu/);
+  assert.match(orders, /left third of the order screen/);
+  assert.match(orders, /right two-thirds/);
   assert.match(orders, /destination Kitchen/);
   const pay = readFileSync("src/lib/guide/content/payments.ts", "utf8");
   assert.match(pay, /Print check \(before tender\)/);
@@ -114,5 +119,5 @@ test("guide covers live pad, print check, impact, receipt path", () => {
   assert.match(devices, /table.s section/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
   assert.match(types, /GUIDE_VERSION/);
-  assert.match(types, /2026\.10\.296/);
+  assert.match(types, /2026\.10\.297/);
 });
