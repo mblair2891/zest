@@ -5,6 +5,7 @@
 import type { DeviceRole } from "./device-roles";
 import type { EmployeeRole } from "./types";
 import { staffCustody, takeDrawerLabel, type CashCustodyKind } from "./cash-custody";
+import { mayCreateSupplierOrder } from "@/lib/costs/supplier-order";
 import { stationCan, type StationCapSettings } from "./station-pin-gate";
 import {
   resolveStationServiceStyle,
@@ -25,6 +26,7 @@ export const STATION_MENU_JOBS = [
   "take_drawer",
   "hand_off",
   "gift",
+  "supplier_orders",
   "done",
 ] as const;
 export type StationMenuJob = (typeof STATION_MENU_JOBS)[number];
@@ -117,6 +119,7 @@ export function stationMenuItems(opts: {
 
   const work = stationCan(cap, "floor") || stationCan(cap, "order_entry") || stationCan(cap, "togo") || stationCan(cap, "bar_tab");
   if (!work) {
+    if (device === "order" && mayCreateSupplierOrder(role)) add("supplier_orders", "Orders");
     add("closeout", "Close out");
     add("done", "Done");
     return out;
@@ -139,6 +142,7 @@ export function stationMenuItems(opts: {
   if (opts.canPayStation) add("no_sale", "No sale");
   if (opts.giftEnabled) add("gift", "Gift cards");
   if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
+  if (device === "order" && mayCreateSupplierOrder(role)) add("supplier_orders", "Orders");
   add("closeout", "Close out");
   return out.slice(0, 9);
 }

@@ -177,6 +177,7 @@ const NAV: {
   { id: "reports", label: "Reports", icon: BarChart3 },
   { id: "inventory", label: "Costs", icon: Package },
   { id: "suppliers", label: "Suppliers", icon: Truck },
+  { id: "purchasing", label: "Orders", icon: ClipboardCheck },
   { id: "menu", label: "Menu", icon: BookOpen },
   { id: "labor", label: "Labor", icon: Clock3 },
   { id: "hr", label: "HR", icon: IdCard },

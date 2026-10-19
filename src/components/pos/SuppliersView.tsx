@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { listOlccStoresFn, parseCostInvoiceFn } from "@/lib/costs/api";
+import { listOlccStoresFn, parseCostInvoiceFn, sendCostPoEmailFn } from "@/lib/costs/api";
 import { extractPdfStrings } from "@/lib/costs/invoice-parse";
 import { locationShowsOlccStores, type OlccStore } from "@/lib/costs/olcc-stores";
 import {
@@ -12,16 +12,22 @@ import {
   type InvoiceReadLine,
   type SupplierOrderDraft,
 } from "@/lib/costs/order-match";
-import { canCost, costEntityScope } from "@/lib/costs/permissions";
+import { canCost, canSeeEntity, costEntityScope } from "@/lib/costs/permissions";
 import { useCostStore } from "@/lib/costs/store";
+import {
+  catalogForSupplier,
+  catalogSizeLabel,
+  supplierVisibleToEntity,
+} from "@/lib/costs/supplier-order";
 import {
   buildSupplier,
   supplierIsActive,
   supplierSendsOrder,
   supplierTypeLabel,
 } from "@/lib/costs/suppliers";
-import type { BeverageLine, OrderMatchFlag, OrderMethod, SupplierKind } from "@/lib/costs/types";
+import type { BeverageLine, OrderMatchFlag, OrderMethod, PurchaseOrder, SupplierKind } from "@/lib/costs/types";
 import { parseJurisdiction } from "@/lib/pos/jurisdiction";
+import { useStationSessionStore } from "@/lib/pos/station-session";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
 import { OlccSpiritsPanel } from "./OlccSpiritsPanel";
@@ -391,16 +397,41 @@ const MATCH_LABEL: Record<OrderMatchFlag, string> = {
   price: "Price difference",
 };
 
+function linesFromOrder(po: PurchaseOrder): SupplierOrderDraft[] {
+  return po.lines.map((line) => ({
+    name: line.name,
+    size: line.size || "",
+    qty: line.qty,
+    expectedPriceCents: line.unitCostCents,
+    skuId: line.skuId || undefined,
+  }));
+}
+
+function openOrderPrint(html: string) {
+  const page = window.open("", "_blank");
+  if (!page) return;
+  page.document.write(html);
+  page.document.close();
+  page.focus();
+  page.print();
+}
+
 function SupplierOrder({
   supplierId,
   pickList,
   canEdit,
+  focusId,
 }: {
   supplierId: string;
   pickList: boolean;
   canEdit: boolean;
+  focusId?: string | null;
 }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
+  const vendors = usePosStore((s) => s.vendors);
+  const stationOperatorId = useStationSessionStore((s) => s.assignment.operatorId);
+  const skus = useCostStore((s) => s.skus);
+  const supplier = useCostStore((s) => s.suppliers.find((row) => row.id === supplierId));
   // Keep the store snapshot stable. Filtering inside the selector returns a
   // new array on every check, and React updates this card without end.
   const pos = useCostStore((s) => s.pos);
@@ -413,14 +444,50 @@ function SupplierOrder({
   const setLine = useCostStore((s) => s.setOrderMatchLine);
   const confirm = useCostStore((s) => s.confirmOrderMatch);
   const canReceive = canCost(emp, "po:receive") || canCost(emp, "invoice:post");
+  const scope = costEntityScope(emp);
+  const entities = vendors.filter((vendor) => vendor.active !== false);
+  const showEntity = !scope && entities.length > 1;
+  const [entityPick, setEntityPick] = useState("");
+  const entityId =
+    scope && scope !== "host"
+      ? scope
+      : entityPick || (stationOperatorId && stationOperatorId !== "host" ? stationOperatorId : "");
+  const catalog = useMemo(
+    () => (supplier ? catalogForSupplier(skus, supplier, entityId || null) : []),
+    [skus, supplier, entityId],
+  );
   const [item, setItem] = useState("");
   const [size, setSize] = useState("");
   const [qty, setQty] = useState("1");
   const [price, setPrice] = useState("");
+  const [skuId, setSkuId] = useState("");
   const [drafts, setDrafts] = useState<SupplierOrderDraft[]>([]);
+  const [draftPoId, setDraftPoId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const active = orders.find((po) => po.id === (activeId ?? orders[0]?.id)) ?? orders[0];
+
+  const loadOrder = (po: PurchaseOrder | undefined) => {
+    if (!po) return;
+    setActiveId(po.id);
+    if (po.status !== "draft") return;
+    setDraftPoId(po.id);
+    setDrafts(linesFromOrder(po));
+    if (po.entityId && po.entityId !== "host") setEntityPick(po.entityId);
+  };
+
+  useEffect(() => {
+    setDrafts([]);
+    setDraftPoId(null);
+    setActiveId(null);
+    setNote("");
+  }, [supplierId]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    const po = useCostStore.getState().pos.find((row) => row.id === focusId && row.supplierId === supplierId);
+    if (po) loadOrder(po);
+  }, [focusId, supplierId]);
 
   const addLine = () => {
     const expectedPriceCents = Math.round((parseFloat(price) || 0) * 100);
@@ -429,6 +496,7 @@ function SupplierOrder({
       size: size.trim(),
       qty: parseFloat(qty) || 0,
       expectedPriceCents,
+      skuId: skuId || undefined,
     };
     if (!next.name || !next.size || !(next.qty > 0) || !(expectedPriceCents >= 0) || price.trim() === "") {
       setNote("Item, size, quantity, and expected price are required.");
@@ -439,24 +507,66 @@ function SupplierOrder({
     setSize("");
     setQty("1");
     setPrice("");
+    setSkuId("");
     setNote("");
   };
 
-  const printOrder = () => {
-    const result = place(supplierId, drafts);
-    if (!result.ok || !result.html) {
-      setNote(result.error ?? "Could not print the order.");
+  const addCatalog = (id: string) => {
+    const sku = catalog.find((row) => row.id === id);
+    if (!sku) return;
+    const count = parseFloat(qty);
+    setDrafts((rows) => [
+      ...rows,
+      {
+        name: sku.name,
+        size: catalogSizeLabel(sku),
+        qty: count > 0 ? count : 1,
+        expectedPriceCents: sku.costCents,
+        skuId: sku.id,
+      },
+    ]);
+    setNote("");
+  };
+
+  const submit = (mode: "draft" | "print" | "send") => {
+    const result = place(supplierId, drafts, {
+      mode,
+      entityId: entityId || undefined,
+      poId: draftPoId || undefined,
+      stationOperatorId,
+    });
+    if (!result.ok) {
+      setNote(result.error ?? "Could not save the order.");
+      return;
+    }
+    setActiveId(result.poId ?? null);
+    if (mode === "draft") {
+      setDraftPoId(result.poId ?? null);
+      setNote("Saved as a draft.");
       return;
     }
     setDrafts([]);
-    setActiveId(result.poId ?? null);
-    setNote(pickList ? "Pick list printed. Status is sent. No order is sent." : "Printed. Status is sent.");
-    const page = window.open("", "_blank");
-    if (page) {
-      page.document.write(result.html);
-      page.document.close();
-      page.focus();
-      page.print();
+    setDraftPoId(null);
+    if (mode === "print") {
+      setNote(pickList ? "Pick list printed. Status is sent. No order is sent." : "Printed. Status is sent.");
+    } else {
+      setNote("Sent to the supplier.");
+    }
+    if (result.html) openOrderPrint(result.html);
+    if (mode === "send" && result.csv) {
+      const email = supplier?.email || supplier?.contacts[0]?.email || "";
+      if (email) {
+        void sendCostPoEmailFn({
+          data: {
+            to: email,
+            subject: `Order ${result.poId ?? ""}`.trim(),
+            text: `Order from ${usePosStore.getState().settings.name || "the house"}.`,
+            csv: result.csv,
+          },
+        })
+          .then((res) => setNote(`Sent. Email ${res.status}.`))
+          .catch(() => setNote("Order saved. Email did not send."));
+      }
     }
   };
 
@@ -522,6 +632,42 @@ function SupplierOrder({
       </p>
       {canEdit && (
         <div className="grid gap-2 sm:grid-cols-2">
+          {showEntity ? (
+            <label className="block text-xs text-muted-foreground sm:col-span-2">
+              Selling entity
+              <select
+                className={`${FIELD} mt-1`}
+                data-order-entity=""
+                value={entityId}
+                onChange={(e) => setEntityPick(e.target.value)}
+              >
+                <option value="">House</option>
+                {entities.map((vendor) => (
+                  <option key={vendor.id} value={vendor.id}>
+                    {vendor.shortName || vendor.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label className="block text-xs text-muted-foreground sm:col-span-2">
+            Inventory
+            <select
+              className={`${FIELD} mt-1`}
+              data-order-catalog=""
+              value=""
+              onChange={(e) => {
+                if (e.target.value) addCatalog(e.target.value);
+              }}
+            >
+              <option value="">Add from inventory</option>
+              {catalog.map((sku) => (
+                <option key={sku.id} value={sku.id}>
+                  {sku.name} · {catalogSizeLabel(sku)}
+                </option>
+              ))}
+            </select>
+          </label>
           <Input value={item} placeholder="Item" data-order-item="" onChange={(e) => setItem(e.target.value)} />
           <Input value={size} placeholder="Size" data-order-size="" onChange={(e) => setSize(e.target.value)} />
           <Input value={qty} placeholder="Quantity" data-order-qty="" onChange={(e) => setQty(e.target.value)} />
@@ -534,28 +680,46 @@ function SupplierOrder({
           <Button type="button" size="sm" variant="outline" data-order-add="" onClick={addLine}>
             Add line
           </Button>
-          <Button type="button" size="sm" data-order-print="" disabled={!drafts.length} onClick={printOrder}>
+          <Button type="button" size="sm" variant="outline" data-order-draft="" disabled={!drafts.length} onClick={() => submit("draft")}>
+            Save draft
+          </Button>
+          <Button type="button" size="sm" data-order-print="" disabled={!drafts.length} onClick={() => submit("print")}>
             {pickList ? "Print pick list" : "Print order"}
           </Button>
+          {!pickList ? (
+            <Button type="button" size="sm" variant="outline" data-order-send="" disabled={!drafts.length} onClick={() => submit("send")}>
+              Send
+            </Button>
+          ) : null}
         </div>
       )}
       {drafts.length > 0 && (
         <ul className="text-xs text-muted-foreground">
           {drafts.map((line, index) => (
-            <li key={`${line.name}-${index}`}>
-              {line.qty} × {line.name} · {line.size} · {formatCurrency(line.expectedPriceCents)}
+            <li key={`${line.name}-${index}`} className="flex items-center justify-between gap-2">
+              <span>
+                {line.qty} × {line.name} · {line.size} · {formatCurrency(line.expectedPriceCents)}
+              </span>
+              <button
+                type="button"
+                className="text-xs underline"
+                data-order-line-remove=""
+                onClick={() => setDrafts((rows) => rows.filter((_, i) => i !== index))}
+              >
+                Remove
+              </button>
             </li>
           ))}
         </ul>
       )}
       {orders.length > 0 && (
-        <label className="block text-xs text-muted-foreground">
-          Printed orders
+        <label className="block text-xs text-muted-foreground" data-order-history="">
+          Order history
           <select
             className={`${FIELD} mt-1`}
             data-order-status={active?.status ?? ""}
             value={active?.id ?? ""}
-            onChange={(e) => setActiveId(e.target.value)}
+            onChange={(e) => loadOrder(orders.find((po) => po.id === e.target.value))}
           >
             {orders.map((po) => (
               <option key={po.id} value={po.id}>
@@ -566,7 +730,7 @@ function SupplierOrder({
           </select>
         </label>
       )}
-      {active && !active.matchedAt && (
+      {active && active.status !== "draft" && !active.matchedAt && (
         <label className="block text-xs text-muted-foreground">
           {pickList ? "Store receipt" : "Invoice photo, PDF, or file"}
           <input
@@ -664,8 +828,96 @@ function SupplierOrder({
           Receive confirmed lines
         </Button>
       )}
-      {note ? <p className="text-xs text-primary">{note}</p> : null}
+      {note ? <p className="text-xs text-primary" data-order-note="">{note}</p> : null}
     </div>
+  );
+}
+
+/** Tablet station and web Orders. The same cost pack is the history on both. */
+export function SupplierOrdersBoard() {
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
+  const suppliers = useCostStore((s) => s.suppliers);
+  const pos = useCostStore((s) => s.pos);
+  const scope = costEntityScope(emp);
+  const canEdit = canCost(emp, "po:create");
+  const visible = useMemo(
+    () => suppliers.filter((row) => supplierVisibleToEntity(row, scope)),
+    [suppliers, scope],
+  );
+  const [supplierId, setSupplierId] = useState("");
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const chosen = supplierId || visible[0]?.id || "";
+  const supplier = visible.find((row) => row.id === chosen) ?? visible[0];
+  const history = pos.filter((po) => po.matchRequired && canSeeEntity(emp, po.entityId));
+
+  return (
+    <section className="space-y-3 p-3" data-supplier-orders="">
+      <div>
+        <h2 className="text-sm font-semibold">Orders</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Pick the supplier and the selling entity. Add a line from inventory, or type one. Save draft keeps it.
+          Print marks it sent. Send email is there when the supplier takes an order. A house liquor store prints a
+          pick list and no order is sent. Nothing is received until the invoice or store receipt is confirmed.
+        </p>
+      </div>
+      {!canEdit ? <p className="text-sm text-muted-foreground">You cannot create an order.</p> : null}
+      {visible.length > 0 ? (
+        <label className="block text-xs text-muted-foreground">
+          Supplier
+          <select
+            className={`${FIELD} mt-1`}
+            data-order-supplier=""
+            value={supplier?.id ?? ""}
+            onChange={(e) => {
+              setSupplierId(e.target.value);
+              setFocusId(null);
+            }}
+          >
+            {visible.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <p className="text-sm text-muted-foreground">Add a supplier before starting an order.</p>
+      )}
+      <div data-order-history-all="">
+        <p className="text-xs font-medium text-muted-foreground">Order history</p>
+        {history.length === 0 ? (
+          <p className="mt-1 text-xs text-muted-foreground">No orders yet.</p>
+        ) : (
+          <ul className="mt-1 space-y-1">
+            {history.map((po) => (
+              <li key={po.id}>
+                <button
+                  type="button"
+                  className="w-full rounded-xl border border-border px-3 py-2 text-left text-sm"
+                  data-order-history-row={po.id}
+                  data-order-history-status={po.status}
+                  onClick={() => {
+                    setSupplierId(po.supplierId);
+                    setFocusId(po.id);
+                  }}
+                >
+                  {po.supplierName} · {po.status}
+                  {po.pickList ? " · pick list" : ""} · {po.lines.length} lines
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {supplier ? (
+        <SupplierOrder
+          supplierId={supplier.id}
+          pickList={!supplierSendsOrder(supplier)}
+          canEdit={canEdit}
+          focusId={focusId}
+        />
+      ) : null}
+    </section>
   );
 }
 

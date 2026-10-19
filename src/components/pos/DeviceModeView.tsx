@@ -16,6 +16,7 @@ import { EndShiftPunch } from "./EndShiftPunch";
 import { closeoutIsPunchOnly } from "@/lib/pos/station-menu";
 import { CashView } from "./CashView";
 import { StationGiftJob } from "./StationGiftJob";
+import { SupplierOrdersBoard } from "./SuppliersView";
 import { KioskApp } from "@/components/kiosk/KioskApp";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
@@ -211,6 +212,15 @@ export function DeviceModeView({
       return (
         <StationJobFrame title="Hand off" onBack={back}>
           <CashPossessionView mode="hand_off" onDone={() => setJob(null)} />
+        </StationJobFrame>
+      );
+    }
+    if (job === "supplier_orders") {
+      return (
+        <StationJobFrame title="Orders" onBack={back}>
+          <div className="h-full overflow-y-auto" data-station-job="supplier_orders">
+            <SupplierOrdersBoard />
+          </div>
         </StationJobFrame>
       );
     }

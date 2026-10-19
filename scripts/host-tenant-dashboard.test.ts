@@ -28,7 +28,7 @@ test("host+tenant password dashboard has full tenant ops tabs", () => {
 test("tenant entity login is own slice only", () => {
   const tabs = venueDashboardTabs({ audience: "entity", operatingModel: "host_operators" });
   const ids = tabs.map(([id]) => id);
-  assert.deepEqual(ids, ["overview", "settings", "floor", "menu", "costs", "suppliers", "schedule", "reports", "staff", "gift"]);
+  assert.deepEqual(ids, ["overview", "settings", "floor", "menu", "inventory", "costs", "suppliers", "orders", "schedule", "reports", "staff", "gift"]);
   assert.ok(!ids.includes("devices"));
   assert.ok(!ids.includes("grants"));
   assert.ok(!ids.includes("payments"));
@@ -87,8 +87,10 @@ test("platform tenant detail is venue console tabs, not SaaS home", () => {
     "devices",
     "floor",
     "menu",
+    "inventory",
     "costs",
     "suppliers",
+    "orders",
     "labor",
     "reports",
     "payments",

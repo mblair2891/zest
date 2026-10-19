@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_301_supplier_tablet",
+    date: "2026-10-19",
+    title: "Supplier orders from tablet and web",
+    summary:
+      "A manager, owner, or operator can save, print, or send a supplier order from an order tablet or the web.",
+    body: "On an order tablet, Orders is on the station menu and under Checks. On the web, Orders is in the menu and on each supplier. Pick the supplier and the selling entity. Add lines from that supplier’s inventory, or type an item. Save draft keeps the order. Print marks it sent. Send email is there when the supplier takes an order. A house liquor store prints a pick list and no order is sent. The same list shows on the tablet and on the web. Nothing is received until the invoice or store receipt is confirmed. A server cannot create the order.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "suppliers",
+    tags: ["suppliers"],
+  },
+  {
     id: "upd_2026_10_300_liquor_any_tablet",
     date: "2026-10-19",
     title: "Liquor orders from any order tablet",

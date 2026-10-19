@@ -27,6 +27,7 @@ import type { PosView } from "@/lib/pos/types";
 import { RoleHomeDashboard } from "./RoleHomeDashboard";
 import { EntityScheduleView } from "./EntityScheduleView";
 import { CostWorkspace } from "./CostWorkspace";
+import { SupplierOrdersBoard } from "./SuppliersView";
 
 function Shell({
   title,
@@ -614,7 +615,14 @@ function RecipesViewLegacy() {
 }
 
 export function PurchasingView() {
-  return <CostWorkspace initialTab="invoices" />;
+  return (
+    <div className="h-full min-h-0 overflow-y-auto">
+      <SupplierOrdersBoard />
+      <div className="h-[75vh] min-h-[28rem] border-t border-border">
+        <CostWorkspace initialTab="invoices" />
+      </div>
+    </div>
+  );
 }
 
 function PurchasingViewLegacy() {

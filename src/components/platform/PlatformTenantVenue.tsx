@@ -50,7 +50,7 @@ import { EntityInventoryPage } from "@/components/pos/EntityInventoryPage";
 import { useCostStore } from "@/lib/costs/store";
 import { suppliersKeptAfterRefresh } from "@/lib/costs/suppliers";
 import { parseOlccBook } from "@/lib/costs/olcc";
-import { SuppliersView } from "@/components/pos/SuppliersView";
+import { SupplierOrdersBoard, SuppliersView } from "@/components/pos/SuppliersView";
 import { LaborOpsView } from "@/components/pos/LaborOpsView";
 import { ReportsView } from "@/components/pos/ReportsView";
 import { OperatorOpsView } from "@/components/pos/OperatorOpsView";
@@ -92,7 +92,7 @@ type Tab = VenueDashTabId;
 
 function tabPackageView(tab: Tab): string | null {
   if (tab === "costs" || tab === "inventory") return "inventory";
-  if (tab === "suppliers") return "suppliers";
+  if (tab === "suppliers" || tab === "orders") return "suppliers";
   if (tab === "labor" || tab === "schedule") return "labor";
   if (tab === "reports") return "reports";
   return null;
@@ -831,6 +831,13 @@ export function PlatformTenantVenue({
                 <SuppliersView />
               ) : (
                 <PackageEmptyState module="Suppliers" />
+              )
+            )}
+            {ready && !error && tab === "orders" && tabIds.has("orders") && (
+              tabOnPackage("orders", packages) ? (
+                <SupplierOrdersBoard />
+              ) : (
+                <PackageEmptyState module="Orders" />
               )
             )}
             {ready && !error && tab === "labor" && tabIds.has("labor") && (

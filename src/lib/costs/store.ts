@@ -46,6 +46,11 @@ import {
   type InvoiceReadLine,
   type SupplierOrderDraft,
 } from "./order-match";
+import {
+  dispatchSupplierSend,
+  supplierOrderEntityId,
+  supplierOrderPlacement,
+} from "./supplier-order";
 import type {
   CostAudit,
   CostAuditAction,
@@ -318,7 +323,13 @@ interface CostState {
   placeSupplierOrder: (
     supplierId: string,
     drafts: SupplierOrderDraft[],
-  ) => { ok: boolean; poId?: string; html?: string; error?: string };
+    opts?: {
+      entityId?: string;
+      poId?: string;
+      mode?: "draft" | "print" | "send";
+      stationOperatorId?: string | null;
+    },
+  ) => { ok: boolean; poId?: string; html?: string; csv?: string; error?: string };
   attachOrderInvoice: (
     poId: string,
     lines: InvoiceReadLine[],
@@ -1220,7 +1231,7 @@ export const useCostStore = create<CostState>()(
         };
       },
 
-      placeSupplierOrder: (supplierId, drafts) => {
+      placeSupplierOrder: (supplierId, drafts, opts) => {
         const a = actor();
         if (!canCost(a.emp, "po:create")) {
           return { ok: false, error: "No permission to create an order" };
@@ -1231,31 +1242,61 @@ export const useCostStore = create<CostState>()(
         const built = buildSupplierOrderLines(drafts);
         if (!built.ok) return built;
         const pickList = !supplierSendsOrder(sup);
+        const mode = opts?.mode ?? "print";
+        const placement = supplierOrderPlacement({ mode, pickList });
+        if (!placement.ok) return placement;
+        const entityId = supplierOrderEntityId({
+          actorEntity: a.entity,
+          requestedEntityId: opts?.entityId,
+          supplierEntityIds: sup.entityIds,
+          stationOperatorId: opts?.stationOperatorId,
+        });
+        if (a.entity && a.entity !== HOST_SCOPE && entityId !== a.entity) {
+          return { ok: false, error: "That order belongs to another entity." };
+        }
         const now = Date.now();
+        const existing = opts?.poId ? get().pos.find((p) => p.id === opts.poId) : undefined;
+        if (opts?.poId && (!existing || existing.status !== "draft" || existing.supplierId !== supplierId)) {
+          return { ok: false, error: "That draft is no longer open." };
+        }
         const po: PurchaseOrder = {
-          id: uid("po"),
+          id: existing?.id ?? uid("po"),
           supplierId,
           supplierName: sup.name,
-          entityId: a.entity || HOST_SCOPE,
+          entityId,
           status: "sent",
           lines: built.lines,
           expectedDate: now + sup.leadDays * 86400000,
-          createdAt: now,
-          createdById: a.id,
-          createdByName: a.name,
+          createdAt: existing?.createdAt ?? now,
+          createdById: existing?.createdById ?? a.id,
+          createdByName: existing?.createdByName ?? a.name,
           sentAt: now,
-          sendDetail: pickList
-            ? "Pick list printed. No order is sent."
-            : "Printed. Nothing is received until the invoice is matched.",
+          sendDetail: placement.detail,
           totalCents: built.totalCents,
           matchRequired: true,
           pickList,
         };
-        set({ pos: [po, ...get().pos] });
-        get().audit("po_send", po.sendDetail ?? po.supplierName, po.entityId);
+        if (placement.status === "draft") {
+          po.status = "draft";
+          delete po.sentAt;
+        }
+        let csv: string | undefined;
+        if (placement.send) {
+          const dispatched = dispatchSupplierSend(po, sup);
+          po.sendDetail = dispatched.detail;
+          po.sendMethod = sup.orderMethod;
+          csv = dispatched.csv;
+        }
+        set({
+          pos: existing
+            ? get().pos.map((p) => (p.id === po.id ? po : p))
+            : [po, ...get().pos],
+        });
+        get().audit(placement.status === "draft" ? "po_create" : "po_send", po.sendDetail ?? po.supplierName, po.entityId);
         saveCosts();
+        if (po.status !== "sent") return { ok: true, poId: po.id };
         const house = usePosStore.getState().settings.name || "House";
-        return { ok: true, poId: po.id, html: orderPrintHtml(po, house) };
+        return { ok: true, poId: po.id, html: orderPrintHtml(po, house), csv };
       },
 
       attachOrderInvoice: (poId, lines, fileName) => {
