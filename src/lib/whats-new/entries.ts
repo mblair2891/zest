@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_300_liquor_any_tablet",
+    date: "2026-10-19",
+    title: "Liquor orders from any order tablet",
+    summary:
+      "A server, host, or bar order tablet can open a check, add liquor, and send it to the bar.",
+    body: "Open a check on any order tablet and add items from the bar menu. Send prints the drink on the bar printer for that table’s section and shows it on the bar order display. Food still uses the order printers checked on that tablet. The person’s role still decides which items they can enter.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "kitchen-bar-routing",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_299_elo_msr",
     date: "2026-10-19",
     title: "Elo side-mounted stripe reader",
@@ -371,7 +384,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     title: "Order printers from the station",
     summary:
       "Order printers are chosen on the order tablet or host station. Send uses only those printers.",
-    body: "Edit the order tablet or host station and check Order printers this station sends to. The list is that station’s entity and shared printers. Send from that station uses only the printers checked there. The order printer form does not assign stations. Receipt printers stay on floor sections. A station may still list a fallback receipt printer.",
+    body: "Edit the order tablet or host station and check Order printers this station sends to. The list is that station’s entity and shared printers. Food sent from that station uses only the printers checked there. A liquor order from any order tablet still prints on the bar printer for that table’s section and shows on the bar order display. The order printer form does not assign stations. Receipt printers stay on floor sections. A station may still list a fallback receipt printer.",
     roles: ["owner_manager", "kitchen_bar"],
     surfaces: ["settings"],
     audience: "all",

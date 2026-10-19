@@ -2518,8 +2518,9 @@ export function LocationDeviceRegistry({
                 Order printers this station sends to
               </legend>
               <p className="text-[11px] text-muted-foreground">
-                Send from this station uses only the order printers checked here. The list is this
-                entity’s printers and shared printers.
+                Food from this station uses only the order printers checked here. Liquor still prints
+                on the bar printer for the table’s section. The list is this entity’s printers and
+                shared printers.
               </p>
               <div className="flex flex-col gap-1">
                 {devices

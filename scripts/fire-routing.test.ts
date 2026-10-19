@@ -286,6 +286,181 @@ test("separate course tickets splits one printer by course", () => {
   assert.equal(slips.length, 2);
 });
 
+test("a server tablet sends liquor to the section bar printer", () => {
+  const food = "ent_food";
+  const bar = "ent_bar";
+  const server = {
+    id: "tab_server",
+    locationId: "loc",
+    label: "Server 1",
+    type: "tablet_pos" as const,
+    status: "online" as const,
+    lastSeenAt: 1,
+    assignment: { operatorId: food, function: "floor_pos" as const },
+    orderPrinterIds: ["prn_kitchen"],
+  };
+  const kitchen = orderPrinter("prn_kitchen", "Kitchen");
+  kitchen.assignment = { operatorId: food, function: "kitchen_kds" };
+  const mainBar = orderPrinter("prn_bar_main", "Bar", "10.0.0.12");
+  mainBar.assignment = { operatorId: bar, function: "bar_kds" };
+  mainBar.print = { ...mainBar.print!, sectionIds: ["sec_main"] };
+  const rail = orderPrinter("prn_bar_rail", "Bar", "10.0.0.13");
+  rail.assignment = { operatorId: bar, function: "bar_kds" };
+  rail.print = { ...rail.print!, sectionIds: ["sec_rail"], serveNoSection: true };
+  const devices = [server, kitchen, mainBar, rail, receiptPrinter()];
+  const categories = [
+    cat("g_plates", "Plates", "Kitchen"),
+    cat("g_cocktails", "Cocktails", "Bar"),
+  ];
+  const menuItems = [item("mi_plate", "g_plates"), item("mi_mule", "g_cocktails", "bar")];
+  const table = { id: "t12", sectionId: "sec_main" };
+  const slips = groupFireSlips(
+    [
+      line("l1", "Plate", { menuItemId: "mi_plate", categoryId: "g_plates" }),
+      line("l2", "Mule", {
+        menuItemId: "mi_mule",
+        categoryId: "g_cocktails",
+        course: "drink",
+        station: "bar",
+        vendorId: bar,
+      }),
+    ],
+    {
+      categories,
+      menuItems,
+      devices,
+      stationDeviceId: server.id,
+      table,
+      tableId: table.id,
+      sections: [
+        { id: "sec_main", name: "Main" },
+        { id: "sec_rail", name: "Rail" },
+      ],
+      orderType: "dine_in",
+    },
+  );
+  const drink = slips.find((s) => s.destinationName === "Bar");
+  const foodSlip = slips.find((s) => s.destinationName === "Kitchen");
+  assert.ok(drink);
+  assert.equal(drink!.printerId, "prn_bar_main");
+  assert.equal(drink!.station, "bar");
+  assert.deepEqual(
+    drink!.items.map((i) => i.lineId),
+    ["l2"],
+  );
+  assert.equal(foodSlip?.printerId, "prn_kitchen");
+  const reprinted = resolveOrderPrinters({
+    devices,
+    destinationName: "Bar",
+    printerId: drink!.printerId,
+    operatorId: bar,
+    stationDeviceId: server.id,
+    table,
+    tableId: table.id,
+    sections: [{ id: "sec_main", name: "Main" }],
+    orderType: "dine_in",
+  });
+  assert.deepEqual(
+    reprinted.map((p) => p.id),
+    ["prn_bar_main"],
+  );
+  const sent = new Set(slips.flatMap((s) => s.items.map((i) => i.lineId)));
+  assert.deepEqual([...sent].sort(), ["l1", "l2"]);
+});
+
+test("an empty station list still sends liquor and sends no food ticket", () => {
+  const server = {
+    id: "tab_server",
+    locationId: "loc",
+    label: "Server 1",
+    type: "tablet_pos" as const,
+    status: "online" as const,
+    lastSeenAt: 1,
+    assignment: { operatorId: HOST_SCOPE, function: "floor_pos" as const },
+    orderPrinterIds: [] as string[],
+  };
+  const kitchen = orderPrinter("prn_kitchen", "Kitchen");
+  const bar = orderPrinter("prn_bar", "Bar", "10.0.0.12");
+  const devices = [server, kitchen, bar];
+  assert.deepEqual(
+    resolveOrderPrinters({
+      devices,
+      destinationName: "Bar",
+      stationDeviceId: server.id,
+      orderType: "bar_tab",
+    }).map((p) => p.id),
+    ["prn_bar"],
+  );
+  assert.deepEqual(
+    resolveOrderPrinters({
+      devices,
+      destinationName: "Kitchen",
+      stationDeviceId: server.id,
+    }),
+    [],
+  );
+});
+
+test("a bar tab with no section uses the no-section bar printer", () => {
+  const server = {
+    id: "tab_server",
+    locationId: "loc",
+    label: "Server 1",
+    type: "tablet_pos" as const,
+    status: "online" as const,
+    lastSeenAt: 1,
+    assignment: { operatorId: HOST_SCOPE, function: "floor_pos" as const },
+    orderPrinterIds: ["prn_kitchen"],
+  };
+  const kitchen = orderPrinter("prn_kitchen", "Kitchen");
+  const mainBar = orderPrinter("prn_bar_main", "Bar", "10.0.0.12");
+  mainBar.print = { ...mainBar.print!, sectionIds: ["sec_main"] };
+  const tabs = orderPrinter("prn_bar_tabs", "Bar", "10.0.0.13");
+  tabs.print = { ...tabs.print!, serveNoSection: true };
+  const hit = resolveOrderPrinters({
+    devices: [server, kitchen, mainBar, tabs],
+    destinationName: "Bar",
+    stationDeviceId: server.id,
+    orderType: "bar_tab",
+  });
+  assert.deepEqual(
+    hit.map((p) => p.id),
+    ["prn_bar_tabs"],
+  );
+});
+
+test("drinks with no bar printer still follow the station food list", () => {
+  const server = {
+    id: "tab_server",
+    locationId: "loc",
+    label: "Server 1",
+    type: "tablet_pos" as const,
+    status: "online" as const,
+    lastSeenAt: 1,
+    assignment: { operatorId: HOST_SCOPE, function: "floor_pos" as const },
+    orderPrinterIds: ["prn_kitchen"],
+  };
+  const kitchen = orderPrinter("prn_kitchen", "Kitchen");
+  const other = orderPrinter("prn_other", "Kitchen", "10.0.0.14");
+  assert.deepEqual(
+    resolveOrderPrinters({
+      devices: [server, kitchen, other],
+      destinationName: "Bar",
+      stationDeviceId: server.id,
+    }).map((p) => p.id),
+    ["prn_kitchen"],
+  );
+  const none = { ...server, id: "tab_none", orderPrinterIds: [] as string[] };
+  assert.deepEqual(
+    resolveOrderPrinters({
+      devices: [none, kitchen],
+      destinationName: "Bar",
+      stationDeviceId: none.id,
+    }),
+    [],
+  );
+});
+
 test("send no longer groups kitchen fire by course or menu group", () => {
   const store = readFileSync("src/lib/pos/store.ts", "utf8");
   assert.match(store, /groupFireSlips/);

@@ -108,9 +108,12 @@ function keepStationPrinters(
 
 /**
  * Order printers for a fire. Receipt printers never match.
- * Food: menu group destination + printer. Bar: floor section.
- * A station that has chosen order printers sends only to those.
- * Named override wins when that printer is allowed. Bar with no bar printer → Kitchen.
+ * Food: menu group destination + printer, limited to the station list.
+ * Bar: the floor-section bar printer, from any order tablet, even when that
+ * printer is not checked on the sending station. No bar printer → Kitchen,
+ * and that fallback still uses the station list.
+ * A named printer wins when it is on the station list. A named bar printer
+ * also wins for a bar destination.
  */
 export function resolveOrderPrinters(opts: {
   devices: LocationDevice[] | undefined;
@@ -127,12 +130,13 @@ export function resolveOrderPrinters(opts: {
   const order = (opts.devices ?? []).filter(isActiveOrderPrinter);
   const allow = stationOrderPrinterAllowlist(opts.devices, opts.stationDeviceId);
   const allowed = (d: LocationDevice) => !allow || allow.has(d.id);
+  const dest = normalizeDestinationName(opts.destinationName) || DEFAULT_ORDER_DESTINATION;
+  const barDest = destKey(dest) === "bar";
   if (opts.printerId) {
     const named = order.find((d) => d.id === opts.printerId);
-    if (named && allowed(named)) return [named];
+    if (named && (allowed(named) || (barDest && isBarOrderPrinter(named)))) return [named];
   }
-  const dest = normalizeDestinationName(opts.destinationName) || DEFAULT_ORDER_DESTINATION;
-  if (destKey(dest) === "bar") {
+  if (barDest) {
     const bar = resolveBarPrinterForCheck({
       devices: opts.devices,
       table: opts.table,
@@ -143,7 +147,7 @@ export function resolveOrderPrinters(opts: {
     });
     if (bar) {
       const hit = order.find((d) => d.id === bar.id);
-      if (hit && allowed(hit)) return [hit];
+      if (hit) return [hit];
     }
     const kitchen = entityPool(matchDestination(order, DEFAULT_ORDER_DESTINATION), opts.operatorId);
     return keepStationPrinters(kitchen, allow);
