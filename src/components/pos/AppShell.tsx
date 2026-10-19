@@ -123,6 +123,7 @@ import { MarketingHubView } from "./MarketingHubView";
 import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
 import { HelpButton } from "@/components/help/HelpPanel";
 import { StationDeviceHealthBanner, StationDevicesButton, StationDevicesHost } from "./StationDevices";
+import { EloMsrStation } from "./EloMsrStation";
 import { ReplayWorkflowButton } from "@/components/onboarding/ReplayWorkflowButton";
 import { LoginOnboardingHost } from "@/components/onboarding/LoginOnboardingHost";
 import { venueById } from "@/lib/pos/entities";
@@ -605,6 +606,7 @@ export function AppShell() {
         <ClockInAfterPinDialog />
         <NetworkBanner />
         <StationDevicesHost />
+        <EloMsrStation />
         <div className="min-h-0 flex-1 overflow-hidden">
           <DeviceModeView
             mode={stationAssignment.kind}

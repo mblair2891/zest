@@ -22,6 +22,7 @@ import {
   type PrinterPaperMm,
 } from "@/lib/print/printer-models";
 import { normalizePrinterLink } from "@/lib/print/printer-transport";
+import { eloMsrPresence, parseMsrConfig, type MsrConfig } from "./elo-msr";
 
 export {
   DEFAULT_PRINTER_PORT,
@@ -58,6 +59,7 @@ export type LocationDeviceType =
   | "label_printer"
   | "host_stand"
   | "terminal"
+  | "elo_msr"
   | "other";
 
 export type DeviceFunction =
@@ -241,6 +243,8 @@ export type LocationDevice = {
   squareDeviceCode?: string;
   squareCodeId?: string;
   squarePairStatus?: "unpaired" | "paired";
+  /** Elo side-mounted magnetic stripe reader. */
+  msr?: MsrConfig;
   /** Owner asked the idle PIN pad to take the new role now. */
   applyRoleNow?: boolean;
   roleRevision?: number;
@@ -260,6 +264,7 @@ export const DEVICE_TYPES: LocationDeviceType[] = [
   "label_printer",
   "host_stand",
   "terminal",
+  "elo_msr",
   "other",
 ];
 
@@ -275,6 +280,7 @@ export const HARDWARE_DEVICE_TYPES: LocationDeviceType[] = [
   "terminal",
   "receipt_printer",
   "order_printer",
+  "elo_msr",
 ];
 
 export const DEVICE_FUNCTIONS: DeviceFunction[] = [
@@ -315,6 +321,7 @@ export const DEVICE_TYPE_LABEL: Record<LocationDeviceType, string> = {
   label_printer: "Order printer",
   host_stand: "Host tablet",
   terminal: "Terminal",
+  elo_msr: "Elo side-mounted MSR",
   other: "Other",
 };
 
@@ -407,6 +414,7 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
         o.squarePairStatus === "paired" || o.squarePairStatus === "unpaired"
           ? o.squarePairStatus
           : undefined,
+      msr: type === "elo_msr" ? parseMsrConfig(o.msr) : undefined,
       applyRoleNow: o.applyRoleNow === true,
       roleRevision: Number(o.roleRevision) > 0 ? Math.round(Number(o.roleRevision)) : undefined,
       claimExpiresAt:
@@ -417,7 +425,7 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
 }
 
 export function isPairedActivatedStation(d: LocationDevice): boolean {
-  if (isPrinterType(d.type) || d.type === "terminal") return false;
+  if (isPrinterType(d.type) || d.type === "terminal" || d.type === "elo_msr") return false;
   return d.status === "online" || d.status === "offline";
 }
 
@@ -550,7 +558,7 @@ export function isPrintWorkerStation(d: {
   status?: string;
   assignment?: { function?: string };
 }): boolean {
-  if (isPrinterType(d.type) || d.type === "terminal") return false;
+  if (isPrinterType(d.type) || d.type === "terminal" || d.type === "elo_msr") return false;
   if (d.status === "inactive") return false;
   if (d.type === "kiosk" || d.assignment?.function === "kiosk") return false;
   return true;
@@ -618,6 +626,7 @@ export function stationPresenceStatus(
   d: LocationDevice,
   now = Date.now(),
 ): LocationDeviceStatus {
+  if (d.type === "elo_msr") return eloMsrPresence(d, now);
   if (isPrinterDevice(d)) return d.status;
   if (d.status === "inactive") return "inactive";
   if (d.status === "pending") return "pending";
@@ -857,6 +866,8 @@ export function defaultFunctionForType(type: LocationDeviceType): DeviceFunction
     case "label_printer":
       return "expo";
     case "terminal":
+      return "cashier";
+    case "elo_msr":
       return "cashier";
     default:
       return "floor_pos";

@@ -15,6 +15,14 @@ import {
   saveLocationSettingsFn,
   unpairLocationDeviceFn,
 } from "@/lib/access/api";
+import { recordEloMsrSwipeFn } from "@/lib/pos/elo-msr.api";
+import {
+  MSR_ROLE_LABEL,
+  MSR_ROLES,
+  isMsrStationType,
+  type MsrGiftAction,
+  type MsrRole,
+} from "@/lib/pos/elo-msr";
 import { hashPin, isFourDigitPin } from "@/lib/pos/pin";
 import { flushLocationCatalog, persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { publishOwnerBlock } from "@/lib/pos/room-owner";
@@ -152,7 +160,7 @@ const HARDWARE_FUNCTIONS: DeviceFunction[] = ["cashier", "expo", "floor_pos"];
 
 function typeOptions(mode: Mode): LocationDeviceType[] {
   if (mode === "hardware") return HARDWARE_DEVICE_TYPES;
-  return [...STATION_DEVICE_TYPES, ...PRINTER_UI_TYPES];
+  return [...STATION_DEVICE_TYPES, ...PRINTER_UI_TYPES, "elo_msr"];
 }
 
 function functionOptions(mode: Mode): DeviceFunction[] {
@@ -300,6 +308,10 @@ export function LocationDeviceRegistry({
   const [cardReaderId, setCardReaderId] = useState("");
   const [receiptPrinterId, setReceiptPrinterId] = useState<string>("");
   const [orderPrinterIds, setOrderPrinterIds] = useState<string[]>([]);
+  const [msrRole, setMsrRole] = useState<MsrRole>("gift");
+  const [msrStationId, setMsrStationId] = useState("");
+  const [msrTestAction, setMsrTestAction] = useState<MsrGiftAction>("balance");
+  const [msrNote, setMsrNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<LocationDevice | null>(null);
   const [canDeleteDevice, setCanDeleteDevice] = useState(false);
@@ -643,6 +655,8 @@ export function LocationDeviceRegistry({
     setOrderPrinterIds(
       Array.isArray(preset?.orderPrinterIds) ? preset.orderPrinterIds : legacyOrderPrinterIds,
     );
+    setMsrRole(preset?.msr?.role ?? "gift");
+    setMsrStationId(preset?.msr?.stationId ?? "");
     const cats = usePosStore.getState().categories;
     setFoodGroupIds(
       preset?.id ? cats.filter((c) => c.printerId === preset.id).map((c) => c.id) : [],
@@ -754,9 +768,11 @@ export function LocationDeviceRegistry({
       const printer = isPrinterType(type);
       const stationType = printer
         ? type
-        : mode === "stations"
-          ? typeForDeviceRole(stationRole)
-          : type;
+        : type === "elo_msr"
+          ? "elo_msr"
+          : mode === "stations"
+            ? typeForDeviceRole(stationRole)
+            : type;
       const stationFn =
         printer
           ? functionForPrintStation(stationFromPrinterType(type, destinationName))
@@ -829,9 +845,13 @@ export function LocationDeviceRegistry({
                     orderPrinterVisibleToStation(row.assignment.operatorId, operatorId)
                   );
                 }),
-            stationClass: printer ? null : stationClass,
-            cardReaderId: printer ? null : cardReaderId || null,
-            cardReaderKind: printer ? null : cardReaderKind,
+            stationClass: printer || stationType === "elo_msr" ? null : stationClass,
+            cardReaderId: printer || stationType === "elo_msr" ? null : cardReaderId || null,
+            cardReaderKind: printer || stationType === "elo_msr" ? null : cardReaderKind,
+            msr:
+              stationType === "elo_msr"
+                ? { mount: "side" as const, role: msrRole, stationId: msrStationId || null }
+                : undefined,
           },
         },
       });
@@ -875,6 +895,32 @@ export function LocationDeviceRegistry({
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save device");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const testMsr = async (d: LocationDevice) => {
+    setBusy(true);
+    setError(null);
+    setMsrNote(null);
+    try {
+      const res = await recordEloMsrSwipeFn({
+        data: {
+          orgId: resolvedOrgId,
+          locationId: resolvedLocId,
+          deviceId: d.id,
+          giftAction: d.msr?.role === "gift" ? msrTestAction : undefined,
+        },
+      });
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setMsrNote(`Swipe received on ${res.stationLabel}. ${res.event.summary}`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Test swipe failed");
     } finally {
       setBusy(false);
     }
@@ -1165,7 +1211,7 @@ export function LocationDeviceRegistry({
   const help =
     mode === "hardware"
       ? "Register Quantum readers and hospitality printers (Star, Epson, Citizen, Bixolon, generic ESC/POS). Ethernet uses a static IP (port 9100). USB uses the station’s USB port. Test print sends raw bytes — never the OS dialog."
-      : "Add a tablet or a printer from the same button. Tablets: pick Order / Host / ODS / Kiosk, then type the one-time code on the glass. Printers: Receipt printer or Order printer. Order destination is the production line (Kitchen, Bar, Expo, Window, Prep, Other — or add one). Receipt printers have no destination. Host and order tablets use the bound receipt printer; ODS does not need one.";
+      : "Add a tablet, a printer, or an Elo side-mounted MSR from the same button. Tablets: pick Order / Host / ODS / Kiosk, then type the one-time code on the glass. Printers: Receipt printer or Order printer. The Elo reader links to a tablet already on this list. Gift swipes use the house gift ledger.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
@@ -1853,6 +1899,11 @@ export function LocationDeviceRegistry({
           {notice}
         </p>
       )}
+      {msrNote && (
+        <p className="rounded-xl border border-border bg-surface px-3 py-2 text-sm" role="status" data-msr-received>
+          {msrNote}
+        </p>
+      )}
 
       {formOpen && (
         <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
@@ -1871,7 +1922,7 @@ export function LocationDeviceRegistry({
                 className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
                 data-checklist-focus={isPrinterType(type) ? "receipt-printer" : "order-station"}
                 value={
-                  mode === "stations" && !isPrinterType(type)
+                  mode === "stations" && !isPrinterType(type) && type !== "elo_msr"
                     ? typeForDeviceRole(stationRole)
                     : type
                 }
@@ -1914,7 +1965,7 @@ export function LocationDeviceRegistry({
                 ))}
               </select>
             </label>
-            {mode === "hardware" && !isPrinterType(type) ? (
+            {mode === "hardware" && !isPrinterType(type) && type !== "elo_msr" ? (
               <label className="text-xs text-muted-foreground">
                 Function
                 <select
@@ -1931,6 +1982,47 @@ export function LocationDeviceRegistry({
               </label>
             ) : null}
           </div>
+          {type === "elo_msr" && (
+            <div className="grid gap-2 sm:grid-cols-2" data-elo-msr-form>
+              <label className="text-xs text-muted-foreground">
+                Role
+                <select
+                  className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                  data-msr-role
+                  value={msrRole}
+                  onChange={(e) => setMsrRole(e.target.value as MsrRole)}
+                >
+                  {MSR_ROLES.map((role) => (
+                    <option key={role} value={role}>
+                      {MSR_ROLE_LABEL[role]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs text-muted-foreground">
+                Tablet
+                <select
+                  className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                  data-msr-station
+                  value={msrStationId}
+                  onChange={(e) => setMsrStationId(e.target.value)}
+                >
+                  <option value="">Link a tablet</option>
+                  {devices
+                    .filter((d) => isMsrStationType(d.type) && d.status !== "inactive")
+                    .map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.label}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <p className="text-[11px] text-muted-foreground sm:col-span-2">
+                Gift card load, redeem, and balance use the house gift ledger. The side reader
+                sends the stripe to the linked tablet. A bank card is not stored.
+              </p>
+            </div>
+          )}
           {isPrinterType(type) && (
             <div className="space-y-3">
               <div className="grid gap-2 sm:grid-cols-2">
@@ -2339,7 +2431,7 @@ export function LocationDeviceRegistry({
               )}
             </div>
           )}
-          {!isPrinterType(type) && mode === "stations" && stationRole !== "ods" && stationRole !== "kiosk" && (
+          {!isPrinterType(type) && type !== "elo_msr" && mode === "stations" && stationRole !== "ods" && stationRole !== "kiosk" && (
             <div className="space-y-3">
             <label className="block text-xs text-muted-foreground">
               Station class
@@ -2531,6 +2623,7 @@ export function LocationDeviceRegistry({
             <li
               key={d.id}
               className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-3"
+              data-device-type={d.type}
               {...(mode === "stations" && !isPrinterDevice(d)
                 ? { "data-station-reader": d.cardReaderId || "" }
                 : {})}
@@ -2558,16 +2651,27 @@ export function LocationDeviceRegistry({
                       }${d.print.venueDefault ? " · venue default" : ""}${
                         d.print.serveNoSection ? " · bar tabs" : ""
                       } · ${entityName(d.assignment.operatorId)} · ${d.print.modelPreset ? PRINTER_MODEL_LABEL[d.print.modelPreset] : ""} · ${d.print.link ? PRINTER_LINK_LABEL[d.print.link] : ""} ${printerIsUsb(d.print.link, d.print.modelPreset) ? usbStatusLabel(d.print.usbAttached) : d.print.ip || d.print.target || "(pending IP)"}`
-                    : `${DEVICE_TYPE_LABEL[d.type]} · ${entityName(d.assignment.operatorId)} · ${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}`}
+                    : d.type === "elo_msr"
+                      ? `${DEVICE_TYPE_LABEL[d.type]} · ${MSR_ROLE_LABEL[d.msr?.role ?? "gift"]} · ${
+                          devices.find((row) => row.id === d.msr?.stationId)?.label || "No tablet"
+                        }`
+                      : `${DEVICE_TYPE_LABEL[d.type]} · ${entityName(d.assignment.operatorId)} · ${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}`}
                 </p>
-                {mode === "stations" && !isPrinterDevice(d) && d.claimCode && d.status !== "online" ? (
+                {d.type === "elo_msr" ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground" data-msr-status>
+                    {d.msr?.lastSwipeAt
+                      ? `Last swipe · ${d.msr.lastSwipeSummary || "Swipe"} · ${formatTime(d.msr.lastSwipeAt)}`
+                      : "Last swipe · none"}
+                  </p>
+                ) : null}
+                {mode === "stations" && !isPrinterDevice(d) && d.type !== "elo_msr" && d.claimCode && d.status !== "online" ? (
                   <DevicePairCode
                     code={d.claimCode}
                     expiresAt={d.claimExpiresAt}
                     locId={resolvedLocId}
                     role={deviceRoleFromFunction(d.assignment.function)}
                   />
-                ) : mode === "stations" && !isPrinterDevice(d) && d.status === "online" ? (
+                ) : mode === "stations" && !isPrinterDevice(d) && d.type !== "elo_msr" && d.status === "online" ? (
                   <p className="mt-1 text-[11px] text-muted-foreground">Paired · PIN only</p>
                 ) : isPrinterDevice(d) && d.print?.lastPrintAt ? (
                   <p className="mt-1 text-[11px] text-muted-foreground">
@@ -2626,6 +2730,34 @@ export function LocationDeviceRegistry({
                   </>
                 )}
                 <DevicePresenceBits d={d} devices={devices} />
+                {d.type === "elo_msr" && (
+                  <>
+                    {d.msr?.role === "gift" ? (
+                      <label className="text-[11px] text-muted-foreground">
+                        Test
+                        <select
+                          className="ml-1 h-8 rounded-lg border border-border bg-bg px-2 text-xs text-foreground"
+                          data-msr-test-action
+                          value={msrTestAction}
+                          onChange={(e) => setMsrTestAction(e.target.value as MsrGiftAction)}
+                        >
+                          <option value="balance">Balance</option>
+                          <option value="load">Load</option>
+                          <option value="redeem">Redeem</option>
+                        </select>
+                      </label>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      data-msr-test-swipe={d.id}
+                      onClick={() => void testMsr(d)}
+                    >
+                      Test swipe
+                    </Button>
+                  </>
+                )}
                 {isPrinterDevice(d) && (
                   <Button
                     size="sm"

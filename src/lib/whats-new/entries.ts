@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_299_elo_msr",
+    date: "2026-10-19",
+    title: "Elo side-mounted stripe reader",
+    summary:
+      "Add an Elo side-mounted MSR in Devices, link it to a tablet, and swipe a gift card.",
+    body: "Devices → Add device → Elo side-mounted MSR. Choose Gift card load / redeem, Loyalty, or General swipe, and link a tablet already on the list. That tablet receives the swipe. Gift load, redeem, and balance use the house gift ledger. The row shows Online or Offline and the last swipe. Test swipe sends a house gift swipe to the linked tablet. A bank card is not stored.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "elo-side-msr",
+    tags: ["devices"],
+  },
+  {
     id: "upd_2026_10_298_quickbooks",
     date: "2026-10-19",
     title: "QuickBooks sales and gift settlement",

@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
 import { useMarketingStore } from "@/lib/pos/marketing-store";
 import { formatCurrency } from "@/lib/utils";
 import { computeTotals } from "@/lib/pos/calculations";
-import { defaultGiftIssuer } from "@/lib/pos/gift-issuer";
+import { defaultGiftIssuer, fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { giftNeedsManagerPin, giftSellBlockedReason, parseGiftLimits } from "@/lib/pos/gift-limits";
-import { issueGiftCardFn } from "@/lib/gift/api";
+import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/api";
+import { setPreferredMsrGiftAction, type MsrSwipeEvent } from "@/lib/pos/elo-msr";
 import { ManagerPinDialog } from "./ManagerPinDialog";
 
 /** Paired station + staff PIN: sell face-value gift or redeem on the open check. */
@@ -31,6 +32,31 @@ export function StationGiftJob() {
   const [code, setCode] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [mgrOpen, setMgrOpen] = useState(false);
+
+  useEffect(() => {
+    setPreferredMsrGiftAction(tab === "sell" ? "load" : "redeem");
+    return () => setPreferredMsrGiftAction("balance");
+  }, [tab]);
+
+  useEffect(() => {
+    const onSwipe = (ev: Event) => {
+      const detail = (ev as CustomEvent<MsrSwipeEvent>).detail;
+      if (!detail?.code) return;
+      if (detail.kind === "gift_load") {
+        setTab("sell");
+        setCode(detail.code);
+        setNote(`Swipe received · load ${detail.summary}`);
+        return;
+      }
+      if (detail.kind === "gift_redeem" || detail.kind === "gift_balance") {
+        setTab("redeem");
+        setCode(detail.code);
+        setNote(`Swipe received · ${detail.summary}`);
+      }
+    };
+    window.addEventListener("summex-msr-swipe", onSwipe);
+    return () => window.removeEventListener("summex-msr-swipe", onSwipe);
+  }, []);
 
   const sell = (skipMgr = false) => {
     const dollars = parseFloat(amt);
@@ -58,6 +84,7 @@ export function StationGiftJob() {
               data: {
                 locationId: locId,
                 amountCents: cents,
+                code: code.trim() || undefined,
                 issuerId: issuer.id,
                 issuerKind: issuer.kind,
                 issuerName: issuer.name,
@@ -103,34 +130,90 @@ export function StationGiftJob() {
       setNote("Enter a gift card code");
       return;
     }
-    const gc = giftCards.find(
-      (g) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.active && g.status !== "void",
-    );
-    if (!gc) {
-      setNote("Card not found");
+    const redeemCached = () => {
+      const gc = giftCards.find(
+        (g) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.active && g.status !== "void",
+      );
+      if (!gc) {
+        setNote("Card not found");
+        return;
+      }
+      if (!order || order.status !== "open") {
+        setNote(`Balance ${formatCurrency(gc.balanceCents)}. Open a check to redeem.`);
+        return;
+      }
+      const due = computeTotals(order, settings, { tender: "gift_card" }).balanceCents;
+      const apply = Math.min(gc.balanceCents, due);
+      if (apply <= 0) {
+        setNote(`Balance ${formatCurrency(gc.balanceCents)}. Nothing due on this check.`);
+        return;
+      }
+      const res = takePayment({
+        method: "gift_card",
+        amountCents: apply,
+        giftCardCode: gc.code,
+      });
+      if (!res.ok) {
+        setNote(res.error ?? "Redeem failed");
+        return;
+      }
+      logGiftTxn({ giftCardId: gc.code, type: "redeem", amountCents: apply, note: gc.code });
+      setNote(`Redeemed ${formatCurrency(apply)}. Remaining ${formatCurrency(gc.balanceCents - apply)}.`);
+    };
+    if (locId) {
+      void (async () => {
+        try {
+          const looked = await lookupGiftCardFn({ data: { locationId: locId, code: needle } });
+          if (!looked.ok) {
+            setNote(looked.error || "Card not found");
+            return;
+          }
+          if (!order || order.status !== "open") {
+            setNote(`Balance ${formatCurrency(looked.card.balanceCents)}. Open a check to redeem.`);
+            return;
+          }
+          const due = computeTotals(order, settings, { tender: "gift_card" }).balanceCents;
+          const apply = Math.min(looked.card.balanceCents, due);
+          if (apply <= 0) {
+            setNote(`Balance ${formatCurrency(looked.card.balanceCents)}. Nothing due on this check.`);
+            return;
+          }
+          const fulfiller = fulfillingIssuer(emp, settings, usePosStore.getState().vendors);
+          const red = await redeemGiftCardFn({
+            data: {
+              locationId: locId,
+              code: needle,
+              amountCents: apply,
+              fulfillerId: fulfiller.id,
+              fulfillerKind: fulfiller.kind,
+              checkId: order.id,
+            },
+          });
+          if (!red.ok) {
+            setNote(red.error || "Redeem failed");
+            return;
+          }
+          const pay = takePayment({
+            method: "gift_card",
+            amountCents: apply,
+            giftCardCode: needle,
+            serverGift: true,
+          });
+          if (!pay.ok) {
+            setNote(pay.error ?? "Redeem failed");
+            return;
+          }
+          logGiftTxn({ giftCardId: looked.card.id, type: "redeem", amountCents: apply, note: needle });
+          setNote(
+            `Redeemed ${formatCurrency(apply)}. Remaining ${formatCurrency(looked.card.balanceCents - apply)}.`,
+          );
+        } catch {
+          redeemCached();
+        }
+      })();
       return;
     }
-    if (!order || order.status !== "open") {
-      setNote(`Balance ${formatCurrency(gc.balanceCents)}. Open a check to redeem.`);
-      return;
-    }
-    const due = computeTotals(order, settings, { tender: "gift_card" }).balanceCents;
-    const apply = Math.min(gc.balanceCents, due);
-    if (apply <= 0) {
-      setNote(`Balance ${formatCurrency(gc.balanceCents)}. Nothing due on this check.`);
-      return;
-    }
-    const res = takePayment({
-      method: "gift_card",
-      amountCents: apply,
-      giftCardCode: gc.code,
-    });
-    if (!res.ok) {
-      setNote(res.error ?? "Redeem failed");
-      return;
-    }
-    logGiftTxn({ giftCardId: gc.code, type: "redeem", amountCents: apply, note: gc.code });
-    setNote(`Redeemed ${formatCurrency(apply)}. Remaining ${formatCurrency(gc.balanceCents - apply)}.`);
+    redeemCached();
   };
 
   if (!giftOn) {
@@ -166,6 +249,11 @@ export function StationGiftJob() {
             only. Not sold online.
           </p>
           <Input placeholder="Amount USD" value={amt} inputMode="decimal" onChange={(e) => setAmt(e.target.value)} />
+          <Input
+            placeholder="Swiped card (optional)"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+          />
           <select
             className="h-10 w-full rounded-md border border-border bg-bg px-3 text-sm"
             value={tender}

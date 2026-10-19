@@ -352,7 +352,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Gift liability belongs to the issuing operator or the house — not to the drawer that collected cash, and not to a leftover Toast/Square gift SKU. One ledger means freeze/void actually work.",
       ),
       p(
-        "Gift is the Summex house ledger — not Finix, not Quantum Payments, not a card processor. Sell and redeem on a paired station with a staff PIN. Swipe the mag stripe, scan the barcode, or key the code. Balances live on the Summex server (hashed codes, issuer, ledger). The POS cache is a view of that ledger. There is no third-party gift network as system of record, no open-loop Visa/MC gift, and no public website purchase or shipping.",
+        "Gift is the Summex house ledger — not Finix, not Quantum Payments, not a card processor. Sell and redeem on a paired station with a staff PIN. Swipe the mag stripe, scan the barcode, or key the code. An Elo side-mounted MSR linked to the tablet sends that swipe for load, redeem, and balance on this same ledger. Balances live on the Summex server (hashed codes, issuer, ledger). The POS cache is a view of that ledger. There is no third-party gift network as system of record, no open-loop Visa/MC gift, and no public website purchase or shipping.",
       ),
       p(
         "Default issuer follows the selling point: bar sale → that bar operator; host stand sale → the configured entity; explicit house SKU → house. House issuer is optional location mode — you do not create a third legal company.",

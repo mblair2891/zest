@@ -29,6 +29,7 @@ A SaaS-onboarded host can operate in **TRAINING** when these are true.
 - Seat → order → Order Display Start/Bump → originating server notified → cash or sandbox card → bus.
 - Gift ledger + settlement math as practice. Gift is first-party (not Quantum Payments).
 - Devices: This station (Server, Host stand, Kitchen/Bar Order Display, Kiosk, Cashier) + split screen.
+- Elo side-mounted MSR: Devices → Add device → Elo side-mounted MSR, link a tablet, and set Gift card, Loyalty, or General swipe. Gift swipes use the house ledger. No new key.
 - Go live is explicit (now or schedule) with keep/erase. Always keep menus, recipes, floor, staff, SKUs, settings.
 - Tenant operator may stay in training while the host is live.
 - Platform Tenants list shows **training | scheduled live | live**.

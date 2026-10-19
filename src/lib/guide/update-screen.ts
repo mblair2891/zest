@@ -36,6 +36,7 @@ const TOPIC_SCREEN: Record<string, UpdateScreen> = {
   "receipts-by-vendor": PAYMENTS,
   chargebacks: PAYMENTS,
   "pax-card-reader": PAYMENTS,
+  "elo-side-msr": { view: "settings", tab: "settings", label: "Devices" },
   "printers-kds": { view: "settings", tab: "settings", label: "Devices" },
   "quickbooks-online": INTEGRATIONS,
 };

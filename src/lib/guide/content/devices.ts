@@ -3,6 +3,35 @@ import type { GuideTopic } from "../types";
 
 export const DEVICE_TOPICS: GuideTopic[] = [
   topic({
+    id: "elo-side-msr",
+    chapterId: "devices",
+    title: "Elo side-mounted MSR",
+    summary:
+      "Devices → Add device stores an Elo side-mounted stripe reader, links it to a tablet, and sends gift swipes to the house ledger.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    keywords: ["elo", "msr", "mag stripe", "gift card", "swipe", "loyalty", "tablet"],
+    openView: "settings",
+    blocks: [
+      why(
+        "A side-mounted stripe reader on the Elo tablet loads, redeems, and looks up a house gift card without using the PAX card reader.",
+      ),
+      steps(
+        "Open location Devices. Add device. Type is Elo side-mounted MSR. Name it, for example Bar stripe.",
+        "Role is Gift card load / redeem, Loyalty, or General swipe. Gift covers load, redeem, and balance on the Summex gift ledger.",
+        "Tablet is a station already on this list. Save. That tablet receives the swipe.",
+        "The row shows Online or Offline, and Last swipe with the time. Online means a swipe in this shift. Offline means it is linked and waiting. No tablet yet stays pending.",
+        "Test swipe sends a house gift swipe to that tablet. Pick Balance, Load, or Redeem first when the role is gift. The tablet shows the swipe. Balance reads the ledger. Load waits for the amount on Gift, then sell. Redeem uses the open check and the same ledger.",
+      ),
+      ul(
+        "The reader sits on the side of the Elo tablet. It types the stripe into that tablet. It is not a PAX D135 and it does not take a bank card.",
+        "A bank card number is not stored and is not sent to the gift ledger.",
+        "Last swipe shows the action and the last four. The full stripe is not kept.",
+        "Unlink by editing the tablet to Link a tablet and saving. Test swipe asks for a tablet until one is linked.",
+      ),
+      related("gift-cards", "pax-card-reader", "printers-kds"),
+    ],
+  }),
+  topic({
     id: "pax-card-reader",
     chapterId: "devices",
     title: "PAX D135 card reader",

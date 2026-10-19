@@ -27,6 +27,7 @@ import {
   type LocationDevice,
   type LocationDeviceType,
 } from "@/lib/pos/location-devices";
+import { eloMsrPresence, msrForSavedDevice } from "@/lib/pos/elo-msr";
 import {
   STATION_PAIR_INVALID,
   claimExpired,
@@ -280,6 +281,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       stationClass?: "handheld" | "terminal" | null;
       cardReaderId?: string | null;
       cardReaderKind?: "mobile" | "counter" | null;
+      msr?: unknown;
     };
   }) => {
     const storedType = DEVICE_TYPES.includes(d.device?.type) ? d.device.type : "other";
@@ -325,6 +327,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
           d.device?.cardReaderKind === "mobile" || d.device?.cardReaderKind === "counter"
             ? d.device.cardReaderKind
             : null,
+        msr: d.device?.msr,
       },
     };
   })
@@ -339,8 +342,10 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
     const id = data.device.id || `dev_${Math.random().toString(36).slice(2, 10)}`;
     const existing = prev.find((x) => x.id === id);
     const printer = isPrinterType(data.device.type);
-    const minted = printer || existing?.claimCode ? null : mintClaim();
+    const msrReader = data.device.type === "elo_msr";
+    const minted = printer || msrReader || existing?.claimCode ? null : mintClaim();
     const hasIp = Boolean(data.device.print?.target || data.device.print?.ip);
+    const msr = msrForSavedDevice(data.device.type, data.device.msr, existing?.msr);
     const nextDevice = canonicalizePrinterDevice({
       id,
       locationId: data.locationId,
@@ -353,13 +358,15 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
             ? hasIp
               ? ("offline" as const)
               : ("pending" as const)
+            : msrReader
+              ? eloMsrPresence({ status: existing?.status, msr })
           : data.device.serial
             ? ("online" as const)
             : (existing?.status ?? ("pending" as const)),
       lastSeenAt: Date.now(),
       serial: data.device.serial || existing?.serial,
-      claimCode: printer ? undefined : existing?.claimCode || minted!.claimCode,
-      claimExpiresAt: printer
+      claimCode: printer || msrReader ? undefined : existing?.claimCode || minted!.claimCode,
+      claimExpiresAt: printer || msrReader
         ? undefined
         : existing?.claimCode
           ? existing.claimExpiresAt
@@ -388,6 +395,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       squarePairStatus: existing?.squarePairStatus,
       applyRoleNow: existing?.applyRoleNow,
       roleRevision: existing?.roleRevision,
+      msr,
     });
     if (!printer && nextDevice.cardReaderId) {
       const { parsePaxReaders, readerAssignmentBlock } = await import("@/lib/payments/pax-d135");
