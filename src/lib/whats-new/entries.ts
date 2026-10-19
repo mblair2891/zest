@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_303_pay_check",
+    date: "2026-10-19",
+    title: "Compact Pay check",
+    summary: "Pay check fits on a tablet without scrolling.",
+    body: "Pay check shows a short summary. Print Guest Check, the tenders, Apply tip and close, and Open drawer stay on screen in portrait and landscape. The training line stays one short line.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_302_floor_map",
     date: "2026-10-19",
     title: "Solid floor map",

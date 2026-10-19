@@ -16,7 +16,7 @@ import { CardTipRow } from "@/components/pos/CardTipRow";
 import { cardAuthorizationCents, cardPayDueCents, computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { tipCentsForChoice, type CardTipChoice } from "@/lib/pos/card-tip";
 import { guestStaffName } from "@/lib/labor/staff-record";
-import { cn, formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import type { CardAuthHold, PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
@@ -85,6 +85,7 @@ import {
   buildGuestCheckView,
   guestCheckHtml,
   guestCheckText,
+  type GuestCheckView,
 } from "@/lib/payments/check-by-vendor";
 import { GuestCheckByVendor } from "./GuestCheckByVendor";
 import { toast } from "sonner";
@@ -117,7 +118,6 @@ import { currentCashSink, useCashSessionStore } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { deviceRoleFromSessionMode, parseStationQuery } from "@/lib/pos/device-roles";
 import { odsBlocksTender } from "@/lib/pos/loss-prevention";
-import { useStationLayout } from "@/lib/ui/station-layout";
 import {
   enabledPayMethods,
   firstEnabledMethod,
@@ -210,7 +210,6 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     }
   })();
   const odsBlocked = deviceRole === "ods";
-  const layout = useStationLayout();
   const payMethods = enabledPayMethods(payCfg);
 
   const [method, setMethod] = useState<PaymentMethod>(() =>
@@ -1592,15 +1591,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     >
       <DialogContent
         data-station-pay=""
-        className={cn(
-          "flex flex-col overflow-hidden",
-          layout.handheld
-            ? "left-0 top-0 h-[var(--station-vh,100dvh)] w-full max-w-none translate-x-0 translate-y-0 rounded-none"
-            : "max-h-[var(--station-vh,100dvh)] w-[min(calc(var(--station-vw,100vw)-1rem),40rem)]",
-        )}
+        className="flex max-h-[var(--station-vh,100dvh)] w-[min(calc(var(--station-vw,100vw)-0.5rem),40rem)] flex-col gap-1.5 overflow-hidden p-2.5"
       >
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="flex items-center justify-between gap-2 pr-6">
+        <DialogHeader className="shrink-0 gap-0">
+          <DialogTitle className="flex items-center justify-between gap-2 pr-6 text-base leading-none">
             <span>
               {done
                 ? "Payment complete"
@@ -1614,20 +1608,22 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             </GuideLearnLink>
           </DialogTitle>
         </DialogHeader>
-        <div className="station-pay-scroll">
         {method === "card" && (payStatus?.mode === "sandbox" || sandbox) && (
-          <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
+          <p
+            className="shrink-0 truncate rounded-md bg-warn/15 px-2 py-1 text-[11px] font-semibold leading-none text-warn"
+            data-pay-training=""
+          >
             TRAINING — Quantum Payments sandbox. Not a live card capture. Cash and gift still work without a reader.
           </p>
         )}
         {method === "card" && payStatus?.mode === "live" && (
-          <p className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium">
-            Live Quantum Payments · present the card on a Finix/Quantum reader. Handhelds
-            are not Square or Stripe terminals. Cash and gift work without a reader.{" "}
-            {payStatus.liveReady ? "" : payStatus.message}
+          <p className="shrink-0 truncate rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium leading-none">
+            Live Quantum Payments. Cash and gift work without a reader.
+            {payStatus.liveReady ? "" : ` ${payStatus.message ?? ""}`}
           </p>
         )}
-
+        {done || guestFace ? (
+        <div className="station-pay-scroll">
         {done ? (
           <div className="space-y-4 py-4 text-center">
             <p className="text-3xl font-semibold tabular text-success">
@@ -1878,7 +1874,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               </Button>
             )}
           </div>
-        ) : guestFace ? (
+        ) : (
           <div className="space-y-4" data-guest-pay-face>
             <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">
               {settings.name}
@@ -1922,28 +1918,28 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               Back to staff
             </Button>
           </div>
+        )}
+        </div>
         ) : (
-          <div className="space-y-4">
+          <div className="flex min-h-0 flex-col gap-1.5" data-pay-body="">
             {!wanOnline && (
-              <p className="rounded-xl border border-warn/40 bg-warn/15 px-3 py-2 text-xs text-foreground">
-                Card requires connection. Take cash or keep the check open. Gift
-                and comps still work on this device. Card is not queued.
+              <p className="truncate rounded-md border border-warn/40 bg-warn/15 px-2 py-1 text-[11px] leading-none text-foreground">
+                Card requires connection. Take cash or keep the check open. Gift and comps still work. Card is not queued.
               </p>
             )}
             {guestSlip && guestSlip.vendors.length > 0 && (
-              <div className="rounded-xl border border-border bg-bg p-3 text-left">
-                <GuestCheckByVendor
-                  view={guestSlip}
-                  serverLabel={guestStaffName(
-                    (() => {
-                      const person = usePosStore.getState().employees.find((row) => row.id === order.serverId);
-                      return person
-                        ? { firstName: person.firstName, lastName: person.lastName, name: person.name || order.serverName }
-                        : order.serverName;
-                    })(),
-                  )}
-                />
-              </div>
+              <PayCheckSummary
+                view={guestSlip}
+                dueCents={method === "card" ? cardTotal : balance}
+                serverLabel={guestStaffName(
+                  (() => {
+                    const person = usePosStore.getState().employees.find((row) => row.id === order.serverId);
+                    return person
+                      ? { firstName: person.firstName, lastName: person.lastName, name: person.name || order.serverName }
+                      : order.serverName;
+                  })(),
+                )}
+              />
             )}
             {mayPrintCheck ? (
             <Button
@@ -1970,7 +1966,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   .finally(() => setCheckPrintBusy(false));
               }}
             >
-              <Printer className="h-5 w-5" />
+              <Printer className="h-4 w-4" />
               Print Guest Check
             </Button>
             ) : (
@@ -1979,52 +1975,29 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               </p>
             )}
             {checkPrintMsg && (
-              <p className="text-center text-xs text-muted-foreground" role="status">
+              <p className="text-center text-[11px] leading-none text-muted-foreground" role="status">
                 {checkPrintMsg}
               </p>
             )}
-            <div className="rounded-xl border border-border bg-bg p-4 text-center">
-              {method === "card" ? (
-                <>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {cardHoldAuth ? `Tip and close | ${settings.name}` : `Authorize | ${settings.name}`}
-                  </p>
-                  <p className="text-3xl font-semibold tabular" data-card-charge-total="">
-                    {formatCurrency(cardTotal)}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {cardHoldAuth
-                      ? `Authorized ${formatCurrency(cardDue)} | Tip ${formatCurrency(payTip)}`
-                      : "Card authorized amount. Tip is entered after the card is read."}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {cashOn ? "Cash due" : "Card due"} · {settings.name}
-                  </p>
-                  <p className="text-3xl font-semibold tabular">
-                    {formatCurrency(balance)}
-                  </p>
-                </>
-              )}
-              {dual.enabled && method === "cash" && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Cash {formatCurrency(dual.cash.totalCents)}
-                </p>
-              )}
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {cashOn
-                  ? "Cash is the entered till price for each entity."
-                  : "The menu price is the card price. Card runs on Quantum Payments only."}
+            {method === "card" ? (
+              <p className="text-center text-[11px] leading-none text-muted-foreground" data-card-charge-total="">
+                {cardHoldAuth
+                  ? `Authorized ${formatCurrency(cardDue)} · Tip ${formatCurrency(payTip)}`
+                  : `Card ${formatCurrency(cardTotal)}. Tip is entered after the card is read.`}
               </p>
-            </div>
+            ) : (
+              <p className="text-center text-[11px] leading-none text-muted-foreground">
+                {cashOn ? `Cash due ${formatCurrency(balance)}` : `Due ${formatCurrency(balance)}`}
+                {dual.enabled && method === "cash" ? ` · Cash total ${formatCurrency(dual.cash.totalCents)}` : ""}
+              </p>
+            )}
 
             <Tabs
               value={method}
               onValueChange={(v) => setMethod(v as PaymentMethod)}
+              className="flex min-h-0 flex-col"
             >
-              <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-4 gap-1.5" data-pay-methods="">
                 {payMethods.map((m) => {
                   const Icon =
                     m === "card"
@@ -2045,7 +2018,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                     <Button
                       key={m}
                       size="lg"
-                      className="station-touch min-h-12 w-full justify-start text-base"
+                      className="station-touch h-12 min-h-12 w-full px-1 text-sm font-semibold"
                       variant={method === m ? "default" : "outline"}
                       disabled={blockedCash || blockedGift || blockedCard}
                       title={
@@ -2059,19 +2032,20 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       }
                       onClick={() => setMethod(m)}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-4 w-4" />
                       {methodLabel(payCfg, m)}
                     </Button>
                   );
                 })}
               </div>
 
-              <div className="mt-4 space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">
-                    Amount (leave blank for full)
+              <div className="station-pay-extra mt-1.5 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <label className="shrink-0 text-xs text-muted-foreground">
+                    Amount
                   </label>
                   <Input
+                    className="h-9"
                     inputMode="decimal"
                     placeholder={(balance / 100).toFixed(2)}
                     value={amount}
@@ -2261,10 +2235,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       typed into Summex.
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    One guest tender through Quantum Payments. Each brand on the
-                    check is its own payments account — the guest still gets one
-                    charge.
+                  <p className="truncate text-[11px] leading-none text-muted-foreground">
+                    One guest tender through Quantum Payments. Each brand settles on its own account.
                   </p>
                 </TabsContent>
 
@@ -2396,19 +2368,18 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             )}
           </div>
         )}
-        </div>
         {!done && !guestFace ? (
-          <div className="station-pay-actions space-y-2">
-            <div className="flex items-center justify-between rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm">
+          <div className="station-pay-actions">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-surface-2 px-2.5 py-1 text-sm leading-none">
               <span className="text-muted-foreground">Charging</span>
-              <span className="text-lg font-semibold tabular">
+              <span className="text-base font-semibold tabular">
                 {formatCurrency(cardTotal)}
               </span>
             </div>
 
             <Button
               className="station-touch min-h-12 w-full"
-              size="xl"
+              size="lg"
               onClick={() => {
                 if (method === "card" && cardHoldAuth && stationClass === "handheld" && !guestFace) {
                   setSigned(false);
@@ -2512,6 +2483,47 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       }}
     />
     </>
+  );
+}
+
+function PayCheckSummary({
+  view,
+  serverLabel,
+  dueCents,
+}: {
+  view: GuestCheckView;
+  serverLabel?: string;
+  dueCents: number;
+}) {
+  const lines = view.vendors.flatMap((v) => v.lines);
+  const shown = lines.slice(0, 2);
+  const extra = lines.length - shown.length;
+  return (
+    <div className="rounded-lg border border-border bg-bg px-2.5 py-1.5 text-left text-sm" data-pay-summary="">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="min-w-0 truncate font-semibold leading-tight">{view.locationName}</p>
+        <p className="shrink-0 text-xl font-semibold tabular leading-none">{formatCurrency(dueCents)}</p>
+      </div>
+      <p className="truncate text-xs leading-tight text-muted-foreground">
+        {serverLabel ? `${serverLabel} · ` : ""}
+        {lines.length} item{lines.length === 1 ? "" : "s"}
+        {view.vendors.length > 1 ? ` · ${view.vendors.map((v) => v.displayName).join(", ")}` : ""}
+      </p>
+      {shown.length > 0 ? (
+        <ul className="mt-1 space-y-0 text-xs leading-tight">
+          {shown.map((line, i) => (
+            <li key={`${i}-${line.name}`} className="flex justify-between gap-2">
+              <span className="truncate">
+                {line.qty > 1 ? `${line.qty}× ` : ""}
+                {line.name}
+              </span>
+              <span className="tabular">{formatCurrency(line.amountCents)}</span>
+            </li>
+          ))}
+          {extra > 0 ? <li className="text-muted-foreground">+ {extra} more</li> : null}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 

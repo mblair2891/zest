@@ -306,19 +306,20 @@
   overflow: hidden;
 }
 
-/* Pay stays inside the station. The tender list scrolls. The charge row stays on screen. */
+/* Pay stays inside the station. Extras scroll. Print, tenders, and the charge stay on screen. */
 [data-station-pay] {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
   box-sizing: border-box;
   overflow: hidden;
   max-height: var(--station-vh, 100dvh);
+  padding: 0.5rem;
 }
 
 html[data-orientation="landscape"] [data-station-pay] {
-  max-height: calc(var(--station-vh, 100dvh) - 0.5rem);
-  padding: 0.75rem;
+  max-height: calc(var(--station-vh, 100dvh) - 0.25rem);
+  padding: 0.5rem;
 }
 
 .station-pay-scroll {
@@ -330,8 +331,20 @@ html[data-orientation="landscape"] [data-station-pay] {
   overscroll-behavior: contain;
 }
 
+.station-pay-extra {
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: min(18rem, 34dvh);
+}
+
 .station-pay-actions {
   flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .station-pay-actions button {
