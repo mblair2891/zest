@@ -85,7 +85,11 @@ These are **not** missing screens. List them here so a later turn does not rebui
 | Resend / Twilio domain | Outbox/sandbox until keys exist |
 | DocuSign or HelloSign keys | HR packets still generate; signed PDF upload without a vendor |
 | `HR_PII_SECRET` | Encrypts SSN/tax; last4 only if unset |
-| `INTUIT_CLIENT_ID` / `INTUIT_CLIENT_SECRET` / `INTUIT_REALM_ID` / `INTUIT_ACCESS_TOKEN` | Hours push to QuickBooks Payroll; CSV always works |
+| `INTUIT_CLIENT_ID` / `INTUIT_CLIENT_SECRET` / `INTUIT_REALM_ID` / `INTUIT_ACCESS_TOKEN` | Payroll hours still use the realm and access token. CSV always works. Accounting OAuth uses the same client id and secret and stores its own company tokens. |
+| `INTUIT_ENVIRONMENT` | Accounting company: `sandbox` (default) or `production` |
+| `INTUIT_REDIRECT_URI` | Optional accounting callback. Defaults to this app’s `/api/quickbooks/callback` |
+| `INTUIT_QBO_API_BASE` | Optional accounting API host. Payroll still uses `INTUIT_API_BASE` |
+| `QBO_CRON_SECRET` | Bearer secret for `POST /api/quickbooks/nightly`. The nightly pack also posts companies with auto-sync on. |
 | `ADP_CLIENT_ID` / `ADP_CLIENT_SECRET` / `ADP_ACCESS_TOKEN` | Hours push to ADP; CSV always works |
 
 Factory reset (off in production unless `FACTORY_RESET_ENABLED=true`): wipes business data, reseeds **Admin + must-change-password only**. No demo house.

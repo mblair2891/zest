@@ -31,6 +31,7 @@ export const FINANCE_TOPICS: GuideTopic[] = [
         "ops-finance-avt",
         "ops-finance-labor",
         "ops-finance-cash",
+        "quickbooks-online",
       ),
     ],
   }),
@@ -43,7 +44,7 @@ export const FINANCE_TOPICS: GuideTopic[] = [
     keywords: ["chart", "journal", "sales", "tender", "tax", "tips", "gift"],
     openView: "inventory",
     blocks: [
-      why("Each entity starts from the same restaurant chart: sales by food and beverage, discounts, comps, tax, tips payable, COGS, labor, and occupancy."),
+      why("Each entity starts from the same restaurant chart: sales by food, beverage, and other, discounts, comps, tax, tips payable, COGS, labor, and occupancy."),
       steps(
         "Ops finance → Ledger shows the chart and the latest journals.",
         "Post close is idempotent for that entity and business day. Running it twice does not double the sales.",
@@ -238,6 +239,35 @@ export const FINANCE_TOPICS: GuideTopic[] = [
         "Accrue occupancy when rent or a similar fixed cost belongs on that day. It feeds break-even and stays under controllable profit.",
       ),
       related("ops-finance-pnl", "ops-finance"),
+    ],
+  }),
+  topic({
+    id: "quickbooks-online",
+    chapterId: "finance",
+    title: "QuickBooks Online",
+    summary: "Push the day’s sales, tenders, gift-card liability, and settlement to a connected company.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    keywords: ["quickbooks", "qbo", "journal", "gift", "settlement", "sync", "liability"],
+    openView: "integrations",
+    blocks: [
+      why(
+        "Summex stays the book of record. QuickBooks receives one journal for the business date so the accountant does not retype sales, gift liability, or a due-to between entities.",
+      ),
+      steps(
+        "Integrations → QuickBooks Online. Connect one company for the whole venue, or one company for each selling entity. A peer venue with no host uses the same choice.",
+        "Connect QuickBooks when the Intuit app is set up. Connect test company stores the same journal so the lines can be reviewed before a live company is attached.",
+        "Map each Summex account the day uses: food, beverage, other sales, discounts, comps, tax, tips, cash, card clearing, other tenders, gift card liability, due from peers, due to peers, and cash over/short. A venue company also maps each entity to a QuickBooks class.",
+        "Pick the business date and Sync now. The log shows Posted, Skipped, or the error. Retry runs that date again. A date already in QuickBooks is skipped and is not posted twice.",
+        "Turn on Nightly auto-sync to post with the nightly pack. The business date is the venue day that ended about four hours earlier.",
+      ),
+      ul(
+        "Sales split into food, beverage, and other. A gift card sale is liability on the issuer, not merchandise.",
+        "Cash, card, and other tenders debit those accounts. A gift redemption debits gift card liability when the same entity issued the card.",
+        "When one entity issues a card and another redeems it, the issuer reduces liability and credits due to the seller. The seller debits due from the issuer and credits the food, beverage, or other sale.",
+        "A location still in training does not post to a production QuickBooks company. A test company still receives the journal, and the note says Training.",
+      ),
+      tip("Open a posted day and read each debit and credit before closing the books in QuickBooks."),
+      related("ops-finance-ledger", "gift-cards", "ops-finance"),
     ],
   }),
 ];

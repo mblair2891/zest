@@ -309,7 +309,7 @@ This paper is **not** a rate card. Snapshot quotes come from the live catalog at
 
 Typical first-week work is configuration, not a six-month integration.
 
-**Roadmap (not in this build):** live ACH/payout rails, QuickBooks sync, PCI audit letter, guaranteed processor rates.
+**Roadmap (not in this build):** live ACH/payout rails, PCI audit letter, guaranteed processor rates. QuickBooks sales and gift-card settlement posts from Integrations when a company is connected.
 
 ---
 

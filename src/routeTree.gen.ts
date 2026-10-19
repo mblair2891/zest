@@ -67,6 +67,8 @@ import { Route as PlatformTenantsOrgIdRouteImport } from './routes/platform.tena
 import { Route as WaitlistOptOutTokenRouteImport } from './routes/waitlist.opt-out.$token'
 import { Route as ApiPaymentsFinixWebhookRouteImport } from './routes/api/payments/finix/webhook'
 import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe/webhook'
+import { Route as ApiQuickbooksCallbackRouteImport } from './routes/api/quickbooks/callback'
+import { Route as ApiQuickbooksNightlyRouteImport } from './routes/api/quickbooks/nightly'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -359,6 +361,16 @@ const ApiPaymentsStripeWebhookRoute =
     path: '/api/payments/stripe/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiQuickbooksCallbackRoute = ApiQuickbooksCallbackRouteImport.update({
+  id: '/api/quickbooks/callback',
+  path: '/api/quickbooks/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiQuickbooksNightlyRoute = ApiQuickbooksNightlyRouteImport.update({
+  id: '/api/quickbooks/nightly',
+  path: '/api/quickbooks/nightly',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -419,6 +431,8 @@ export interface FileRoutesByFullPath {
   '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
   '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
+  '/api/quickbooks/callback': typeof ApiQuickbooksCallbackRoute
+  '/api/quickbooks/nightly': typeof ApiQuickbooksNightlyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -477,6 +491,8 @@ export interface FileRoutesByTo {
   '/platform/tenants': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
   '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
+  '/api/quickbooks/callback': typeof ApiQuickbooksCallbackRoute
+  '/api/quickbooks/nightly': typeof ApiQuickbooksNightlyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -538,6 +554,8 @@ export interface FileRoutesById {
   '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
   '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
+  '/api/quickbooks/callback': typeof ApiQuickbooksCallbackRoute
+  '/api/quickbooks/nightly': typeof ApiQuickbooksNightlyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -600,6 +618,8 @@ export interface FileRouteTypes {
     | '/platform/tenants/'
     | '/api/payments/finix/webhook'
     | '/api/payments/stripe/webhook'
+    | '/api/quickbooks/callback'
+    | '/api/quickbooks/nightly'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -658,6 +678,8 @@ export interface FileRouteTypes {
     | '/platform/tenants'
     | '/api/payments/finix/webhook'
     | '/api/payments/stripe/webhook'
+    | '/api/quickbooks/callback'
+    | '/api/quickbooks/nightly'
   id:
     | '__root__'
     | '/'
@@ -718,6 +740,8 @@ export interface FileRouteTypes {
     | '/platform/tenants/'
     | '/api/payments/finix/webhook'
     | '/api/payments/stripe/webhook'
+    | '/api/quickbooks/callback'
+    | '/api/quickbooks/nightly'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -769,6 +793,8 @@ export interface RootRouteChildren {
   WaitlistOptOutTokenRoute: typeof WaitlistOptOutTokenRoute
   ApiPaymentsFinixWebhookRoute: typeof ApiPaymentsFinixWebhookRoute
   ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
+  ApiQuickbooksCallbackRoute: typeof ApiQuickbooksCallbackRoute
+  ApiQuickbooksNightlyRoute: typeof ApiQuickbooksNightlyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1179,6 +1205,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPaymentsStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/quickbooks/callback': {
+      id: '/api/quickbooks/callback'
+      path: '/api/quickbooks/callback'
+      fullPath: '/api/quickbooks/callback'
+      preLoaderRoute: typeof ApiQuickbooksCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/quickbooks/nightly': {
+      id: '/api/quickbooks/nightly'
+      path: '/api/quickbooks/nightly'
+      fullPath: '/api/quickbooks/nightly'
+      preLoaderRoute: typeof ApiQuickbooksNightlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1314,6 +1354,8 @@ const rootRouteChildren: RootRouteChildren = {
   WaitlistOptOutTokenRoute: WaitlistOptOutTokenRoute,
   ApiPaymentsFinixWebhookRoute: ApiPaymentsFinixWebhookRoute,
   ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
+  ApiQuickbooksCallbackRoute: ApiQuickbooksCallbackRoute,
+  ApiQuickbooksNightlyRoute: ApiQuickbooksNightlyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

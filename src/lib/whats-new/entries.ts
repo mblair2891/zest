@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_298_quickbooks",
+    date: "2026-10-19",
+    title: "QuickBooks sales and gift settlement",
+    summary:
+      "Connect a QuickBooks company and post the day’s sales, gift liability, and due-to between entities.",
+    body: "Integrations → QuickBooks Online connects one company for the venue or one company per selling entity. Map food, beverage, other sales, gift card liability, due to and due from, and clearing. Sync now posts that business date. Nightly auto-sync posts with the nightly pack. A gift card sold by one entity and redeemed by another posts liability on the issuer and a due-to the seller. The log names the error and offers Retry. A training location does not post to a production company.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "quickbooks-online",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_297_order_split",
     date: "2026-10-18",
     title: "Order screen check on the left",

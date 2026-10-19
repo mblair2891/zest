@@ -19,6 +19,7 @@ const FLOOR: UpdateScreen = { view: "floor", tab: "floor", label: "Floor" };
 const MENU: UpdateScreen = { view: "menu", tab: "menu", label: "Menu" };
 const SUPPLIERS: UpdateScreen = { view: "suppliers", tab: "suppliers", label: "Suppliers" };
 const PAYMENTS: UpdateScreen = { view: "settings", tab: "payments", label: "Payments" };
+const INTEGRATIONS: UpdateScreen = { view: "integrations", tab: "settings", label: "Integrations" };
 
 const TOPIC_SCREEN: Record<string, UpdateScreen> = {
   suppliers: SUPPLIERS,
@@ -36,6 +37,7 @@ const TOPIC_SCREEN: Record<string, UpdateScreen> = {
   chargebacks: PAYMENTS,
   "pax-card-reader": PAYMENTS,
   "printers-kds": { view: "settings", tab: "settings", label: "Devices" },
+  "quickbooks-online": INTEGRATIONS,
 };
 
 export function screenForUpdate(update: GuideUpdate): UpdateScreen | null {

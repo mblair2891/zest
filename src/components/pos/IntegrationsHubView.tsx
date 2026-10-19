@@ -29,6 +29,7 @@ import {
 } from "@/lib/pos/integrations-catalog";
 import { cn, formatCurrency, formatDateTime, formatTime } from "@/lib/utils";
 import { DeliveryChannelsCard } from "./DeliveryChannelsCard";
+import { QuickBooksPanel } from "./QuickBooksPanel";
 
 const CATS: (IntegrationCategory | "all" | "connected")[] = [
   "all",
@@ -72,6 +73,7 @@ export function IntegrationsHubView() {
   const apiKeys = useIntegrationsStore((s) => s.apiKeys);
   const createApiKey = useIntegrationsStore((s) => s.createApiKey);
   const revokeApiKey = useIntegrationsStore((s) => s.revokeApiKey);
+  const locationId = usePosStore((s) => s.tenantLocationId ?? null);
 
   const list = useMemo(
     () => filterCatalog(q, cat),
@@ -209,6 +211,7 @@ export function IntegrationsHubView() {
           {def && (
             <div className="mx-auto max-w-3xl space-y-4">
               {def.id === SUMMEX_PAYMENTS_ID && <SummexPaymentsPanel />}
+              {def.id === "quickbooks" && <QuickBooksPanel locationId={locationId} />}
 
               <div className="rounded-2xl border border-border bg-surface p-4">
                 <div className="flex flex-wrap items-start gap-3">
@@ -230,7 +233,7 @@ export function IntegrationsHubView() {
                     <p className="mt-2 text-sm">{def.description}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {def.platformOwned ? (
+                    {def.id === "quickbooks" ? null : def.platformOwned ? (
                       <Button
                         size="sm"
                         onClick={() => {
@@ -326,7 +329,7 @@ export function IntegrationsHubView() {
                 )}
               </div>
 
-              <div className="grid gap-3 lg:grid-cols-2">
+              {def.id !== "quickbooks" && <div className="grid gap-3 lg:grid-cols-2">
                 <div className="rounded-2xl border border-border bg-surface p-4">
                   <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold">
                     <Webhook className="h-4 w-4" />
@@ -395,7 +398,7 @@ export function IntegrationsHubView() {
                     ))}
                   </ul>
                 </div>
-              </div>
+              </div>}
 
               <div className="rounded-2xl border border-border bg-surface p-4">
                 <h4 className="mb-2 text-sm font-semibold">Activity log</h4>

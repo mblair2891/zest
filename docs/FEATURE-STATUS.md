@@ -45,7 +45,9 @@
 
 **Printer and station records.** `LocationDeviceRegistry` calls `saveLocationDeviceFn`, which writes `location_devices` and `locations.setup.locationDevices` (`src/lib/access/api.ts`). The list reads that setup back. A receipt printer, an order printer, and a paired tablet are the same device record.
 
-**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.297), not a record the venue saves.
+**QuickBooks Online.** Integrations → QuickBooks Online stores one company per venue or per selling entity (`qbo_connections`, migration `0062_quickbooks.sql`). Sync posts sales, tenders, gift liability, and the due-to between entities through `src/lib/quickbooks`. A test company keeps the same journal in the connection cache. Live Intuit uses `INTUIT_CLIENT_ID` and `INTUIT_CLIENT_SECRET` and stores its own tokens. It does not reuse the payroll access token.
+
+**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.298), not a record the venue saves.
 
 **Entity settings.** Entity admin Settings (`EntityOwnedSettings`) loads `loadEntitySettingsFn` and saves `saveEntitySettingsFn` onto that operator: legal name, DBA, menu display name, tip percents, and staff PIN length (`operators`, migration `0053_entity_settings.sql`). The logo uses the entity slot. Venue name, address, and timezone stay on the location and stay read-only for an entity admin who is not the location contact. The location contact can change the entity fields. A refresh reads the operator row again. Payment and tax are not on this screen.
 

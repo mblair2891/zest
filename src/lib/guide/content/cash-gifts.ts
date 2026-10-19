@@ -375,11 +375,12 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Freeze if lost. Void if issued in error. Both need a manager PIN. Load needs cash or card on the same ticket. Import CSV is a one-way migration of balances from Square / Toast / Clover / Shopify / generic — not resale of those products (those systems are not POS card processors).",
         "Guests look up balance at summex.app/gift — no login. Full printed number, or last four plus the card PIN shown at issue. They see this life only: load, redeem, void, date, venue, amount. Lookups are rate-limited. Staff names never appear.",
         "Spent plastic: manager or venue admin (not an entity-only login) Reactivate on Guests. Balance must be $0, or force with a written reason. The old ledger stays in audit and is closed. Same printed number, new card id, $0, empty guest history. The next load is a new issuance for the selling entity.",
+        "Integrations → QuickBooks Online posts the issuer’s liability and the due-to when another entity redeems the card. Review those lines on that screen before treating the day as closed in QuickBooks.",
       ),
       warn(
         "Gift cards are not sold on the public website and are not shipped. Turning on a term does not make expiry legal. Confirm state law with counsel — expiry may be illegal in some states. Imported cards are not kept in sync with the old system.",
       ),
-      related("tenders-tips", "settlement", "guests", "cash-handling", "quantum-payments", "loss-prevention", "white-paper"),
+      related("tenders-tips", "settlement", "guests", "cash-handling", "quantum-payments", "loss-prevention", "white-paper", "quickbooks-online"),
     ],
   }),
   topic({

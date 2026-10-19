@@ -154,7 +154,15 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   d("checkmate_hub", "Checkmate Hub", "Checkmate", "marketplace", "Unified marketplace POS injection.", ["Orders"]),
 
   // Accounting
-  d("quickbooks", "QuickBooks Online", "Intuit", "accounting", "Daily sales journal, tips, and tax posting.", ["Journal", "Classes", "Tips"], { popular: true }),
+  d(
+    "quickbooks",
+    "QuickBooks Online",
+    "Intuit",
+    "accounting",
+    "Daily sales, tenders, gift-card liability, and settlement between entities.",
+    ["Sales", "Gift liability", "Settlement", "Classes"],
+    { popular: true },
+  ),
   d("xero", "Xero", "Xero", "accounting", "Sales and payout export for multi-entity books.", ["Journal", "Bank rec"]),
   d("netsuite", "NetSuite", "Oracle", "accounting", "Enterprise GL and intercompany for groups.", ["GL", "Subsidiaries"], { authType: "api_key" }),
   d("sage_intacct", "Sage Intacct", "Sage", "accounting", "Multi-entity restaurant group accounting.", ["Entities", "AP"]),

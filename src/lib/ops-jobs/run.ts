@@ -78,6 +78,11 @@ export async function executeOpsJob(
   }
   const facts = collectOpsJobFacts(cadence);
   const locId = pos.tenantLocationId || facts.location.id;
+  if (cadence === "nightly" && locId && !isProspectDemo()) {
+    void import("@/lib/quickbooks/api").then((m) =>
+      m.syncQboNightlyForLocationFn({ data: { locationId: locId } }).catch(() => undefined),
+    );
+  }
   let result: Awaited<ReturnType<typeof runOpsJobFn>>;
   try {
     result = await runOpsJobFn({

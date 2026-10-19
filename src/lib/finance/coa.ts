@@ -23,6 +23,7 @@ export function chartTemplate(): Account[] {
     { code: "3000", name: "Owner equity", type: "equity", group: "equity" },
     { code: "4000", name: "Food sales", type: "income", group: "sales" },
     { code: "4010", name: "Beverage sales", type: "income", group: "sales" },
+    { code: "4020", name: "Other sales", type: "income", group: "sales" },
     { code: "4100", name: "Discounts", type: "income", group: "sales" },
     { code: "4110", name: "Comps", type: "income", group: "sales" },
     { code: "4200", name: "Revenue share income", type: "income", group: "share" },

@@ -401,7 +401,7 @@ test("guide and help name every operations finance screen", () => {
   const guide = readFileSync("src/lib/guide/content/finance.ts", "utf8");
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
   const catalog = readFileSync("src/lib/guide/catalog.ts", "utf8");
-  assert.match(types, /2026\.10\.181/);
+  assert.match(types, /2026\.10\.298/);
   assert.match(catalog, /FINANCE_TOPICS/);
   for (const id of [
     "ops-finance",
