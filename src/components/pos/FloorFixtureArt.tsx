@@ -37,10 +37,10 @@ export function FloorFixtureArt({
   /** plan = editor shape. status = the same shape, number only. Seat count is not drawn. */
   mode?: "plan" | "status";
   onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  /** Empty tables are a hairline ring with a clear center. */
+  /** Empty still passes through. The live shape is always a solid block. */
   hollow?: boolean;
   ink?: string;
-  /** Live stool tiles: same 1.25px ring as empty tables. */
+  /** Editor stool tiles. The live floor paints stools as solid status blocks. */
   hairline?: boolean;
 }) {
   const booth = asBoothKind(table.kind, table.shape);
@@ -192,8 +192,9 @@ function StatusFixture({
   w: number;
   h: number;
 }) {
-  const ring = "#1c1917";
-  const number = hollow ? "#44403c" : ink || "#44403c";
+  const edge = "#1c1917";
+  const paint = tableFill && tableFill !== "none" && tableFill !== "transparent" ? tableFill : "#f7f4ee";
+  const number = ink || "#1c1917";
   const shape = couch ? "couch" : booth ? "booth" : bar ? "stool" : round ? "round" : "rect";
   const mark = diningTableOutline(round);
   const tableRect = !couch && !booth && !bar && !round;
@@ -202,8 +203,9 @@ function StatusFixture({
       className={cn("relative h-full w-full", className)}
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center", containerType: "size" }}
       data-floor-status-shape={shape}
-      data-floor-fill={hollow ? "hollow" : "solid"}
-      data-floor-stroke={hollow ? "hairline" : "none"}
+      data-floor-fill="solid"
+      data-floor-stroke="edge"
+      data-floor-empty={hollow ? "1" : "0"}
       data-floor-nubs="0"
     >
       <svg
@@ -214,22 +216,16 @@ function StatusFixture({
         aria-hidden
       >
         {couch ? (
-          <FloorCouchGlyph
-            fill={hollow ? "none" : tableFill}
-            outline={hollow ? ring : tableFill}
-            solid={!hollow}
-            hollow={hollow}
-          />
+          <FloorCouchGlyph fill={paint} outline={edge} solid />
         ) : booth ? (
           <FloorBoothGlyph
             kind={booth}
-            tableFill={hollow ? "none" : tableFill}
-            benchFill={hollow ? "none" : tableFill}
-            outline={hollow ? ring : tableFill}
+            tableFill={paint}
+            benchFill={paint}
+            outline={edge}
             w={w}
             h={h}
-            solid={!hollow}
-            hollow={hollow}
+            solid
           />
         ) : round && mark.round ? (
           <ellipse
@@ -237,9 +233,9 @@ function StatusFixture({
             cy={mark.cy}
             rx={mark.rx}
             ry={mark.ry}
-            fill={hollow ? "none" : tableFill}
-            stroke={hollow ? ring : "none"}
-            strokeWidth={hollow ? 1.25 : 0}
+            fill={paint}
+            stroke={edge}
+            strokeWidth={2.5}
             vectorEffect="non-scaling-stroke"
           />
         ) : !mark.round ? (
@@ -249,9 +245,9 @@ function StatusFixture({
             width={mark.width}
             height={mark.height}
             rx={mark.rx}
-            fill={hollow ? "none" : tableFill}
-            stroke={hollow ? ring : "none"}
-            strokeWidth={hollow ? 1.25 : 0}
+            fill={paint}
+            stroke={edge}
+            strokeWidth={2.5}
             vectorEffect="non-scaling-stroke"
           />
         ) : null}
@@ -269,19 +265,19 @@ function StatusFixture({
         />
       ) : label ? (
         <span
-          className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-[8%] text-center font-medium leading-none tabular"
+          className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-[6%] text-center font-semibold leading-none tabular"
           style={{ transform: `rotate(${-rotation}deg)`, color: number }}
           data-floor-cluster={joined?.length ? "1" : undefined}
-          data-floor-weight="medium"
+          data-floor-weight="bold"
         >
-          <span data-floor-primary style={{ fontSize: joined?.length ? "42cqmin" : "50cqmin", fontWeight: 500 }}>
+          <span data-floor-primary style={{ fontSize: joined?.length ? "46cqmin" : "56cqmin", fontWeight: 700 }}>
             {label}
           </span>
           {joined && joined.length > 0 ? (
             <span
               data-floor-joined
-              className="mt-[4%] font-medium leading-tight"
-              style={{ fontSize: "18cqmin", fontWeight: 500 }}
+              className="mt-[3%] font-semibold leading-tight"
+              style={{ fontSize: "22cqmin", fontWeight: 700 }}
             >
               {joined.join(" · ")}
             </span>

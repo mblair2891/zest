@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_302_floor_map",
+    date: "2026-10-19",
+    title: "Solid floor map",
+    summary:
+      "Tables on the live floor are solid shapes with a large number. The seating sheet is tighter.",
+    body: "On the live floor, tables, booths, and stools are solid shapes in the status color, with a large number and no chairs. Empty is a solid block on a warm gray room. Tap a table and the sheet at the bottom names the table, the covers, and the status. Seat, Open, Add, Send, Print check, and Pay are large buttons. The training line stays one short line at the top.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_301_supplier_tablet",
     date: "2026-10-19",
     title: "Supplier orders from tablet and web",

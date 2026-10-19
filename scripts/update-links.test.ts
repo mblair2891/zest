@@ -42,9 +42,9 @@ test("an owner link opens Suppliers, and a staff pin does not see a screen they 
 
   const owner = updatesForAccess(WHATS_NEW_ENTRIES, () => true, 10);
   assert.equal(owner.length, 10);
-  assert.equal(owner[0]?.update.id, "upd_2026_10_301_supplier_tablet");
-  assert.equal(owner[0]?.screen?.view, "suppliers");
-  assert.equal(owner[0]?.screen?.label, "Suppliers");
+  assert.equal(owner[0]?.update.id, "upd_2026_10_302_floor_map");
+  assert.equal(owner[0]?.screen?.view, "floor");
+  assert.equal(owner[0]?.screen?.label, "Floor");
 
   const staff = updatesForAccess(
     WHATS_NEW_ENTRIES,

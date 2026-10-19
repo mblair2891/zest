@@ -68,7 +68,7 @@ export type FloorMapItem = {
   ink: string;
   /** Pipeline status. Stools use the same colors as tables. */
   status?: string;
-  /** Empty tables draw a hairline ring and a clear center. */
+  /** Empty tables stay in the pipeline. The live map paints them solid. */
   hollow?: boolean;
   flashing: boolean;
   dim: boolean;
@@ -232,9 +232,9 @@ export function FloorMapCanvas({
   return (
     <div
       ref={viewRef}
-      className="absolute inset-0 overflow-hidden bg-white"
+      className="absolute inset-0 overflow-hidden bg-[#e4dfd4]"
       data-floor-map="status"
-      data-floor-canvas="white"
+      data-floor-canvas="room"
       data-floor-nubs="0"
       data-floor-focus={focusSection ? "section" : "room"}
       data-floor-table-count={items.length}

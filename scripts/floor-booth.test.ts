@@ -65,8 +65,8 @@ test("guide floorplan covers booth shapes, not fat rectangles", () => {
   assert.match(floor, /open center, not stretched to the bench/);
   assert.match(floor, /editor and the live floor both do this/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.218/);
-  assert.match(types, /Oregon spirits price list/);
+  assert.match(types, /2026\.10\.302/);
+  assert.match(types, /Solid floor map and seating sheet/);
 });
 
 test("booths 9–15 sit the number on the open table, not across the bench", () => {
@@ -90,12 +90,12 @@ test("booths 9–15 sit the number on the open table, not across the bench", () 
   assert.match(art, /data-floor-booth-label=""/);
   assert.match(art, /data-floor-label-place="open"/);
   assert.match(art, /text-\[11px\] font-semibold/);
-  assert.match(art, /joined\?\.length \? "42cqmin" : "50cqmin"/);
+  assert.match(art, /joined\?\.length \? "46cqmin" : "56cqmin"/);
   assert.match(art, /surface="editor"/);
   const live = readFileSync("src/components/pos/FloorFixtureArt.tsx", "utf8");
   assert.match(live, /surface="live"/);
   assert.match(live, /absolute inset-0 flex items-center justify-center px-1 text-center text-\[11px\] font-semibold/);
-  assert.match(live, /fontSize: joined\?\.length \? "42cqmin" : "50cqmin"/);
+  assert.match(live, /fontSize: joined\?\.length \? "46cqmin" : "56cqmin"/);
   const tableLabel = live.indexOf("function FloorTableArt");
   const stoolLabel = live.indexOf("function FloorStoolArt");
   const tableArt = live.slice(tableLabel, stoolLabel);

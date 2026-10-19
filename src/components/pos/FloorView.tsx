@@ -783,9 +783,9 @@ export function FloorView({
         ) : (
         <div
           ref={liveViewRef}
-          className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-white"
-          data-floor-map="white"
-          data-floor-canvas="white"
+          className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-[#e4dfd4]"
+          data-floor-map="room"
+          data-floor-canvas="room"
           data-floor-nubs="0"
           data-floor-fit="room"
         >
@@ -1005,7 +1005,7 @@ export function FloorView({
               : "max-h-[42vh] border-t",
           )}
         >
-          <div className="space-y-3 p-3">
+          <div className="space-y-2 p-2">
             {isHostStand && !hostStand && (
               <Button
                 className="w-full"
@@ -1274,21 +1274,30 @@ export function FloorView({
         }}
       >
         <DialogContent
+          data-floor-sheet={mapOnly || !layout.twoCol ? "seat" : undefined}
+          overlayClassName={mapOnly || !layout.twoCol ? "bg-black/25" : undefined}
           className={
-            mapOnly
-              ? "bottom-0 left-0 top-auto max-h-[85dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-b-none rounded-t-3xl"
-              : "max-h-[90dvh] overflow-y-auto"
+            mapOnly || !layout.twoCol
+              ? "bottom-0 left-0 right-0 top-auto max-h-[min(56dvh,30rem)] w-full max-w-none translate-x-0 translate-y-0 gap-2 rounded-b-none rounded-t-2xl p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] landscape:max-h-[min(46dvh,22rem)]"
+              : "max-h-[90dvh] gap-3 overflow-y-auto p-4"
           }
         >
           {detailLive && (
             <>
-              <DialogHeader>
-                <DialogTitle>
-                  Table {detailLive.label}
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    {detailLive.section} · {detailLive.kind ?? "table"} · {detailLive.seats} top
-                  </span>
+              <DialogHeader className="gap-0.5 pr-8">
+                <DialogTitle className="text-xl leading-none">
+                  {detailLive.kind === "barstool" || detailLive.shape === "bar" ? "Seat" : "Table"} {detailLive.label}
                 </DialogTitle>
+                <p className="text-sm font-medium text-foreground" data-floor-sheet-meta>
+                  {openChecksOnTable(detailLive, orders).length > 0
+                    ? "Check open"
+                    : pipelineLabel(detailLive.status)}
+                  {" · "}
+                  {detailLive.section} · {detailLive.guestCount || detailLive.seats} seats
+                  {employees.find((e) => e.id === detailLive.serverId)?.name
+                    ? ` · ${employees.find((e) => e.id === detailLive.serverId)?.name}`
+                    : ""}
+                </p>
               </DialogHeader>
               <TableDetailBody
                 table={detailLive}
@@ -1358,6 +1367,7 @@ export function FloorView({
                   });
                 }}
                 busy={mapOnly}
+                compact={mapOnly || !layout.twoCol}
                 onAdd={(orderId) => {
                   if (!canOrderEntry) {
                     showBlocked(detailLive, "This PIN cannot open a table order.");
@@ -1813,6 +1823,7 @@ function TableDetailBody({
   onSend,
   onPay,
   onPartySize,
+  compact = false,
 }: {
   table: Table;
   openChecks: Order[];
@@ -1854,6 +1865,8 @@ function TableDetailBody({
   onSend?: (orderId: string) => void;
   onPay?: (orderId: string) => void;
   onPartySize?: () => void;
+  /** Tablet sheet: skip the extra status card. The header already names the table. */
+  compact?: boolean;
 }) {
   const [pickedId, setPickedId] = useState(openChecks[0]?.id ?? "");
   const picked = openChecks.find((c) => c.id === pickedId) ?? openChecks[0] ?? null;
@@ -1874,9 +1887,10 @@ function TableDetailBody({
     openChecks[0]?.serverName;
 
   return (
-    <div className="space-y-3" data-demo="table-detail">
-      <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg px-3 py-2">
-        <span className="text-sm font-medium">
+    <div className="space-y-2" data-demo="table-detail">
+      {!compact && (
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-bg px-3 py-1.5">
+        <span className="text-sm font-semibold">
           {hasOpen ? "CHECK OPEN" : pipelineLabel(table.status)}
         </span>
         {!busy && flashing && (
@@ -1885,6 +1899,7 @@ function TableDetailBody({
           </Badge>
         )}
       </div>
+      )}
       {busy && (
         <div className="grid grid-cols-2 gap-2" data-busy-actions>
           {empty && canSeat && (
@@ -1897,8 +1912,8 @@ function TableDetailBody({
             </Button>
           )}
           {occupiedNoCheck && canOrder && (
-            <Button className="station-touch col-span-2 h-16 text-xl font-semibold" onClick={onNewCheck}>
-              Resume
+            <Button className="station-touch col-span-2 h-16 text-xl font-semibold" onClick={onNewCheck} data-open-table>
+              Open
             </Button>
           )}
           {dirty && canClean && (
@@ -1942,7 +1957,7 @@ function TableDetailBody({
         </div>
       )}
       {hasOpen && (
-        <div className="rounded-xl border border-border bg-bg px-3 py-2 text-sm" data-table-view>
+        <div className="rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm" data-table-view>
           <p className="text-xs text-muted-foreground">
             {partyLabel || tableToken(table.label)} · {table.section} · {table.guestCount || table.seats} covers
             {headerServer ? ` · ${headerServer}` : ""}
@@ -1960,7 +1975,7 @@ function TableDetailBody({
               return (
                 <li
                   key={c.id}
-                  className="rounded-xl border border-border bg-surface p-2"
+                  className="rounded-lg border border-border bg-surface p-1.5"
                   data-open-check={c.id}
                 >
                   <button
@@ -2020,13 +2035,15 @@ function TableDetailBody({
           </Button>
         )}
         {empty && canSeat && (
-          <Button onClick={onSeat}>
+          <Button className="h-12 px-5 text-base font-semibold" onClick={onSeat}>
             <Users className="h-4 w-4" />
             Seat
           </Button>
         )}
         {occupiedNoCheck && canOrder && (
-          <Button onClick={onNewCheck}>Resume</Button>
+          <Button className="h-12 px-5 text-base font-semibold" onClick={onNewCheck} data-open-table>
+            Open
+          </Button>
         )}
         {hasOpen && canOrder && (
           <Button variant="outline" onClick={onNewCheck}>
@@ -2113,6 +2130,7 @@ function TableDetailBody({
               <Button
                 key={s}
                 size="sm"
+                className="min-h-11 px-3 text-sm font-semibold"
                 variant={stored === s && !hasOpen ? "default" : "outline"}
                 disabled={s === "empty" && hasOpen}
                 title={

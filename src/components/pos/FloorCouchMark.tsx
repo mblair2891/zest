@@ -28,8 +28,8 @@ export function FloorCouchGlyph({
     : null;
   const body = hair ?? {
     fill: upholstery,
-    stroke: solid ? "none" : outline,
-    strokeWidth: solid ? 0 : 2.5,
+    stroke: outline,
+    strokeWidth: 2.5,
   };
   const cushion = hair ?? {
     fill: seat,

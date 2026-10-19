@@ -15,7 +15,8 @@ export function TrainingBanner() {
 
   return (
     <div
-      className="shrink-0 border-b border-warn/40 bg-warn/15 px-3 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-warn"
+      className="shrink-0 truncate border-b border-amber-900/15 bg-amber-50 px-3 py-1 text-center text-[11px] font-semibold leading-none text-amber-950"
+      data-training-banner=""
       role="status"
     >
       {tenant

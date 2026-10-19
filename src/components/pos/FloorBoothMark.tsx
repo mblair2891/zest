@@ -8,7 +8,7 @@ const BENCH_STITCH = "#5c4a43";
 
 /**
  * Booth number. Same type size as a table number, in the open center.
- * Editor uses the table's 11px. Live uses 50cqmin of this opening, not of the whole booth.
+ * Editor uses the table's 11px. Live uses 56cqmin of this opening, not of the whole booth.
  */
 export function BoothNumber({
   kind,
@@ -48,18 +48,18 @@ export function BoothNumber({
     >
       <span
         data-floor-primary
-        data-floor-weight={live ? "medium" : undefined}
-        className={live ? "font-medium tabular leading-none" : "text-[11px] font-semibold tabular leading-none"}
+        data-floor-weight={live ? "bold" : undefined}
+        className={live ? "font-semibold tabular leading-none" : "text-[11px] font-semibold tabular leading-none"}
         style={
           live
-            ? { fontSize: joined?.length ? "42cqmin" : "50cqmin", fontWeight: 500, whiteSpace: "nowrap" }
+            ? { fontSize: joined?.length ? "46cqmin" : "56cqmin", fontWeight: 700, whiteSpace: "nowrap" }
             : { whiteSpace: "nowrap" }
         }
       >
         {label}
       </span>
       {live && joined && joined.length > 0 ? (
-        <span data-floor-joined className="font-medium leading-tight" style={{ fontSize: "18cqmin", fontWeight: 500 }}>
+        <span data-floor-joined className="font-semibold leading-tight" style={{ fontSize: "22cqmin", fontWeight: 700 }}>
           {joined.join(" · ")}
         </span>
       ) : null}
@@ -247,12 +247,12 @@ function Booth4Paths({
       {solid ? null : (
         <rect x="2" y="2" width="96" height="96" rx="10" fill="none" stroke={outline} strokeWidth="3" />
       )}
-      <rect x="8" y="5" width="84" height={by} rx="7" fill={benchFill} />
+      <rect x="8" y="5" width="84" height={by} rx="7" fill={benchFill} stroke={solid ? outline : "none"} strokeWidth={solid ? 2.5 : 0} />
       {solid ? null : (
         <rect x="12" y="9" width="76" height="2" rx="1" fill={BENCH_STITCH} opacity="0.45" />
       )}
-      <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" fill={tableFill} />
-      <rect x="8" y={100 - 5 - by} width="84" height={by} rx="7" fill={benchFill} />
+      <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" fill={tableFill} stroke={solid ? outline : "none"} strokeWidth={solid ? 2.5 : 0} />
+      <rect x="8" y={100 - 5 - by} width="84" height={by} rx="7" fill={benchFill} stroke={solid ? outline : "none"} strokeWidth={solid ? 2.5 : 0} />
       {solid ? null : (
         <rect
           x="12"
@@ -313,8 +313,10 @@ function BoothUPaths({
       <path
         d={`M${bx * 0.45} 6 V${innerB} Q${bx * 0.45} ${innerB + by * 0.35} ${bx} ${innerB + by * 0.35} H${100 - bx} Q${100 - bx * 0.45} ${innerB + by * 0.35} ${100 - bx * 0.45} ${innerB} V6 H${innerR} V${innerB - 4} H${innerL} V6 Z`}
         fill={benchFill}
+        stroke={solid ? outline : "none"}
+        strokeWidth={solid ? 2.5 : 0}
       />
-      <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" fill={tableFill} />
+      <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" fill={tableFill} stroke={solid ? outline : "none"} strokeWidth={solid ? 2.5 : 0} />
     </>
   );
 }
@@ -361,8 +363,10 @@ function BoothLPaths({
       <path
         d={`M${bx * 0.45} 6 V${100 - by * 0.4} Q${bx * 0.45} ${100 - 4} ${bx} ${100 - 4} H${100 - 6} V${100 - by} H${bx} V6 Z`}
         fill={benchFill}
+        stroke={solid ? outline : "none"}
+        strokeWidth={solid ? 2.5 : 0}
       />
-      <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" fill={tableFill} />
+      <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" fill={tableFill} stroke={solid ? outline : "none"} strokeWidth={solid ? 2.5 : 0} />
     </>
   );
 }

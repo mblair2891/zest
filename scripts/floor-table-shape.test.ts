@@ -47,7 +47,7 @@ test("a 4-top and a 6-top share one shape and have no seat dots", () => {
   assert.match(editor, /value=\{selectedTable\.seats\}/);
   assert.match(editor, /seats: booth \? clampBoothSeats\(booth, raw\) : Math\.max\(1, raw\)/);
   const live = readFileSync("src/components/pos/FloorView.tsx", "utf8");
-  assert.match(live, /\{detailLive\.seats\} top/);
+  assert.match(live, /detailLive\.guestCount \|\| detailLive\.seats\} seats/);
   assert.match(live, /data-floor-nubs="0"/);
   assert.match(live, /mode="status"/);
   const map = readFileSync("src/components/pos/FloorMapCanvas.tsx", "utf8");
@@ -77,7 +77,7 @@ test("a 4 ft by 2 ft table is a rectangle and publish keeps that size", () => {
   assert.match(art, /data-floor-table-box=\{mark\.round \? "round" : "rect"\}/);
   assert.match(art, /data-floor-table-box=\{tableRect \? "rect" : round && !bar \? "round" : undefined\}/);
   assert.match(art, /text-\[11px\] font-semibold/);
-  assert.match(art, /fontSize: joined\?\.length \? "42cqmin" : "50cqmin"/);
+  assert.match(art, /fontSize: joined\?\.length \? "46cqmin" : "56cqmin"/);
   const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
   assert.match(editor, /diningRect \? "Width" : "Length"/);
   assert.match(editor, /diningRect \? "Depth" : "Width"/);
