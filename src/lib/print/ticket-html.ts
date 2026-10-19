@@ -1,9 +1,8 @@
 import { formatCurrency } from "@/lib/utils";
 import { CARD_TIP_PERCENTS } from "@/lib/pos/card-tip";
-import { printedReceiptTotalCents, tipChoiceLine, toEscPosAscii } from "./escpos";
+import { printedReceiptTotalCents, ticketStripPrices, tipChoiceLine, toEscPosAscii } from "./escpos";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
-import { receiptItemLine } from "@/lib/payments/finix-events";
 import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
 import { formatVenueTime } from "@/lib/pos/venue-time";
 import { guestStaffName } from "@/lib/labor/staff-record";
@@ -80,15 +79,19 @@ export function ticketHtml(job: PrintJob): string {
           const mods = (it.mods ?? []).map((m) => `<div class="mod">${esc(m)}</div>`).join("");
           const note = it.note ? `<div class="mod">* ${esc(it.note)}</div>` : "";
           const seat = it.seat != null ? `<div class="mod">seat ${it.seat}</div>` : "";
-          const amt =
-            typeof it.amountCents === "number"
+          const strip = job.kind === "receipt" || job.kind === "guest_check";
+          const label = strip ? `${it.qty} ${it.name}` : `${it.qty}× ${it.name}`;
+          const prices = strip ? ticketStripPrices(it.cashCents, it.cardCents, it.amountCents) : "";
+          const amt = strip
+            ? `<span class="strip-prices">${esc(prices)}</span>`
+            : typeof it.amountCents === "number"
               ? `<span>${formatCurrency(it.amountCents)}</span>`
               : "";
-          const label =
-            job.kind === "receipt" || job.kind === "guest_check"
-              ? receiptItemLine(it.qty, it.name, g.displayName)
-              : `${it.qty}× ${it.name}`;
-          return `<div class="item row"><strong>${esc(label)}</strong>${amt}</div>${mods}${note}${seat}`;
+          const rowClass = strip ? "item strip-line" : "item row";
+          const name = strip
+            ? `<span class="strip-name">${esc(label)}</span>`
+            : `<strong>${esc(label)}</strong>`;
+          return `<div class="${rowClass}">${name}${amt}</div>${mods}${note}${seat}`;
         })
         .join("");
       return `${head}${rows}`;
@@ -129,9 +132,33 @@ export function ticketHtml(job: PrintJob): string {
           <div class="sign-line sign-line-3"></div>
         </div>`
       : "";
-  const roomy = job.kind === "guest_check" || job.kind === "receipt" || job.kind === "tip_slip";
+  const roomy = job.kind === "tip_slip";
+  const strip = job.kind === "guest_check" || job.kind === "receipt";
   const staffLabel = job.kind === "guest_check" ? guestStaffName(job.serverName) : job.serverName;
-  const totals = job.kind === "tip_slip" ? "" : job.totals
+  const guestDual = job.items.some(
+    (it) => typeof it.cashCents === "number" && typeof it.cardCents === "number",
+  );
+  const totals = job.kind === "tip_slip" ? "" : job.kind === "guest_check" && job.totals
+    ? (() => {
+        const named = (job.totals.taxLines ?? []).filter((t) => t.cents > 0);
+        const cash = job.totals.cashTotalCents ?? job.totals.totalCents;
+        const card = job.totals.cardTotalCents ?? job.totals.totalCents;
+        const taxRows = named
+          .map(
+            (t) =>
+              `<div class="row"><span>${esc(t.name)}</span><span>${formatCurrency(t.cents)}</span></div>`,
+          )
+          .join("");
+        const totalRows = guestDual
+          ? `<div class="row total"><span>CASH TOTAL</span><span>${formatCurrency(cash)}</span></div>
+             <div class="row total"><span>CARD TOTAL</span><span>${formatCurrency(card)}</span></div>`
+          : `<div class="row total"><span>TOTAL</span><span>${formatCurrency(cash)}</span></div>`;
+        const note = job.guestCheckNote
+          ? `<p class="muted">${esc(toEscPosAscii(job.guestCheckNote))}</p>`
+          : "";
+        return `<div class="rule"></div>${taxRows}${totalRows}${note}`;
+      })()
+    : job.totals
     ? `<div class="rule"></div>
        <div class="row"><span>Subtotal</span><span>${formatCurrency(job.totals.subtotalCents)}</span></div>
        ${
@@ -180,6 +207,12 @@ export function ticketHtml(job: PrintJob): string {
   .item { margin: 6px 0; }
   body.roomy .item { margin: 16px 0; font-size: 17px; }
   .item .row { white-space: nowrap; }
+  body.strip { max-width: 72mm; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  body.strip h1 { font-size: 15px; margin: 0 0 4px; }
+  body.strip h2 { font-size: 12px; margin: 0 0 8px; letter-spacing: .08em; }
+  .strip-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0.85em 0; }
+  .strip-name { flex: 1 1 auto; min-width: 0; }
+  .strip-prices { flex: 0 0 auto; white-space: nowrap; text-align: right; }
   .mod { padding-left: 12px; font-size: 12px; }
   body.roomy .mod { font-size: 15px; margin-top: 4px; }
   .vendor { font-weight: 700; margin-top: 8px; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
@@ -198,7 +231,7 @@ export function ticketHtml(job: PrintJob): string {
   .tip-slip .sign-line-3 { margin-top: 20px; height: 32px; }
 </style>
 </head>
-<body class="${roomy ? "roomy" : ""}">
+<body class="${roomy ? "roomy" : strip ? "strip" : ""}">
   <h1>${esc(job.locationName)}</h1>
   <h2>${esc(title)}${job.copy === "merchant" ? " | merchant" : ""}</h2>
   <div class="row"><span>#${esc(String(job.checkNumber))}</span><span>${esc(job.tableLabel)}</span></div>

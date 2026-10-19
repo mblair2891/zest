@@ -281,9 +281,13 @@ test("receipt names the entity on each line and settlement follows those lines",
   });
   assert.equal(building.ok, false);
   const esc = readFileSync("src/lib/print/escpos.ts", "utf8");
-  assert.match(esc, /receiptItemLine\(it\.qty, it\.name, g\.displayName\)/);
+  assert.match(esc, /ticketStripRows\(/);
+  assert.match(esc, /mark\.name\.toUpperCase\(\)/);
+  assert.doesNotMatch(esc, /receiptItemLine\(/);
   const html = readFileSync("src/lib/print/ticket-html.ts", "utf8");
-  assert.match(html, /receiptItemLine\(it\.qty, it\.name, g\.displayName\)/);
+  assert.match(html, /ticketStripPrices/);
+  assert.match(html, /strip-prices/);
+  assert.match(html, /data-guest-check-entity/);
 });
 
 test("a location with no merchant cannot take a live card", async () => {

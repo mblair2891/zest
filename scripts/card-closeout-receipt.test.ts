@@ -86,7 +86,9 @@ test("guest check and paid receipt use larger type and section spacing", () => {
   assert.match(txt, /RECEIPT/);
   assert.ok(txt.includes("\x1d\x21\x01"));
   assert.equal(txt.includes("\x1d\x21\x10"), false);
-  assert.match(txt, /1x Cafe Burger \| House\s+\$10\.00/);
+  assert.match(txt, /1 Cafe Burger\s+\$10\.00/);
+  assert.match(txt, /HOUSE/);
+  assert.doesNotMatch(txt, /1x Cafe Burger/);
   const headerGap = txt.slice(txt.indexOf("RECEIPT"), txt.indexOf("Cafe Burger"));
   assert.ok(headerGap.includes("\n\n"));
   const totalsGap = txt.slice(txt.indexOf("Cafe Burger"), txt.indexOf("Subtotal"));

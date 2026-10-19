@@ -92,7 +92,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
       steps(
         "Open a table. The check number shows on the order pad as soon as the check exists.",
         "Send. The Star ticket header is that number, not a second kitchen counter.",
-        "Print check. The Epson guest check header is the same number. The pay QR opens that check.",
+        "Print check. The Epson guest check is a narrow ticket strip: quantity and name on the left, cash and card on that same line, a blank line between items, and the pay QR at the bottom when it is on. The header is the same number. The pay QR opens that check.",
       ),
       related("kitchen-bar-routing", "kds", "receipts-by-vendor", "floor-tables", "table-qr"),
     ],

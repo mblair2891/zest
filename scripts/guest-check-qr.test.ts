@@ -100,7 +100,7 @@ test("guest check clock is Pacific AM/PM and the card price sits beside the item
   const txt = asText(bytes);
   assert.match(txt, /2:30 PM/);
   assert.doesNotMatch(txt, /9:30 PM/);
-  assert.match(txt, /1 Burger\s+\$11\.00/);
+  assert.match(txt, /1 Burger\s+\$10\.00\s+\$11\.00/);
   assert.match(txt, /CASH TOTAL/);
   assert.match(txt, /\$85\.00/);
   assert.match(txt, /CARD TOTAL/);
@@ -196,14 +196,144 @@ test("three items keep the card price on the item line and a blank line between"
     { modelPreset: "epson_tm_t20" },
   );
   const txt = asText(bytes);
-  assert.match(txt, /1 Burger\s+\$11\.00/);
-  assert.match(txt, /1 Fries\s+\$4\.50/);
-  assert.match(txt, /1 Cola\s+\$3\.50/);
+  assert.match(txt, /1 Burger\s+\$10\.00\s+\$11\.00/);
+  assert.match(txt, /1 Fries\s+\$4\.00\s+\$4\.50/);
+  assert.match(txt, /1 Cola\s+\$3\.00\s+\$3\.50/);
   assert.doesNotMatch(txt, /\$10\.00 cash/);
   const burger = txt.indexOf("Burger");
   const fries = txt.indexOf("Fries");
   const between = txt.slice(burger, fries);
   assert.match(between, /\n\s*\n/);
+});
+
+function visibleLines(txt: string): string[] {
+  // ESC/POS command bytes. The printable column is what the slip shows.
+  const gsBang = String.fromCharCode(0x1d, 0x21);
+  const esc = String.fromCharCode(0x1b);
+  const cleaned = txt
+    .replaceAll(`${gsBang}`, "\u0000")
+    .replaceAll(`${esc}E`, "\u0000")
+    .replaceAll(`${esc}a`, "\u0000")
+    .replaceAll(`${esc}@`, "\u0000");
+  return cleaned.split("\n").map((line) => line.replace(/[^\x20-\x7e]/g, ""));
+}
+
+test("a long item keeps cash and card on the first line", () => {
+  const bytes = buildEscPos(
+    guestJob({
+      items: [
+        {
+          qty: 1,
+          name: "Grilled Chicken Sandwich with Avocado",
+          cashCents: 1000,
+          cardCents: 1100,
+          amountCents: 1000,
+        },
+      ],
+      totals: {
+        subtotalCents: 1000,
+        taxCents: 88,
+        taxLines: [],
+        totalCents: 1088,
+        cashTotalCents: 1000,
+        cardTotalCents: 1100,
+      },
+    }),
+    { modelPreset: "epson_tm_t20" },
+  );
+  const lines = visibleLines(asText(bytes));
+  const item = lines.find((line) => line.startsWith("1 ") && line.includes("$10.00 $11.00"));
+  assert.ok(item);
+  assert.equal(item?.length, 42);
+  assert.equal(item?.endsWith("$10.00 $11.00"), true);
+  const next = lines[lines.indexOf(item!) + 1] ?? "";
+  assert.match(next, /Avocado/);
+  assert.doesNotMatch(next, /\$/);
+  assert.doesNotMatch(lines.join("\n"), /\nTax /);
+  assert.equal(escposHasNativeQr(bytes), true);
+});
+
+test("a narrow roll and a second vendor keep the same strip", () => {
+  const bytes = buildEscPos(
+    guestJob({
+      serverName: "Ada Lovelace",
+      items: [
+        {
+          qty: 1,
+          name: "Burger",
+          vendorId: "hearth",
+          vendorName: "Hearth",
+          cashCents: 1000,
+          cardCents: 1100,
+          amountCents: 1000,
+        },
+        {
+          qty: 2,
+          name: "Lager",
+          vendorId: "copper",
+          vendorName: "Copper",
+          cashCents: 800,
+          cardCents: 900,
+          amountCents: 800,
+        },
+      ],
+    }),
+    { emulation: "star_line", paperWidthMm: 58 },
+  );
+  const txt = asText(bytes);
+  const lines = visibleLines(txt);
+  assert.match(txt, /Ada L\./);
+  assert.match(txt, /HEARTH/);
+  assert.match(txt, /COPPER/);
+  assert.match(txt, /1 Burger\s+\$10\.00\s+\$11\.00/);
+  assert.match(txt, /2 Lager\s+\$8\.00\s+\$9\.00/);
+  const burger = lines.find((line) => line.includes("1 Burger"));
+  const lager = lines.find((line) => line.includes("2 Lager"));
+  assert.equal(burger?.length, 32);
+  assert.equal(lager?.length, 32);
+  assert.equal(burger?.endsWith("$10.00 $11.00"), true);
+  assert.equal(lager?.endsWith("$8.00 $9.00"), true);
+  assert.equal(escposHasNativeQr(bytes), true);
+  const between = txt.slice(txt.indexOf("Burger"), txt.indexOf("Lager"));
+  assert.match(between, /\n\s*\n/);
+});
+
+test("a paid receipt uses the same item strip and skips the pay QR", () => {
+  const bytes = buildEscPos(
+    guestJob({
+      kind: "receipt",
+      items: [
+        {
+          qty: 1,
+          name: "Burger",
+          vendorId: "hearth",
+          vendorName: "Hearth",
+          cashCents: 1000,
+          cardCents: 1100,
+          amountCents: 1100,
+        },
+        {
+          qty: 1,
+          name: "Fries",
+          vendorId: "hearth",
+          vendorName: "Hearth",
+          cashCents: 400,
+          cardCents: 450,
+          amountCents: 450,
+        },
+      ],
+    }),
+    { modelPreset: "epson_tm_t20" },
+  );
+  const txt = asText(bytes);
+  assert.match(txt, /RECEIPT/);
+  assert.match(txt, /HEARTH/);
+  assert.match(txt, /1 Burger\s+\$10\.00\s+\$11\.00/);
+  assert.match(txt, /1 Fries\s+\$4\.00\s+\$4\.50/);
+  assert.doesNotMatch(txt, /1x Burger/);
+  const between = txt.slice(txt.indexOf("Burger"), txt.indexOf("Fries"));
+  assert.match(between, /\n\s*\n/);
+  assert.equal(escposHasNativeQr(bytes), false);
 });
 
 test("guest route resolves table token and check number", () => {

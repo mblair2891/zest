@@ -52,16 +52,21 @@ function printLineNote(line: Order["lines"][number]): string | undefined {
 function receiptLines(order: Order, settings: RestaurantSettings): PrintLine[] {
   const last = order.payments[order.payments.length - 1];
   const tender = last?.method === "cash" ? "cash" : "card";
-  return order.lines.map((l) => ({
-    qty: l.quantity,
-    name: linePrintName(l.name, l),
-    mods: l.modifiers.map((m) => m.optionName),
-    note: printLineNote(l),
-    seat: l.seat,
-    vendorId: l.vendorId,
-    vendorName: l.vendorName,
-    amountCents: linePrintedCents(l, policyForLine(settings, l, tender)),
-  }));
+  return order.lines.map((l) => {
+    const cardPolicy = policyForLine(settings, l, "card");
+    return {
+      qty: l.quantity,
+      name: linePrintName(l.name, l),
+      mods: l.modifiers.map((m) => m.optionName),
+      note: printLineNote(l),
+      seat: l.seat,
+      vendorId: l.vendorId,
+      vendorName: l.vendorName,
+      cashCents: lineCashCents(l),
+      cardCents: lineCardCents(l, cardPolicy),
+      amountCents: linePrintedCents(l, policyForLine(settings, l, tender)),
+    };
+  });
 }
 
 export const NO_SECTION_RECEIPT =

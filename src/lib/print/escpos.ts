@@ -2,7 +2,6 @@ import { formatCurrency } from "@/lib/utils";
 import { CARD_TIP_PERCENTS, cardChargeCents, tipCentsForPercent } from "@/lib/pos/card-tip";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
-import { receiptItemLine } from "@/lib/payments/finix-events";
 import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
 import { formatVenueStamp, formatVenueTime } from "@/lib/pos/venue-time";
 import {
@@ -193,6 +192,25 @@ function wrapWords(value: string, width: number): string[] {
   return lines.length ? lines : [""];
 }
 
+/** Same as wrapWords, then hard-break a single word that is wider than the column. */
+function wrapToWidth(value: string, width: number): string[] {
+  const cols = Math.max(1, width);
+  const lines: string[] = [];
+  for (const row of wrapWords(value, cols)) {
+    if (row.length <= cols) {
+      lines.push(row);
+      continue;
+    }
+    let rest = row;
+    while (rest.length > cols) {
+      lines.push(rest.slice(0, cols));
+      rest = rest.slice(cols);
+    }
+    if (rest) lines.push(rest);
+  }
+  return lines.length ? lines : [""];
+}
+
 /**
  * Checkbox, percent, tip, and grand total.
  * One line when the paper can hold it. Otherwise the total moves to the next line.
@@ -362,6 +380,63 @@ function money(cents: number): string {
   return formatCurrency(cents);
 }
 
+/**
+ * Cash and card share one price column when both are set and they differ.
+ * A single price is the paid amount, or the one price the line has.
+ */
+export function ticketStripPrices(
+  cashCents: number | undefined,
+  cardCents: number | undefined,
+  amountCents: number | undefined,
+): string {
+  const hasCash = typeof cashCents === "number";
+  const hasCard = typeof cardCents === "number";
+  if (hasCash && hasCard && cashCents !== cardCents) {
+    return `${money(cashCents)} ${money(cardCents)}`;
+  }
+  if (typeof amountCents === "number") return money(amountCents);
+  if (hasCash) return money(cashCents);
+  if (hasCard) return money(cardCents);
+  return "";
+}
+
+/**
+ * Reserve the price column first. The name wraps under the item.
+ * Prices stay on the first line and are not sliced off.
+ */
+export function ticketStripRows(
+  left: string,
+  right: string,
+  width: number,
+): { left: string; right: string }[] {
+  const cols = Math.max(16, width);
+  const price = right.trim();
+  if (!price) {
+    return wrapToWidth(left, cols).map((line) => ({ left: line, right: "" }));
+  }
+  const gap = 1;
+  const minName = 6;
+  if (price.length + gap + minName > cols) {
+    const rows = wrapToWidth(left, cols).map((line) => ({ left: line, right: "" }));
+    rows.push({ left: "", right: price.length <= cols ? price : price.slice(0, cols) });
+    return rows;
+  }
+  const nameCols = cols - price.length - gap;
+  const names = wrapToWidth(left, nameCols);
+  return names.map((chunk, i) => {
+    if (i === 0) return { left: chunk, right: price };
+    const cont = `  ${chunk}`;
+    return { left: cont.length <= cols ? cont : cont.slice(0, cols), right: "" };
+  });
+}
+
+function stripBytes(left: string, right: string, width: number, bold: boolean): Uint8Array {
+  const rows = ticketStripRows(left, right, width);
+  return concat(
+    rows.map((row) => (bold ? tallLine(row.left, row.right, width) : tallPlain(row.left, row.right, width))),
+  );
+}
+
 /** Pre-pay guest check on the receipt printer. Not a kitchen ticket. Not a paid receipt. */
 function buildGuestCheckEscPos(
   job: PrintJob,
@@ -400,7 +475,7 @@ function buildGuestCheckEscPos(
       const raster = escposRasterBytes(mark.raster);
       if (raster) parts.push(ALIGN_CT, raster, FEED, ALIGN_LT);
     }
-    parts.push(tallLine(mark.name.toUpperCase(), "", width));
+    parts.push(stripBytes(mark.name.toUpperCase(), "", width, true));
     let cashSub = 0;
     let cardSub = 0;
     for (let i = 0; i < g.lines.length; i += 1) {
@@ -409,13 +484,15 @@ function buildGuestCheckEscPos(
       const card = it.cardCents ?? it.amountCents ?? cash;
       cashSub += cash;
       cardSub += card;
-      const item = `${it.qty} ${it.name}`;
-      parts.push(tallPlain(item, money(dual ? card : cash), width));
-      for (const m of it.mods ?? []) parts.push(tallPlain(`  ${m}`, "", width));
+      const price = ticketStripPrices(it.cashCents, it.cardCents, it.amountCents ?? cash);
+      parts.push(stripBytes(`${it.qty} ${it.name}`, price, width, false));
+      for (const m of it.mods ?? []) parts.push(stripBytes(`  ${m}`, "", width, false));
       if (i < g.lines.length - 1) parts.push(feeds(SECTION_FEEDS));
     }
     parts.push(feeds(1));
-    parts.push(tallLine(g.displayName, money(dual ? cardSub : cashSub), width));
+    const subPrice =
+      dual && cashSub !== cardSub ? `${money(cashSub)} ${money(cardSub)}` : money(dual ? cardSub : cashSub);
+    parts.push(stripBytes(g.displayName, subPrice, width, true));
     parts.push(feeds(SECTION_FEEDS));
   }
   parts.push(text("-".repeat(width)), FEED, feeds(SECTION_FEEDS));
@@ -602,16 +679,19 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
     }
     for (let i = 0; i < g.lines.length; i += 1) {
       const it = g.lines[i]!;
-      const amt =
-        typeof it.amountCents === "number" ? formatCurrency(it.amountCents) : "";
-      const item =
-        job.kind === "receipt"
-          ? receiptItemLine(it.qty, it.name, g.displayName)
-          : `${it.qty}x ${it.name}`;
-      pushSlip(item, amt, true);
-      for (const m of it.mods ?? []) pushSlip(`  ${m}`, "");
-      if (it.note) pushSlip(`  * ${it.note}`, "");
-      if (it.seat != null) pushSlip(`  seat ${it.seat}`, "");
+      if (job.kind === "receipt") {
+        const price = ticketStripPrices(it.cashCents, it.cardCents, it.amountCents);
+        parts.push(stripBytes(`${it.qty} ${it.name}`, price, width, true));
+        for (const m of it.mods ?? []) parts.push(stripBytes(`  ${m}`, "", width, false));
+        if (it.note) parts.push(stripBytes(`  * ${it.note}`, "", width, false));
+        if (it.seat != null) parts.push(stripBytes(`  seat ${it.seat}`, "", width, false));
+      } else {
+        const amt = typeof it.amountCents === "number" ? formatCurrency(it.amountCents) : "";
+        pushSlip(`${it.qty}x ${it.name}`, amt, true);
+        for (const m of it.mods ?? []) pushSlip(`  ${m}`, "");
+        if (it.note) pushSlip(`  * ${it.note}`, "");
+        if (it.seat != null) pushSlip(`  seat ${it.seat}`, "");
+      }
       if (roomy && i < g.lines.length - 1) parts.push(feeds(SECTION_FEEDS));
     }
     if (roomy) parts.push(feeds(SECTION_FEEDS));

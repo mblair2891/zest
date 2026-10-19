@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_296_ticket_print",
+    date: "2026-10-18",
+    title: "Compact ticket-strip guest check",
+    summary:
+      "The printed guest check is a compact ticket strip with cash and card on the same line.",
+    body: "Print check and the paid receipt print as a narrow ticket strip on the receipt printer. Each item shows the quantity and the name, with the cash price and the card price on that line. A blank line sits between items. A long name continues under the item and the prices stay on the first line. The server is a first name and last initial. The table, the check number, and the venue time stay on the slip. Named taxes print only when the venue has them. The pay QR sits at the bottom when Print pay QR is on. A check with more than one selling entity still groups those items under each name.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "table-qr",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_295_login_printer_check",
     date: "2026-10-18",
     title: "Printer check on login",
