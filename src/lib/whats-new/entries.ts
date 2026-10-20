@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_305_finix_signature",
+    date: "2026-10-19",
+    title: "Finix webhook signature",
+    summary: "A signed Finix delivery is accepted. A bad signature is listed and rejected.",
+    body: "Finix sends Finix-Signature with each delivery. A signature that matches the webhook secret is accepted. The log lists a missing header, a timestamp older than five minutes, or a signature mismatch, and that delivery is rejected. The empty check that creates the webhook is still accepted.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "finix-webhook",
+    tags: ["payments", "finix"],
+  },
+  {
     id: "upd_2026_10_304_card_auth_capture",
     date: "2026-10-19",
     title: "Card auth then capture",

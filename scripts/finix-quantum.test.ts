@@ -18,6 +18,7 @@ import {
   missingFinixKeyMessage,
   readFinixCreds,
   verifyFinixSignature,
+  verifyFinixSignatures,
 } from "../src/lib/payments/finix-keys.ts";
 import {
   finixWebhookEventType,
@@ -214,9 +215,18 @@ test("sandbox test card authorizes on the sandbox host and a paid transfer close
         assert.equal(paid.kind, "transfer");
         assert.equal(paid.paid, true);
         const payload = JSON.stringify({ id: "evt_paid", type: "transfer.updated" });
-        const sig = createHmac("sha256", "whsec_sandbox").update(payload).digest("hex");
-        assert.equal(verifyFinixSignature(payload, sig, "whsec_sandbox"), true);
-        assert.equal(verifyFinixSignature(payload, "not-the-signature", "whsec_sandbox"), false);
+        const now = 1_764_948_460;
+        const sig = createHmac("sha256", "whsec_sandbox").update(`${now}:${payload}`).digest("hex");
+        const header = `timestamp=${now}, sig=${sig}`;
+        assert.deepEqual(verifyFinixSignature(payload, header, "whsec_sandbox", now), { ok: true });
+        assert.equal(
+          verifyFinixSignature(payload, `timestamp=${now}, sig=${sig.toUpperCase()}`, "whsec_sandbox", now).ok,
+          true,
+        );
+        assert.deepEqual(verifyFinixSignature(payload, "not-the-signature", "whsec_sandbox", now), {
+          ok: false,
+          reason: "bad timestamp",
+        });
         const closed = applyFinixEventToCheck(afterAuth.check, paid);
         assert.equal(closed.closed, true);
         assert.equal(closed.check.status, "closed");
@@ -364,8 +374,19 @@ test("the station notice fires when a paid Quantum transfer closes an open check
     null,
   );
   const webhook = readFileSync("src/routes/api/payments/finix/webhook.ts", "utf8");
-  assert.match(webhook, /invalid signature/);
+  const rawAt = webhook.indexOf("request.text()");
+  const verifyAt = webhook.indexOf("verifyFinixSignatures(payload");
+  const eventAt = webhook.lastIndexOf("finixWebhookEventType(payload)");
+  assert.ok(rawAt > 0 && verifyAt > rawAt && eventAt > verifyAt);
+  assert.match(webhook, /Finix-Signature/);
+  assert.match(webhook, /signed\.reason/);
+  assert.match(webhook, /status: 400/);
   assert.match(webhook, /FINIX_WEBHOOK_SECRET/);
+  const keys = readFileSync("src/lib/payments/finix-keys.ts", "utf8");
+  assert.match(keys, /missing header/);
+  assert.match(keys, /bad timestamp/);
+  assert.match(keys, /signature mismatch/);
+  assert.match(keys, /\$\{timestamp\}:\$\{payload\}/);
   assert.match(webhook, /recordFinixWebhookAttempt/);
   assert.match(webhook, /isFinixValidationPing/);
   assert.match(webhook, /status: 200/);
@@ -379,6 +400,39 @@ test("the station notice fires when a paid Quantum transfer closes an open check
   assert.match(settings, /data-finix-webhook-url/);
   assert.match(settings, /data-finix-webhook-copy/);
   assert.match(settings, /data-finix-webhook-log/);
+});
+
+test("Finix-Signature is timestamp, raw body, and a utf-8 secret", () => {
+  const payload = '{"id":"evt_1","type":"transfer.updated"}';
+  const secret = "a1fc2b789d958e8a9a3517c9c8b129d5c2cecedfc68788345aaf9a5b2a859976";
+  const now = 1_764_948_460;
+  const sig = createHmac("sha256", secret).update(`${now}:${payload}`, "utf8").digest("hex");
+  const decoded = createHmac("sha256", Buffer.from(secret, "hex"))
+    .update(`${now}:${payload}`, "utf8")
+    .digest("hex");
+  assert.notEqual(sig, decoded);
+  const header = `timestamp=${now}, sig=${sig}`;
+  assert.deepEqual(verifyFinixSignature(payload, header, secret, now), { ok: true });
+  assert.deepEqual(verifyFinixSignature(payload, header, secret, now + 300), { ok: true });
+  assert.deepEqual(verifyFinixSignature(payload, header, secret, now + 301), {
+    ok: false,
+    reason: "bad timestamp",
+  });
+  assert.deepEqual(verifyFinixSignature(payload, `timestamp=${now - 301}, sig=${sig}`, secret, now), {
+    ok: false,
+    reason: "bad timestamp",
+  });
+  assert.deepEqual(verifyFinixSignature(payload, null, secret, now), { ok: false, reason: "missing header" });
+  assert.deepEqual(verifyFinixSignature(payload, `timestamp=${now}, sig=${decoded}`, secret, now), {
+    ok: false,
+    reason: "signature mismatch",
+  });
+  const other = createHmac("sha256", "live-secret").update(`${now}:${payload}`, "utf8").digest("hex");
+  assert.deepEqual(
+    verifyFinixSignatures(payload, `timestamp=${now}, sig=${other}`, [secret, "live-secret"], now),
+    { ok: true },
+  );
+  assert.deepEqual(verifyFinixSignatures(payload, null, [secret], now), { ok: false, reason: "missing header" });
 });
 
 test("the webhook URL includes the full path and a test event keeps its type", () => {

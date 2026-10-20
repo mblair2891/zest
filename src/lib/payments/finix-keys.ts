@@ -106,16 +106,67 @@ export function finixWebhookSecret(mode: FinixMode = "sandbox", read: EnvRead = 
   return read(finixKeyNames(mode).webhookSecret);
 }
 
-/** Hex HMAC-SHA256 of the raw body. A missing or mismatched header is not valid. */
-export function verifyFinixSignature(payload: string, header: string | null, secret: string): boolean {
-  if (!header || !secret) return false;
-  const expected = createHmac("sha256", secret).update(payload).digest("hex");
-  const given = header.replace(/^sha256=/i, "").trim();
-  try {
-    const a = Buffer.from(expected, "utf8");
-    const b = Buffer.from(given, "utf8");
-    return a.length === b.length && timingSafeEqual(a, b);
-  } catch {
-    return false;
+/** Finix rejects a delivery whose timestamp is older than this, or further ahead. */
+export const FINIX_SIGNATURE_MAX_AGE_SEC = 5 * 60;
+
+export type FinixSignatureFailure = "missing header" | "bad timestamp" | "signature mismatch";
+
+export type FinixSignatureCheck = { ok: true } | { ok: false; reason: FinixSignatureFailure };
+
+/**
+ * Finix-Signature is `timestamp=<epoch-second>, sig=<hex>`.
+ * The HMAC is SHA-256 over the exact string "<timestamp>:<raw body>".
+ * The signing key is the UTF-8 secret. It is not hex-decoded.
+ */
+export function verifyFinixSignature(
+  payload: string,
+  header: string | null,
+  secret: string,
+  nowSec = Math.floor(Date.now() / 1000),
+): FinixSignatureCheck {
+  if (!header?.trim()) return { ok: false, reason: "missing header" };
+  if (!secret) return { ok: false, reason: "signature mismatch" };
+  const timestampMatch = header.match(/(?:^|[,\s])timestamp=(\d+)/i);
+  const timestamp = timestampMatch?.[1] ? Number(timestampMatch[1]) : Number.NaN;
+  if (!Number.isFinite(timestamp)) return { ok: false, reason: "bad timestamp" };
+  if (Math.abs(nowSec - timestamp) > FINIX_SIGNATURE_MAX_AGE_SEC) {
+    return { ok: false, reason: "bad timestamp" };
   }
+  const sigs = [...header.matchAll(/(?:^|[,\s])sig=([0-9a-f]+)/gi)]
+    .map((match) => match[1] ?? "")
+    .filter(Boolean);
+  if (!sigs.length) return { ok: false, reason: "signature mismatch" };
+  const expected = createHmac("sha256", secret).update(`${timestamp}:${payload}`, "utf8").digest("hex");
+  let match = false;
+  for (const sig of sigs) {
+    if (hexEqualInsensitive(expected, sig)) match = true;
+  }
+  return match ? { ok: true } : { ok: false, reason: "signature mismatch" };
+}
+
+/** Try each signing key. A timestamp problem is the same for every key. */
+export function verifyFinixSignatures(
+  payload: string,
+  header: string | null,
+  secrets: Array<string | undefined>,
+  nowSec = Math.floor(Date.now() / 1000),
+): FinixSignatureCheck {
+  if (!header?.trim()) return { ok: false, reason: "missing header" };
+  const usable = secrets.filter((secret): secret is string => Boolean(secret?.trim()));
+  if (!usable.length) return { ok: false, reason: "signature mismatch" };
+  let reason: FinixSignatureFailure = "signature mismatch";
+  for (const secret of usable) {
+    const result = verifyFinixSignature(payload, header, secret, nowSec);
+    if (result.ok) return result;
+    reason = result.reason;
+    if (reason !== "signature mismatch") return result;
+  }
+  return { ok: false, reason };
+}
+
+function hexEqualInsensitive(expected: string, given: string): boolean {
+  const a = Buffer.from(expected.toLowerCase(), "utf8");
+  const b = Buffer.from(given.trim().toLowerCase(), "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   finixWebhookSecret,
   missingFinixKeyMessage,
-  verifyFinixSignature,
+  verifyFinixSignatures,
 } from "@/lib/payments/finix-keys";
 
 export const Route = createFileRoute("/api/payments/finix/webhook")({
@@ -31,32 +31,29 @@ export const Route = createFileRoute("/api/payments/finix/webhook")({
           }
           return new Response(null, { status: 200 });
         }
-        const parsed = finixWebhookEventType(payload);
-        const log = (result: string) =>
-          recordFinixWebhookAttempt({
+        const sandboxSecret = finixWebhookSecret("sandbox");
+        const liveSecret = finixWebhookSecret("live");
+        const header = request.headers.get("Finix-Signature");
+        const log = (result: string) => {
+          const parsed = finixWebhookEventType(payload);
+          return recordFinixWebhookAttempt({
             eventType: parsed.eventType,
             result,
             eventId: parsed.eventId,
           });
-
-        const sandboxSecret = finixWebhookSecret("sandbox");
-        const liveSecret = finixWebhookSecret("live");
+        };
         if (!sandboxSecret && !liveSecret) {
           const result = missingFinixKeyMessage("FINIX_WEBHOOK_SECRET");
           await log(result);
           return new Response(result, { status: 503 });
         }
-        const header =
-          request.headers.get("x-finix-signature") ||
-          request.headers.get("finix-signature") ||
-          request.headers.get("x-signature");
-        const signed =
-          (sandboxSecret ? verifyFinixSignature(payload, header, sandboxSecret) : false) ||
-          (liveSecret ? verifyFinixSignature(payload, header, liveSecret) : false);
-        if (!signed) {
-          await log("invalid signature");
-          return new Response("invalid signature", { status: 400 });
+        const signed = verifyFinixSignatures(payload, header, [sandboxSecret, liveSecret]);
+        if (!signed.ok) {
+          console.warn(`finix webhook ${signed.reason}`);
+          await log(signed.reason);
+          return new Response(signed.reason, { status: 400 });
         }
+        const parsed = finixWebhookEventType(payload);
         if (!parsed.json || typeof parsed.json !== "object") {
           await log("invalid json");
           return new Response("invalid json", { status: 400 });
