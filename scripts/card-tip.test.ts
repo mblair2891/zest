@@ -94,6 +94,13 @@ test("card payment screen source shows the four buttons and no tip", () => {
   assert.match(pay, /<CardTipRow/);
   assert.match(pay, /method === "card" \? \([\s\S]*<CardTipRow/);
   assert.match(pay, /data-card-charge-total/);
+  assert.match(pay, /data-pay-cancel/);
+  assert.match(pay, /data-pay-back/);
+  assert.match(pay, /data-pay-try-another/);
+  assert.match(pay, /data-close-no-tip/);
+  assert.match(pay, /data-tip-retry/);
+  assert.match(row, /aria-expanded/);
+  assert.match(row, /scrollIntoView/);
 });
 
 test("payments and tipping guides describe the card tip buttons", () => {
@@ -102,11 +109,14 @@ test("payments and tipping guides describe the card tip buttons", () => {
   const types = read("src/lib/guide/types.ts");
   assert.match(payments, /18%, 20%, 25%, and Custom/);
   assert.match(payments, /Sandbox keys send the charge to the Finix sandbox/);
-  assert.match(payments, /matches Guide v2026\.10\.307/);
+  assert.match(payments, /matches Guide v2026\.10\.308/);
   assert.match(payments, /own idempotency id/);
   assert.match(payments, /A card reader connects by Bluetooth, Network, or USB/);
+  assert.match(payments, /No tip closes the check with a \$0 tip/);
+  assert.match(payments, /close with no tip, retry, or cancel/);
   assert.match(tipping, /18%, 20%, 25%, and Custom/);
-  assert.match(types, /GUIDE_VERSION = "2026\.10\.307"/);
-  assert.match(types, /Per-entity pay periods/);
+  assert.match(tipping, /No tip closes the check at \$0/);
+  assert.match(types, /GUIDE_VERSION = "2026\.10\.308"/);
+  assert.match(types, /Card tip closes the check/);
   assert.match(payments, /The station PIN pad and the floor, order, pay, and kitchen screens fit the display/);
 });

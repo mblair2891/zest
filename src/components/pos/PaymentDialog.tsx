@@ -15,6 +15,7 @@ import { useMarketingStore } from "@/lib/pos/marketing-store";
 import { CardTipRow } from "@/components/pos/CardTipRow";
 import { cardAuthorizationCents, cardPayDueCents, computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { tipCentsForChoice, type CardTipChoice } from "@/lib/pos/card-tip";
+import { TIP_CAPTURE_FAILED } from "@/lib/payments/tip-capture";
 import { guestStaffName } from "@/lib/labor/staff-record";
 import { formatCurrency } from "@/lib/utils";
 import type { CardAuthHold, PaymentMethod } from "@/lib/pos/types";
@@ -285,6 +286,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const [guestFace, setGuestFace] = useState(false);
   const [signed, setSigned] = useState(false);
   const [cardReceiptAsk, setCardReceiptAsk] = useState(false);
+  const [tipCaptureFailed, setTipCaptureFailed] = useState(false);
+  const payAttempt = useRef(0);
+  const payLock = useRef(false);
 
   useEffect(() => {
     const cfg = payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor);
@@ -927,9 +931,63 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     })();
   };
 
-  const pay = (manualCard?: ManualCard) => {
-    void (async () => {
+  const releaseCardHold = () => {
+    const current = usePosStore.getState().getActiveOrder();
+    setCardHold(null);
+    setCardTip({ kind: "none" });
+    setTipCaptureFailed(false);
+    if (!current || current.status !== "open") return;
+    const auth = current.cardAuth ?? readSessionCardAuth(current.id);
+    usePosStore.getState().setCardAuth(current.id, null);
+    clearSessionCardAuth(current.id);
+    const authorizationId = auth?.authorizationId || auth?.finixTransferId || "";
+    if (!authorizationId) return;
+    const ctx = readTenantPosContext();
+    const locationId = usePosStore.getState().tenantLocationId || ctx?.locationId || "";
+    const orgId = ctx?.orgId || "";
+    if (!locationId || !orgId) return;
+    void voidCheckAuthorizationFn({
+      data: {
+        locationId,
+        orgId,
+        authorizationId,
+        checkId: current.id,
+      },
+    }).catch(() => undefined);
+  };
+
+  const leavePay = () => {
+    payAttempt.current += 1;
+    releaseCardHold();
     setError(null);
+    setGuestFace(false);
+    setDone(false);
+    setChange(null);
+    onOpenChange(false);
+  };
+
+  const tryAnotherMethod = () => {
+    payAttempt.current += 1;
+    releaseCardHold();
+    setError(null);
+    setGuestFace(false);
+    const next =
+      payMethods.find((item) => item !== "card" && item !== method) ??
+      payMethods.find((item) => item !== "card");
+    if (next) setMethod(next);
+  };
+
+  const pay = (manualCard?: ManualCard, tipOverride?: CardTipChoice) => {
+    if (payLock.current) return;
+    payLock.current = true;
+    const attempt = ++payAttempt.current;
+    void (async () => {
+    try {
+    const stale = () => payAttempt.current !== attempt;
+    const payTip = method === "card" ? tipCentsForChoice(tipOverride ?? cardTip, tipBase) : tip;
+    if (tipOverride) setCardTip(tipOverride);
+    setError(null);
+    setTipCaptureFailed(false);
     if (!methodEnabled(payCfg, method)) {
       setError("This tender is off at this venue.");
       return;
@@ -1005,11 +1063,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     let paxJournal: { readerId: string; merchantId: string; locationId: string; orgId: string } | null = null;
     const held =
       method === "card" ? (order?.cardAuth ?? readSessionCardAuth(order?.id) ?? null) : null;
-    if (method === "card" && cardLink === "usb" && settings.cardProcessor !== "square") {
+    if (method === "card" && cardLink === "usb" && settings.cardProcessor !== "square" && !held) {
       const gate = usbCardStep({
         link: "usb",
         usbAttached,
-        step: held ? "capture" : "authorize",
+        step: "authorize",
       });
       if (!gate.ok) {
         setError(gate.message);
@@ -1301,6 +1359,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       setBusy(false);
       }
     }
+    if (stale()) {
+      setBusy(false);
+      return;
+    }
     if (method === "card" && !held) {
       const authAmount = order
         ? cardAuthorizationCents(order, settings, amount ? amountCents : null)
@@ -1410,13 +1472,23 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           },
         });
         if (!captured.ok) {
-          setError(captured.error || "The tip could not be captured. The check stays open.");
+          if (stale()) {
+            setBusy(false);
+            return;
+          }
+          setTipCaptureFailed(true);
+          setError(captured.error || TIP_CAPTURE_FAILED);
           setBusy(false);
           return;
         }
         if (captured.transferId) finixTransferId = captured.transferId;
       } catch {
-        setError("The tip could not be captured. The check stays open.");
+        if (stale()) {
+          setBusy(false);
+          return;
+        }
+        setTipCaptureFailed(true);
+        setError(TIP_CAPTURE_FAILED);
         setBusy(false);
         return;
       }
@@ -1431,10 +1503,19 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         bridge: androidPaxBridge(),
       });
       if (!finished.ok) {
+        if (stale()) {
+          setBusy(false);
+          return;
+        }
+        setTipCaptureFailed(true);
         setError(finished.message);
         setBusy(false);
         return;
       }
+    }
+    if (stale()) {
+      setBusy(false);
+      return;
     }
     const closeCents = method === "card" && held ? held.amountCents : Math.min(amountCents, balance);
     const res = takePayment({
@@ -1499,6 +1580,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       setAmount("");
       setTendered("");
     }
+    } finally {
+      payLock.current = false;
+    }
     })();
   };
 
@@ -1519,9 +1603,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
 
   const finish = () => {
     const o = usePosStore.getState().getActiveOrder();
-    if (o?.tableId && o.status === "closed") {
-      // leave as paid for busing
-    }
+    const closed = !o || o.status === "closed";
+    const tableId = closed ? o?.tableId : undefined;
     setDone(false);
     setChange(null);
     setTip(0);
@@ -1531,14 +1614,19 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     setCardReceiptAsk(false);
     setReceiptMsg(null);
     setReceiptEmail("");
+    setTipCaptureFailed(false);
     onOpenChange(false);
-    setView("floor");
+    if (closed) {
+      usePosStore.getState().setActiveOrder(null);
+      setView(tableId ? "floor" : "order");
+    }
   };
 
   const answerCardReceipt = async (yes: boolean) => {
     if (!yes) {
       setCardReceiptAsk(false);
       setReceiptMsg(null);
+      finish();
       return;
     }
     if (!order || receiptBusy) return;
@@ -1553,6 +1641,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       }
       setCardReceiptAsk(false);
       setReceiptBusy(false);
+      finish();
     } catch {
       setReceiptMsg("Print failed. Check the mapped receipt printer.");
       setReceiptBusy(false);
@@ -1658,6 +1747,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       open={open}
       onOpenChange={(o) => {
         if (!o) {
+          payAttempt.current += 1;
+          const current = usePosStore.getState().getActiveOrder();
+          const closed = current?.status === "closed";
+          const tableId = current?.tableId;
+          if (current?.status === "open") releaseCardHold();
           setDone(false);
           setChange(null);
           setTip(0);
@@ -1668,6 +1762,14 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           setReceiptChoice("choose");
           setCardReceiptAsk(false);
           setCheckPrintMsg(null);
+          setTipCaptureFailed(false);
+          setGuestFace(false);
+          onOpenChange(o);
+          if (closed) {
+            usePosStore.getState().setActiveOrder(null);
+            setView(tableId ? "floor" : "order");
+          }
+          return;
         }
         onOpenChange(o);
       }}
@@ -1974,6 +2076,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               tipCents={payTip}
               choice={cardTip}
               onChoice={setCardTip}
+              onApply={cardHoldAuth ? (choice) => pay(undefined, choice) : undefined}
             />
             <GuestSignPad
               onSigned={() => setSigned(true)}
@@ -2000,6 +2103,63 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             <Button variant="ghost" className="w-full" onClick={() => setGuestFace(false)}>
               Back to staff
             </Button>
+            {tipCaptureFailed && cardHoldAuth ? (
+              <div className="grid grid-cols-2 gap-1.5" data-tip-recovery="">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="station-touch min-h-12 whitespace-normal px-1 text-sm"
+                  data-close-no-tip=""
+                  disabled={busy}
+                  onClick={() => pay(undefined, { kind: "none" })}
+                >
+                  Close with no tip
+                </Button>
+                <Button
+                  type="button"
+                  className="station-touch min-h-12"
+                  data-tip-retry=""
+                  disabled={busy}
+                  onClick={() => pay()}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : null}
+            <div className="grid grid-cols-3 gap-1.5" data-pay-exit="">
+              <Button
+                type="button"
+                variant="outline"
+                className="station-touch min-h-12 px-1 text-sm"
+                data-pay-back=""
+                disabled={busy}
+                onClick={() => {
+                  setGuestFace(false);
+                  setError(null);
+                }}
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="station-touch min-h-12 whitespace-normal px-1 text-xs leading-tight"
+                data-pay-try-another=""
+                disabled={busy}
+                onClick={tryAnotherMethod}
+              >
+                Try another method
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="station-touch min-h-12 px-1 text-sm"
+                data-pay-cancel=""
+                onClick={leavePay}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         )}
         </div>
@@ -2153,6 +2313,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       tipCents={payTip}
                       choice={cardTip}
                       onChoice={setCardTip}
+                      onApply={(choice) => pay(undefined, choice)}
                     />
                     </>
                   ) : (
@@ -2472,7 +2633,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 }
                 pay();
               }}
-              disabled={busy || (method === "card" && usbBlocksCard)}
+              disabled={busy || (method === "card" && !cardHoldAuth && usbBlocksCard)}
             >
               {busy && "Present card on Quantum reader…"}
               {!busy && method === "card" && !cardHoldAuth && "Run card"}
@@ -2535,6 +2696,60 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 Void card
               </Button>
             ) : null}
+            {tipCaptureFailed && cardHoldAuth ? (
+              <div className="grid grid-cols-2 gap-1.5" data-tip-recovery="">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="station-touch min-h-12 whitespace-normal px-1 text-sm"
+                  data-close-no-tip=""
+                  disabled={busy}
+                  onClick={() => pay(undefined, { kind: "none" })}
+                >
+                  Close with no tip
+                </Button>
+                <Button
+                  type="button"
+                  className="station-touch min-h-12"
+                  data-tip-retry=""
+                  disabled={busy}
+                  onClick={() => pay()}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : null}
+            <div className="grid grid-cols-3 gap-1.5" data-pay-exit="">
+              <Button
+                type="button"
+                variant="outline"
+                className="station-touch min-h-12 px-1 text-sm"
+                data-pay-back=""
+                disabled={busy}
+                onClick={leavePay}
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="station-touch min-h-12 whitespace-normal px-1 text-xs leading-tight"
+                data-pay-try-another=""
+                disabled={busy}
+                onClick={tryAnotherMethod}
+              >
+                Try another method
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="station-touch min-h-12 px-1 text-sm"
+                data-pay-cancel=""
+                onClick={leavePay}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         ) : null}
       </DialogContent>

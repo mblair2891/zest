@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
@@ -20,25 +20,38 @@ export function CardTipRow({
   tipCents,
   choice,
   onChoice,
+  onApply,
 }: {
   baseCents: number;
   tipCents: number;
   choice: CardTipChoice;
   onChoice: (choice: CardTipChoice) => void;
+  /** When the card is already authorized, a choice captures that tip and closes. */
+  onApply?: (choice: CardTipChoice) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<TipKeyMode>("amount");
   const [buffer, setBuffer] = useState("");
+  const keypadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    keypadRef.current?.scrollIntoView({ block: "nearest" });
+  }, [open]);
+
+  const commit = (next: CardTipChoice) => {
+    setOpen(false);
+    if (next.kind === "none") setBuffer("");
+    onChoice(next);
+    onApply?.(next);
+  };
 
   const pickPercent = (percent: CardTipPercent) => {
-    setOpen(false);
-    onChoice({ kind: "percent", percent });
+    commit({ kind: "percent", percent });
   };
 
   const pickNone = () => {
-    setOpen(false);
-    setBuffer("");
-    onChoice({ kind: "none" });
+    commit({ kind: "none" });
   };
 
   const apply = () => {
@@ -49,13 +62,12 @@ export function CardTipRow({
       return;
     }
     if (mode === "amount") {
-      onChoice({ kind: "custom-amount", cents });
-    } else {
-      const percent = percentFromDigits(buffer);
-      if (percent == null) return;
-      onChoice({ kind: "custom-percent", percent });
+      commit({ kind: "custom-amount", cents });
+      return;
     }
-    setOpen(false);
+    const percent = percentFromDigits(buffer);
+    if (percent == null) return;
+    commit({ kind: "custom-percent", percent });
   };
 
   const pending = tipFromKeypad(buffer, mode, baseCents);
@@ -90,6 +102,7 @@ export function CardTipRow({
               : "outline"
           }
           aria-pressed={choice.kind === "custom-amount" || choice.kind === "custom-percent"}
+          aria-expanded={open}
           className="station-touch h-14 min-h-14 min-w-0 flex-1 basis-0 px-1 text-base font-semibold"
           onClick={() => {
             setBuffer("");
@@ -117,7 +130,11 @@ export function CardTipRow({
         Tip {formatCurrency(tipCents)} · Total {formatCurrency(cardChargeCents(baseCents, tipCents))}
       </p>
       {open ? (
-        <div className="mt-2 space-y-2 rounded-xl border border-border bg-bg p-3" data-card-tip-keypad="">
+        <div
+          ref={keypadRef}
+          className="mt-2 space-y-2 rounded-xl border border-border bg-bg p-3"
+          data-card-tip-keypad=""
+        >
           <div className="flex gap-2">
             <Button
               type="button"

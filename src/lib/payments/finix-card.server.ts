@@ -1,13 +1,15 @@
 /**
  * Quantum Payments card authorization on the Finix rail.
  * Sandbox keys stay on the sandbox host. Live keys run only when the location is live.
- * The check stays open until a paid transfer webhook closes it.
+ * Run card authorizes the check. Apply tip and close captures that authorization.
+ * Training and sandbox close the check after that attempt. A live capture failure leaves the check open.
  */
 import { getSql } from "@/lib/db";
 import { newId } from "@/lib/saas/ids";
 import { ForbiddenError, requireMembership } from "@/lib/saas/tenancy.server";
 import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
 import { authorizeCardPresent, captureAuthorization, voidAuthorization } from "./finix";
+import { TIP_CAPTURE_FAILED, tipCaptureOutcome } from "./tip-capture";
 import { missingFinixKeyMessage, readFinixCreds, type FinixMode } from "./finix-keys";
 import { liveCardGate } from "./finix-events";
 import { envPaymentsDefault, locationLifecycleStatus, parseLocationPaymentsMode, resolvePaymentsMode } from "./mode";
@@ -191,17 +193,30 @@ export async function captureCheckAuthorization(
     tipCents: input.tipCents,
     checkId: input.checkId,
   });
-  if (!captured.ok) return { ok: false, error: captured.error || "The tip could not be captured. The check stays open.", sandbox: captured.sandbox };
-  const sql = await getSql();
-  const amount = Math.max(0, Math.round(input.captureAmountCents));
-  await sql`
-    update summex_payments
-    set status = ${"captured"}, amount_cents = ${amount}
-    where location_id = ${input.locationId}
-      and status = ${"authorized"}
-      and processor_payment_id = ${input.authorizationId}
-  `;
-  return { ok: true, transferId: captured.transferId ?? null, sandbox: captured.sandbox };
+  const outcome = tipCaptureOutcome({
+    sandbox: routed.mode === "sandbox",
+    capturedOk: captured.ok,
+    error: captured.error,
+    transferId: captured.transferId,
+    authorizationId: input.authorizationId,
+  });
+  if (!outcome.ok) {
+    return { ok: false, error: outcome.error || TIP_CAPTURE_FAILED, sandbox: false };
+  }
+  try {
+    const sql = await getSql();
+    const amount = Math.max(0, Math.round(input.captureAmountCents));
+    await sql`
+      update summex_payments
+      set status = ${"captured"}, amount_cents = ${amount}
+      where location_id = ${input.locationId}
+        and status = ${"authorized"}
+        and processor_payment_id = ${input.authorizationId}
+    `;
+  } catch {
+    /* The card is captured. A bookkeeping miss does not keep the check open. */
+  }
+  return { ok: true, transferId: outcome.transferId, sandbox: routed.mode === "sandbox" };
 }
 
 export async function voidCheckAuthorization(

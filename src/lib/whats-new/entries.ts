@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_308_card_tip_close",
+    date: "2026-10-20",
+    title: "Card tip closes the check",
+    summary: "18%, 20%, 25%, Custom, and No tip close the check. Pay can always go back.",
+    body: "After the card is authorized, 18%, 20%, and 25% apply that tip and close the check. Custom opens a keypad. No tip closes with a $0 tip. Apply tip and close captures the card and closes the check. Training closes a sandbox card the same way. Back, Try another method, and Cancel stay on the pay screen, including after a decline. If the tip cannot be captured, the station still offers close with no tip, retry, or cancel. After close, the table updates and the server returns to the floor, or to the order list when the check has no table.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_307_entity_pay_period",
     date: "2026-10-20",
     title: "Per-entity pay periods",

@@ -22,6 +22,11 @@ import {
   redactCardText,
   type ManualCard,
 } from "./manual-card.ts";
+import {
+  TIP_CAPTURE_FAILED,
+  finixAuthorizationAlreadyCaptured,
+  finixEmbeddedMessage,
+} from "./tip-capture.ts";
 
 export type PaymentsProvider = "finix" | "sandbox";
 export type PaymentsOnboardingStatus =
@@ -550,7 +555,7 @@ export async function captureAuthorization(opts: {
   if (!authorizationId) return { ok: false, sandbox, error: "Missing authorization" };
   const captureAmount = Math.max(0, Math.round(opts.captureAmountCents));
   if (captureAmount <= 0) return { ok: false, sandbox, error: "Invalid amount" };
-  const creds = readFinixCreds(mode);
+  const creds = readFinixApiCreds(mode);
   if (!creds.ok) return { ok: false, sandbox, error: missingFinixKeyMessage(creds.missing) };
   const tags: Record<string, string> = {};
   if (opts.checkId) tags.check_id = opts.checkId.slice(0, 80);
@@ -564,10 +569,28 @@ export async function captureAuthorization(opts: {
     "PUT",
     `/authorizations/${encodeURIComponent(authorizationId)}`,
     body,
-    { application: false },
+    { application: false, requireWebhook: false },
   );
   if (!res.ok) {
-    return { ok: false, sandbox, error: transferError(res, "The tip could not be captured. The check stays open.") };
+    const already = finixAuthorizationAlreadyCaptured(res.json);
+    if (already.captured) {
+      return { ok: true, transferId: already.transferId || undefined, sandbox };
+    }
+    const looked = await finixFetch(
+      mode,
+      "GET",
+      `/authorizations/${encodeURIComponent(authorizationId)}`,
+      undefined,
+      { requireWebhook: false },
+    );
+    if (looked.ok) {
+      const again = finixAuthorizationAlreadyCaptured(looked.json);
+      if (again.captured) {
+        return { ok: true, transferId: again.transferId || undefined, sandbox };
+      }
+    }
+    const embedded = finixEmbeddedMessage(res.json) || finixEmbeddedMessage(looked.json);
+    return { ok: false, sandbox, error: embedded || transferError(res, TIP_CAPTURE_FAILED) };
   }
   const transfer = res.json.transfer;
   const transferId = typeof transfer === "string" ? transfer : "";
@@ -583,14 +606,14 @@ export async function voidAuthorization(opts: {
   const sandbox = mode === "sandbox";
   const authorizationId = opts.authorizationId.trim();
   if (!authorizationId) return { ok: false, sandbox, error: "Missing authorization" };
-  const creds = readFinixCreds(mode);
+  const creds = readFinixApiCreds(mode);
   if (!creds.ok) return { ok: false, sandbox, error: missingFinixKeyMessage(creds.missing) };
   const res = await finixFetch(
     mode,
     "PUT",
     `/authorizations/${encodeURIComponent(authorizationId)}`,
     { void_me: true },
-    { application: false },
+    { application: false, requireWebhook: false },
   );
   if (!res.ok) {
     return { ok: false, sandbox, error: transferError(res, "The authorization could not be voided. The check stays open.") };

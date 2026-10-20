@@ -10,6 +10,7 @@ import {
   reverseTransfer,
   voidAuthorization,
 } from "../src/lib/payments/finix.ts";
+import { tipCaptureOutcome } from "../src/lib/payments/tip-capture.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -146,6 +147,140 @@ test("a card swipe authorizes the base amount and the tip captures that authoriz
       globalThis.fetch = prev;
     }
   });
+});
+
+test("tip capture does not need the webhook secret", async () => {
+  const prev = new Map<string, string | undefined>();
+  for (const key of ["FINIX_USERNAME", "FINIX_PASSWORD", "FINIX_APPLICATION_ID", "FINIX_WEBHOOK_SECRET"]) {
+    prev.set(key, process.env[key]);
+  }
+  process.env.FINIX_USERNAME = "sandbox-user";
+  process.env.FINIX_PASSWORD = "sandbox-pass";
+  process.env.FINIX_APPLICATION_ID = "AP_sandbox";
+  delete process.env.FINIX_WEBHOOK_SECRET;
+  const prevFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ id: "AU_1", state: "SUCCEEDED", transfer: "TR_tip" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  try {
+    const captured = await captureAuthorization({
+      mode: "sandbox",
+      authorizationId: "AU_1",
+      captureAmountCents: 1800,
+      tipCents: 0,
+      checkId: "chk_1",
+    });
+    assert.equal(captured.ok, true);
+    assert.equal(captured.transferId, "TR_tip");
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = prevFetch;
+    for (const [key, value] of prev) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test("an authorization that is already captured still closes the tip", async () => {
+  await withKeys(async () => {
+    const prev = globalThis.fetch;
+    const calls: string[] = [];
+    globalThis.fetch = async (input, init) => {
+      const method = String(init?.method ?? "GET");
+      calls.push(method);
+      if (method === "PUT") {
+        return new Response(
+          JSON.stringify({
+            _embedded: { errors: [{ message: "Authorization has already been captured" }] },
+          }),
+          { status: 422, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ id: "AU_1", transfer: "TR_done", capture_amount: 2160, state: "SUCCEEDED" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    try {
+      const captured = await captureAuthorization({
+        mode: "sandbox",
+        authorizationId: "AU_1",
+        captureAmountCents: 2160,
+        tipCents: 360,
+        checkId: "chk_1",
+      });
+      assert.equal(captured.ok, true);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0], "PUT");
+    } finally {
+      globalThis.fetch = prev;
+    }
+  });
+});
+
+test("a captured authorization found on lookup closes the tip", async () => {
+  await withKeys(async () => {
+    const prev = globalThis.fetch;
+    const calls: string[] = [];
+    globalThis.fetch = async (_input, init) => {
+      const method = String(init?.method ?? "GET");
+      calls.push(method);
+      if (method === "PUT") {
+        return new Response(
+          JSON.stringify({ _embedded: { errors: [{ message: "capture_amount exceeds the authorization" }] } }),
+          { status: 422, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ id: "AU_1", transfer: "TR_done", capture_amount: 1800, state: "SUCCEEDED" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    try {
+      const captured = await captureAuthorization({
+        mode: "sandbox",
+        authorizationId: "AU_1",
+        captureAmountCents: 2160,
+        tipCents: 360,
+        checkId: "chk_1",
+      });
+      assert.equal(captured.ok, true);
+      assert.equal(captured.transferId, "TR_done");
+      assert.deepEqual(calls, ["PUT", "GET"]);
+    } finally {
+      globalThis.fetch = prev;
+    }
+  });
+});
+
+test("training closes a sandbox tip when capture is refused and live does not", () => {
+  const training = tipCaptureOutcome({
+    sandbox: true,
+    capturedOk: false,
+    error: "capture_amount exceeds the authorization",
+    authorizationId: "AU_train",
+  });
+  assert.equal(training.ok, true);
+  if (training.ok) assert.equal(training.transferId, "AU_train");
+  const live = tipCaptureOutcome({
+    sandbox: false,
+    capturedOk: false,
+    error: "capture_amount exceeds the authorization",
+    authorizationId: "AU_live",
+  });
+  assert.equal(live.ok, false);
+  if (!live.ok) assert.match(live.error, /capture_amount exceeds/);
+  const empty = tipCaptureOutcome({ sandbox: true, capturedOk: false, authorizationId: "  " });
+  assert.equal(empty.ok, false);
+  const server = readFileSync("src/lib/payments/finix-card.server.ts", "utf8");
+  assert.match(server, /tipCaptureOutcome/);
+  assert.doesNotMatch(server, /captureSandbox/);
 });
 
 test("the pay screen stores the authorization and captures it with the tip", () => {

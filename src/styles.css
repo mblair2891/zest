@@ -340,6 +340,11 @@ html[data-orientation="landscape"] [data-station-pay] {
   max-height: min(18rem, 34dvh);
 }
 
+.station-pay-extra:has([data-card-tip-keypad]) {
+  max-height: min(36rem, 70dvh);
+  flex: 1 1 auto;
+}
+
 .station-pay-actions {
   flex: 0 0 auto;
   display: flex;
