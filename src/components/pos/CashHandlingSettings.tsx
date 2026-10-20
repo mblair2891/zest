@@ -14,6 +14,12 @@ import {
   type HouseDrawerMode,
 } from "@/lib/pos/cash-custody";
 import {
+  DRAWER_SHIFT_MODE_LABEL,
+  DRAWER_SHIFT_MODES,
+  type DrawerShiftMode,
+  type DrawerShiftPolicy,
+} from "@/lib/pos/drawer-shift";
+import {
   CASH_MODEL_BLURB,
   CASH_MODEL_LABEL,
   CASH_MODELS,
@@ -86,6 +92,7 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
   const employees = usePosStore((s) => s.employees);
   const vendors = usePosStore((s) => s.vendors);
   const devices = usePosStore((s) => s.locationDevices ?? []);
+  const floorSections = usePosStore((s) => s.floorSections);
   const cfg = parseCashHandling(settings.cashHandling);
   const printers = devices.filter(
     (d) =>
@@ -173,6 +180,151 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
           ))}
         </select>
       </Field>
+
+      <div data-drawer-shift-settings className="space-y-3 rounded-xl border border-border p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Drawer mode
+        </p>
+        <Field
+          label="Location default"
+          hint="Assigned, Shared, Personal bank, or None. A section or device can override this."
+        >
+          <select
+            className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+            disabled={!write}
+            value={cfg.drawerShift.defaultMode}
+            onChange={(e) =>
+              patch({
+                drawerShift: { ...cfg.drawerShift, defaultMode: e.target.value as DrawerShiftMode },
+              })
+            }
+          >
+            {DRAWER_SHIFT_MODES.map((m) => (
+              <option key={m} value={m}>
+                {DRAWER_SHIFT_MODE_LABEL[m]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {floorSections.map((section) => (
+          <Field key={section.id} label={`${section.name} section`}>
+            <select
+              className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+              disabled={!write}
+              value={cfg.drawerShift.sectionMode[section.id] ?? ""}
+              onChange={(e) => {
+                const sectionMode = { ...cfg.drawerShift.sectionMode };
+                if (!e.target.value) delete sectionMode[section.id];
+                else sectionMode[section.id] = e.target.value as DrawerShiftMode;
+                patch({ drawerShift: { ...cfg.drawerShift, sectionMode } });
+              }}
+            >
+              <option value="">Location default</option>
+              {DRAWER_SHIFT_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {DRAWER_SHIFT_MODE_LABEL[m]}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ))}
+        {stations.map((device) => (
+          <Field key={device.id} label={device.label || "Station"}>
+            <select
+              className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+              disabled={!write}
+              value={cfg.drawerShift.deviceMode[device.id] ?? ""}
+              onChange={(e) => {
+                const deviceMode = { ...cfg.drawerShift.deviceMode };
+                if (!e.target.value) delete deviceMode[device.id];
+                else deviceMode[device.id] = e.target.value as DrawerShiftMode;
+                patch({ drawerShift: { ...cfg.drawerShift, deviceMode } });
+              }}
+            >
+              <option value="">Location default</option>
+              {DRAWER_SHIFT_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {DRAWER_SHIFT_MODE_LABEL[m]}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ))}
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={cfg.drawerShift.allowTransfer}
+            onChange={(e) =>
+              patch({ drawerShift: { ...cfg.drawerShift, allowTransfer: e.target.checked } })
+            }
+          />
+          Allow drawer transfer
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={cfg.drawerShift.requireCountOnTransfer}
+            onChange={(e) =>
+              patch({
+                drawerShift: { ...cfg.drawerShift, requireCountOnTransfer: e.target.checked },
+              })
+            }
+          />
+          Require count on every transfer
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={cfg.drawerShift.requireManagerPinForTransfer}
+            onChange={(e) =>
+              patch({
+                drawerShift: { ...cfg.drawerShift, requireManagerPinForTransfer: e.target.checked },
+              })
+            }
+          />
+          Require manager PIN for transfer
+        </label>
+        <Field label="Variance approval" hint="Leave 0 to skip manager approval. Over this amount needs a manager PIN.">
+          <Input
+            disabled={!write}
+            inputMode="decimal"
+            value={(cfg.drawerShift.varianceApprovalCents / 100).toFixed(2)}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              const varianceApprovalCents = Number.isFinite(n) ? Math.max(0, Math.round(n * 100)) : 0;
+              patch({ drawerShift: { ...cfg.drawerShift, varianceApprovalCents } });
+            }}
+          />
+        </Field>
+        <Field
+          label="Personal bank starting amount"
+          hint="Blank means the employee enters it. A number is the fixed start."
+        >
+          <Input
+            disabled={!write}
+            inputMode="decimal"
+            placeholder="Employee enters"
+            value={
+              cfg.drawerShift.personalBankStartCents == null
+                ? ""
+                : (cfg.drawerShift.personalBankStartCents / 100).toFixed(2)
+            }
+            onChange={(e) => {
+              const raw = e.target.value.trim();
+              const personalBankStartCents =
+                raw === "" ? null : Math.max(0, Math.round((Number(raw) || 0) * 100));
+              const next: DrawerShiftPolicy = { ...cfg.drawerShift, personalBankStartCents };
+              patch({ drawerShift: next });
+            }}
+          />
+        </Field>
+      </div>
 
       <label className="flex items-center gap-2 text-sm">
         <input

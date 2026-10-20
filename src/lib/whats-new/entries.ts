@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_306_drawer_shift",
+    date: "2026-10-20",
+    title: "Cash drawer modes and transfer",
+    summary: "A drawer is Assigned, Shared, Personal bank, or None. Ownership can move mid-shift.",
+    body: "Settings → Cash sets the drawer mode for the location, a section, or a device. Assigned means one owner rings the cash. Shared means other staff can ring that same drawer, and the owner of record stays one person. Personal bank does not kick a drawer. None is for kitchen and busser. Claim the drawer with a blind count. Transfer drawer counts the outgoing cash, the next person counts in or confirms, and the drawer stays open. A manager can reassign with no count. The person who owns it closes it.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "cash-handling",
+    tags: ["cash", "drawer"],
+  },
+  {
     id: "upd_2026_10_305_finix_signature",
     date: "2026-10-19",
     title: "Finix webhook signature",

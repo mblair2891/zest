@@ -28,6 +28,7 @@ import { NightlyIntegrityPanel } from "./NightlyIntegrityPanel";
 import { NO_SALE_REASONS } from "@/lib/pos/loss-prevention";
 import { ApprovalQueue } from "./ApprovalQueue";
 import { TillTransferSection } from "./TillTransferPanel";
+import { DrawerShiftPanel } from "./DrawerShiftPanel";
 import { DRAWER_PIN_DENIED, DRAWER_STAYS_CLOSED } from "@/lib/pos/drawer-open";
 
 export function CashView() {
@@ -293,6 +294,7 @@ export function CashView() {
           Learn
         </GuideLearnLink>
       </div>
+      <DrawerShiftPanel />
 
       {sink.type === "blocked" && (
         <p className="mb-3 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-sm">{sink.reason}</p>

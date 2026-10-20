@@ -8,6 +8,12 @@ import {
   type HouseDrawerMode,
 } from "./cash-custody";
 import {
+  DEFAULT_DRAWER_SHIFT,
+  inferDrawerShiftDefault,
+  parseDrawerShiftPolicy,
+  type DrawerShiftPolicy,
+} from "./drawer-shift";
+import {
   DEFAULT_NO_SALE_ROLES,
   parseNoSaleAllowedRoles,
   type NoSaleRole,
@@ -283,6 +289,8 @@ export type CashHandlingConfig = {
   managerWitnessOnOpen: boolean;
   oneRecountBeforeLock: boolean;
   cannotClockOutInPossession: boolean;
+  /** Assigned / Shared / Personal / None, plus ownership-transfer rules. */
+  drawerShift: DrawerShiftPolicy;
 };
 
 export const DEFAULT_PAID_REASONS = [
@@ -363,6 +371,7 @@ export const DEFAULT_CASH_HANDLING: CashHandlingConfig = {
   managerWitnessOnOpen: false,
   oneRecountBeforeLock: true,
   cannotClockOutInPossession: true,
+  drawerShift: { ...DEFAULT_DRAWER_SHIFT, sectionMode: {}, deviceMode: {} },
 };
 
 function asModel(raw: unknown): CashModel | null {
@@ -504,6 +513,15 @@ export function parseCashHandling(raw: unknown): CashHandlingConfig {
     managerWitnessOnOpen: Boolean(o.managerWitnessOnOpen),
     oneRecountBeforeLock: o.oneRecountBeforeLock !== false,
     cannotClockOutInPossession: o.cannotClockOutInPossession !== false,
+    drawerShift: parseDrawerShiftPolicy(
+      o.drawerShift,
+      o.drawerShift
+        ? undefined
+        : inferDrawerShiftDefault({
+            houseDrawerMode: String(o.houseDrawerMode ?? base.houseDrawerMode),
+            cashModel: defaultModel,
+          }),
+    ),
   };
 }
 

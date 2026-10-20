@@ -116,7 +116,7 @@ import {
   type ManualCard,
 } from "@/lib/payments/manual-card";
 import { cashRoleFromSession, parseCashHandling } from "@/lib/pos/cash-handling";
-import { currentCashSink, useCashSessionStore } from "@/lib/pos/cash-session";
+import { previewCashSale, useCashSessionStore } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { deviceRoleFromSessionMode, parseStationQuery } from "@/lib/pos/device-roles";
 import { odsBlocksTender } from "@/lib/pos/loss-prevention";
@@ -959,25 +959,29 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     }
     if (method === "cash") {
       const cfg = parseCashHandling(settings.cashHandling);
-      const sink = currentCashSink({
-        cfg,
-        emp: emp ?? null,
-        deviceRole: cashRoleFromSession(useStationSessionStore.getState().assignment.kind),
-        deviceId: usePosStore.getState().activeDeviceId,
-        order,
-      });
-      if (sink.type === "blocked") {
-        setError(sink.reason);
-        return;
-      }
-      if (emp && !useCashSessionStore.getState().hasPossession(emp.id)) {
+      const pos = usePosStore.getState();
+      const table = order?.tableId ? pos.tables.find((t) => t.id === order.tableId) : undefined;
+      const possessed = emp ? useCashSessionStore.getState().hasPossession(emp.id) : false;
+      const decision = !emp
+        ? { ok: false as const, error: "Sign in to take cash." }
+        : previewCashSale({
+            cfg,
+            emp,
+            deviceRole: cashRoleFromSession(useStationSessionStore.getState().assignment.kind),
+            deviceId: pos.activeDeviceId,
+            order,
+            paymentMethods: settings.paymentMethods,
+            table,
+          });
+      if (!decision.ok) {
         setError(
-          sink.type === "bank"
+          !possessed && decision.error === "Open your bank first (declare opening cash)."
             ? "Open your bank first (declare opening cash)."
-            : "Take the drawer first (declare opening cash).",
+            : decision.error,
         );
         return;
       }
+      const sink = decision.sink;
       const { useTillCloseoutStore } = await import("@/lib/pos/till-closeout-store");
       const blocked = useTillCloseoutStore.getState().cashBlockedFor(
         sink.type === "drawer" ? sink.drawer.id : `bank:${emp?.id ?? ""}`,

@@ -7,12 +7,26 @@ import {
   type HouseDrawerMode,
 } from "./cash-custody";
 import {
+  drawerById,
   expectedCashCents,
+  isManagerCash,
   parseCashHandling,
   resolveCashSink,
   type CashHandlingConfig,
   type CashSink,
 } from "./cash-handling";
+import {
+  acceptOwnershipTransfer,
+  applyDrawerShiftToSink,
+  claimDrawerDecision,
+  closeOwnershipDecision,
+  forceReassignDecision,
+  ownerKey,
+  ringCashDecision,
+  startOwnershipTransfer,
+  type DrawerShiftMode,
+  type DrawerShiftPolicy,
+} from "./drawer-shift";
 import type { DeviceRole } from "./device-roles";
 import type { Employee, Order } from "./types";
 import { cashTendersOn } from "./payment-methods";
@@ -85,6 +99,34 @@ export type CashPossession = {
   handedFromId?: string | null;
 };
 
+export type DrawerOwner = {
+  drawerId: string;
+  employeeId: string;
+  employeeName: string;
+  since: number;
+  openCountCents: number;
+  closedAt?: number;
+};
+
+export type OwnershipTransfer = {
+  id: string;
+  drawerId: string;
+  fromId: string;
+  fromName: string;
+  toId: string;
+  toName: string;
+  expectedCents: number;
+  outgoingCountCents: number | null;
+  outgoingVarianceCents: number | null;
+  status: "offered" | "accepted" | "cancelled";
+  managerForced: boolean;
+  startedAt: number;
+  acceptedAt?: number;
+  incomingCountCents: number | null;
+  confirmedPrevious: boolean;
+  reason?: string;
+};
+
 export type BankSession = {
   employeeId: string;
   issuedAt: number;
@@ -110,6 +152,8 @@ type CashSessionState = {
   events: CashEvent[];
   floaterWellByEmployee: Record<string, string>;
   possessions: Record<string, CashPossession>;
+  owners: Record<string, DrawerOwner>;
+  ownershipTransfers: OwnershipTransfer[];
   ensureLocation: (locationId: string) => void;
   ensureDrawer: (drawerId: string, startCents: number) => DrawerSession;
   ensureBank: (employeeId: string, startCents: number) => BankSession;
@@ -181,6 +225,62 @@ type CashSessionState = {
   hasPossession: (employeeId: string) => boolean;
   possessionOf: (employeeId: string) => CashPossession | undefined;
   holdersOfDrawer: (drawerId: string) => string[];
+  claimDrawer: (opts: {
+    mode: DrawerShiftMode;
+    employeeId: string;
+    employeeName: string;
+    drawerId: string;
+    countedCents: number | null;
+    policy: DrawerShiftPolicy;
+    houseMode?: HouseDrawerMode;
+  }) => { ok: true; kick: boolean } | { ok: false; error: string };
+  beginOwnershipTransfer: (opts: {
+    drawerId: string;
+    actorId: string;
+    actorName: string;
+    isManager: boolean;
+    managerPinOk: boolean;
+    incomingId: string;
+    incomingName: string;
+    outgoingCountCents: number | null;
+    policy: DrawerShiftPolicy;
+    expectedCents: number;
+  }) =>
+    | { ok: true; transfer: OwnershipTransfer }
+    | { ok: false; error: string };
+  acceptOwnershipTransfer: (opts: {
+    transferId: string;
+    actorId: string;
+    actorName: string;
+    confirmPrevious: boolean;
+    incomingCountCents: number | null;
+    houseMode?: HouseDrawerMode;
+  }) => { ok: true; startCents: number } | { ok: false; error: string };
+  cancelOwnershipTransfer: (opts: {
+    transferId: string;
+    actorId: string;
+    isManager: boolean;
+  }) => { ok: true } | { ok: false; error: string };
+  forceReassignDrawer: (opts: {
+    drawerId: string;
+    actorId: string;
+    incomingId: string;
+    incomingName: string;
+    isManager: boolean;
+    houseMode?: HouseDrawerMode;
+  }) => { ok: true } | { ok: false; error: string };
+  closeOwnedDrawer: (opts: {
+    drawerId: string;
+    actorId: string;
+    actorName: string;
+    countedCents: number | null;
+    expectedCents: number;
+    policy: DrawerShiftPolicy;
+    managerApproved: boolean;
+    personal?: boolean;
+  }) =>
+    | { ok: true; varianceCents: number; flagged: boolean }
+    | { ok: false; error: string; needsManager?: boolean };
 };
 
 function emptyDrawer(drawerId: string, startCents: number): DrawerSession {
@@ -231,6 +331,8 @@ export const useCashSessionStore = create<CashSessionState>()(
       events: [],
       floaterWellByEmployee: {},
       possessions: {},
+      owners: {},
+      ownershipTransfers: [],
 
       ensureLocation: (locationId) => {
         const id = locationId || "loc";
@@ -242,6 +344,8 @@ export const useCashSessionStore = create<CashSessionState>()(
           events: [],
           floaterWellByEmployee: {},
           possessions: {},
+          owners: {},
+          ownershipTransfers: [],
         });
       },
 
@@ -656,9 +760,40 @@ export const useCashSessionStore = create<CashSessionState>()(
         set({ possessions: { ...get().possessions, [p.employeeId]: p } });
         if (p.kind === "personal_bank") {
           get().ensureBank(p.employeeId, p.declaredOpeningCents);
+          const key = `bank:${p.employeeId}`;
+          const owner = (get().owners ?? {})[key];
+          if (!owner || owner.closedAt) {
+            set({
+              owners: {
+                ...(get().owners ?? {}),
+                [key]: {
+                  drawerId: key,
+                  employeeId: p.employeeId,
+                  employeeName: p.employeeId,
+                  since: p.acceptedAt,
+                  openCountCents: p.declaredOpeningCents,
+                },
+              },
+            });
+          }
         }
         if (p.kind === "house_drawer" && p.drawerId) {
           get().ensureDrawer(p.drawerId, p.declaredOpeningCents);
+          const owner = (get().owners ?? {})[p.drawerId];
+          if (!owner || owner.closedAt) {
+            set({
+              owners: {
+                ...(get().owners ?? {}),
+                [p.drawerId]: {
+                  drawerId: p.drawerId,
+                  employeeId: p.employeeId,
+                  employeeName: p.employeeId,
+                  since: p.acceptedAt,
+                  openCountCents: p.declaredOpeningCents,
+                },
+              },
+            });
+          }
         }
         return { ok: true };
       },
@@ -675,6 +810,343 @@ export const useCashSessionStore = create<CashSessionState>()(
         Object.values(get().possessions)
           .filter((p) => p.drawerId === drawerId)
           .map((p) => p.employeeId),
+
+      claimDrawer: (opts) => {
+        const key = ownerKey(opts.mode, opts.drawerId, opts.employeeId);
+        const existing = (get().owners ?? {})[key];
+        const decision = claimDrawerDecision({
+          mode: opts.mode,
+          existingOwnerId: existing && !existing.closedAt ? existing.employeeId : null,
+          ownerClosed: Boolean(existing?.closedAt),
+          countedCents: opts.countedCents,
+          personalBankStartCents: opts.policy.personalBankStartCents,
+        });
+        if (!decision.ok) return decision;
+        const now = Date.now();
+        if (opts.mode === "personal") {
+          const taken = get().acceptPossession(
+            {
+              employeeId: opts.employeeId,
+              kind: "personal_bank",
+              drawerId: null,
+              declaredOpeningCents: decision.startCents,
+              acceptedAt: now,
+            },
+            opts.houseMode,
+          );
+          if (!taken.ok) return taken;
+          get().ensureBank(opts.employeeId, decision.startCents);
+        } else {
+          const taken = get().acceptPossession(
+            {
+              employeeId: opts.employeeId,
+              kind: "house_drawer",
+              drawerId: opts.drawerId,
+              declaredOpeningCents: decision.startCents,
+              acceptedAt: now,
+            },
+            opts.houseMode,
+          );
+          if (!taken.ok) return taken;
+          set({
+            drawers: {
+              ...get().drawers,
+              [opts.drawerId]: emptyDrawer(opts.drawerId, decision.startCents),
+            },
+          });
+        }
+        set({
+          owners: {
+            ...(get().owners ?? {}),
+            [key]: {
+              drawerId: key,
+              employeeId: opts.employeeId,
+              employeeName: opts.employeeName,
+              since: now,
+              openCountCents: decision.startCents,
+            },
+          },
+          events: [
+            {
+              id: uid("csh"),
+              at: now,
+              kind: "count" as const,
+              employeeId: opts.employeeId,
+              employeeName: opts.employeeName,
+              amountCents: decision.startCents,
+              drawerId: opts.mode === "personal" ? null : opts.drawerId,
+              bankEmployeeId: opts.mode === "personal" ? opts.employeeId : null,
+              reason: "ownership_claim",
+            },
+            ...get().events,
+          ].slice(0, 500),
+        });
+        return { ok: true, kick: decision.kick };
+      },
+
+      beginOwnershipTransfer: (opts) => {
+        const owners = get().owners ?? {};
+        const owner = owners[opts.drawerId];
+        const pending = (get().ownershipTransfers ?? []).some(
+          (t) => t.drawerId === opts.drawerId && t.status === "offered",
+        );
+        if (pending) return { ok: false, error: "Finish or cancel the transfer first." };
+        const decision = startOwnershipTransfer({
+          allowTransfer: opts.policy.allowTransfer,
+          actorId: opts.actorId,
+          ownerId: owner && !owner.closedAt ? owner.employeeId : null,
+          isManager: opts.isManager,
+          requireManagerPin: opts.policy.requireManagerPinForTransfer,
+          managerPinOk: opts.managerPinOk,
+          incomingId: opts.incomingId,
+          requireCount: opts.policy.requireCountOnTransfer,
+          outgoingCountCents: opts.outgoingCountCents,
+          expectedCents: opts.expectedCents,
+        });
+        if (!decision.ok) return decision;
+        const now = Date.now();
+        const transfer: OwnershipTransfer = {
+          id: uid("own"),
+          drawerId: opts.drawerId,
+          fromId: owner!.employeeId,
+          fromName: owner!.employeeName,
+          toId: opts.incomingId,
+          toName: opts.incomingName,
+          expectedCents: decision.expectedCents,
+          outgoingCountCents: decision.outgoingCountCents,
+          outgoingVarianceCents: decision.outgoingVarianceCents,
+          status: "offered",
+          managerForced: false,
+          startedAt: now,
+          incomingCountCents: null,
+          confirmedPrevious: false,
+        };
+        set({
+          ownershipTransfers: [transfer, ...(get().ownershipTransfers ?? [])].slice(0, 100),
+          events: [
+            {
+              id: uid("csh"),
+              at: now,
+              kind: "count" as const,
+              employeeId: opts.actorId,
+              employeeName: opts.actorName,
+              amountCents: decision.outgoingCountCents ?? 0,
+              drawerId: opts.drawerId,
+              reason: "ownership_transfer_out",
+              note: `to ${opts.incomingName}`,
+            },
+            ...get().events,
+          ].slice(0, 500),
+        });
+        return { ok: true, transfer };
+      },
+
+      acceptOwnershipTransfer: (opts) => {
+        const row = (get().ownershipTransfers ?? []).find((t) => t.id === opts.transferId);
+        if (!row || row.status !== "offered") return { ok: false, error: "That transfer is not open." };
+        const decision = acceptOwnershipTransfer({
+          actorId: opts.actorId,
+          incomingId: row.toId,
+          confirmPrevious: opts.confirmPrevious,
+          outgoingCountCents: row.outgoingCountCents,
+          expectedCents: row.expectedCents,
+          incomingCountCents: opts.incomingCountCents,
+        });
+        if (!decision.ok) return decision;
+        const outgoing = get().possessionOf(row.fromId);
+        get().releasePossession(row.fromId);
+        const taken = get().acceptPossession(
+          {
+            employeeId: opts.actorId,
+            kind: "house_drawer",
+            drawerId: row.drawerId,
+            declaredOpeningCents: decision.startCents,
+            acceptedAt: Date.now(),
+            handedFromId: row.fromId,
+          },
+          opts.houseMode,
+        );
+        if (!taken.ok) {
+          if (outgoing) get().acceptPossession(outgoing, opts.houseMode);
+          return taken;
+        }
+        const now = Date.now();
+        set({
+          drawers: {
+            ...get().drawers,
+            [row.drawerId]: emptyDrawer(row.drawerId, decision.startCents),
+          },
+          owners: {
+            ...(get().owners ?? {}),
+            [row.drawerId]: {
+              drawerId: row.drawerId,
+              employeeId: opts.actorId,
+              employeeName: opts.actorName,
+              since: now,
+              openCountCents: decision.startCents,
+            },
+          },
+          ownershipTransfers: (get().ownershipTransfers ?? []).map((t) =>
+            t.id === row.id
+              ? {
+                  ...t,
+                  status: "accepted" as const,
+                  acceptedAt: now,
+                  incomingCountCents: opts.confirmPrevious ? decision.startCents : opts.incomingCountCents,
+                  confirmedPrevious: opts.confirmPrevious,
+                }
+              : t,
+          ),
+          events: [
+            {
+              id: uid("csh"),
+              at: now,
+              kind: "count" as const,
+              employeeId: opts.actorId,
+              employeeName: opts.actorName,
+              amountCents: decision.startCents,
+              drawerId: row.drawerId,
+              reason: "ownership_transfer_in",
+              note: `from ${row.fromName}`,
+            },
+            ...get().events,
+          ].slice(0, 500),
+        });
+        return { ok: true, startCents: decision.startCents };
+      },
+
+      cancelOwnershipTransfer: (opts) => {
+        const row = (get().ownershipTransfers ?? []).find((t) => t.id === opts.transferId);
+        if (!row || row.status !== "offered") return { ok: false, error: "That transfer is not open." };
+        if (opts.actorId !== row.fromId && !opts.isManager) {
+          return { ok: false, error: "Only the owner or a manager can cancel this transfer." };
+        }
+        set({
+          ownershipTransfers: (get().ownershipTransfers ?? []).map((t) =>
+            t.id === row.id ? { ...t, status: "cancelled" as const } : t,
+          ),
+        });
+        return { ok: true };
+      },
+
+      forceReassignDrawer: (opts) => {
+        const owner = (get().owners ?? {})[opts.drawerId];
+        const decision = forceReassignDecision({
+          isManager: opts.isManager,
+          incomingId: opts.incomingId,
+          ownerId: owner && !owner.closedAt ? owner.employeeId : null,
+        });
+        if (!decision.ok) return decision;
+        const outgoing = owner ? get().possessionOf(owner.employeeId) : undefined;
+        if (owner && !owner.closedAt) get().releasePossession(owner.employeeId);
+        const taken = get().acceptPossession(
+          {
+            employeeId: opts.incomingId,
+            kind: "house_drawer",
+            drawerId: opts.drawerId,
+            declaredOpeningCents: owner?.openCountCents ?? 0,
+            acceptedAt: Date.now(),
+            handedFromId: owner?.employeeId,
+          },
+          opts.houseMode,
+        );
+        if (!taken.ok) {
+          if (outgoing) get().acceptPossession(outgoing, opts.houseMode);
+          return taken;
+        }
+        const now = Date.now();
+        const transfer: OwnershipTransfer = {
+          id: uid("own"),
+          drawerId: opts.drawerId,
+          fromId: owner?.employeeId ?? "",
+          fromName: owner?.employeeName ?? "",
+          toId: opts.incomingId,
+          toName: opts.incomingName,
+          expectedCents: 0,
+          outgoingCountCents: null,
+          outgoingVarianceCents: null,
+          status: "accepted",
+          managerForced: true,
+          startedAt: now,
+          acceptedAt: now,
+          incomingCountCents: null,
+          confirmedPrevious: false,
+          reason: "manager action",
+        };
+        set({
+          owners: {
+            ...(get().owners ?? {}),
+            [opts.drawerId]: {
+              drawerId: opts.drawerId,
+              employeeId: opts.incomingId,
+              employeeName: opts.incomingName,
+              since: now,
+              openCountCents: owner?.openCountCents ?? 0,
+            },
+          },
+          ownershipTransfers: [transfer, ...(get().ownershipTransfers ?? [])].slice(0, 100),
+          events: [
+            {
+              id: uid("csh"),
+              at: now,
+              kind: "transfer" as const,
+              employeeId: opts.actorId,
+              employeeName: opts.incomingName,
+              amountCents: 0,
+              drawerId: opts.drawerId,
+              reason: "manager action",
+              note: `${owner?.employeeName ?? "none"} → ${opts.incomingName}`,
+            },
+            ...get().events,
+          ].slice(0, 500),
+        });
+        return { ok: true };
+      },
+
+      closeOwnedDrawer: (opts) => {
+        const owner = (get().owners ?? {})[opts.drawerId];
+        const pending = (get().ownershipTransfers ?? []).some(
+          (t) => t.drawerId === opts.drawerId && t.status === "offered",
+        );
+        const decision = closeOwnershipDecision({
+          actorId: opts.actorId,
+          ownerId: owner && !owner.closedAt ? owner.employeeId : null,
+          countedCents: opts.countedCents,
+          expectedCents: opts.expectedCents,
+          varianceApprovalCents: opts.policy.varianceApprovalCents,
+          managerApproved: opts.managerApproved,
+          pendingTransfer: pending,
+        });
+        if (!decision.ok) return decision;
+        const now = Date.now();
+        if (opts.personal) {
+          get().countBank({
+            employeeId: opts.actorId,
+            countedById: opts.actorId,
+            countedByName: opts.actorName,
+            countedCents: Math.round(opts.countedCents ?? 0),
+            note: decision.flagged ? "variance" : undefined,
+            close: true,
+          });
+        } else {
+          get().countDrawer({
+            drawerId: opts.drawerId,
+            employeeId: opts.actorId,
+            employeeName: opts.actorName,
+            countedCents: Math.round(opts.countedCents ?? 0),
+            note: decision.flagged ? "variance" : undefined,
+            close: true,
+          });
+        }
+        get().releasePossession(opts.actorId);
+        set({
+          owners: {
+            ...(get().owners ?? {}),
+            [opts.drawerId]: { ...owner!, closedAt: now },
+          },
+        });
+        return { ok: true, varianceCents: decision.varianceCents, flagged: decision.flagged };
+      },
     }),
     {
       name: "summex-cash-session-v1",
@@ -687,6 +1159,8 @@ export const useCashSessionStore = create<CashSessionState>()(
         events: s.events.slice(0, 200),
         floaterWellByEmployee: s.floaterWellByEmployee,
         possessions: s.possessions,
+        owners: s.owners,
+        ownershipTransfers: (s.ownershipTransfers ?? []).slice(0, 50),
       }),
     },
   ),
@@ -694,6 +1168,67 @@ export const useCashSessionStore = create<CashSessionState>()(
 
 export function cashConfigFromSettings(raw: unknown): CashHandlingConfig {
   return parseCashHandling(raw);
+}
+
+export function previewCashSale(opts: {
+  cfg: CashHandlingConfig;
+  emp: Employee;
+  deviceRole: DeviceRole | null;
+  deviceId?: string | null;
+  order?: Pick<Order, "type" | "id" | "tableId"> | null;
+  paymentMethods?: unknown;
+  table?: import("@/lib/print/printer-assignment").TableRef;
+}): { ok: true; kick: boolean; sink: CashSink } | { ok: false; error: string } {
+  const sink = currentCashSink({
+    cfg: opts.cfg,
+    emp: opts.emp,
+    deviceRole: opts.deviceRole,
+    deviceId: opts.deviceId,
+    order: opts.order,
+  });
+  if (sink.type === "blocked") return { ok: false, error: sink.reason };
+  if (!cashTendersOn(opts.paymentMethods)) {
+    return { ok: false, error: "Cash is off at this venue." };
+  }
+  const sectionId = opts.table && "sectionId" in opts.table ? opts.table.sectionId : null;
+  const shifted = applyDrawerShiftToSink({
+    policy: opts.cfg.drawerShift,
+    deviceId: opts.deviceId,
+    sectionId,
+    sinkType: sink.type,
+  });
+  if (shifted.use === "blocked") {
+    return { ok: false, error: shifted.error ?? "This station does not handle cash." };
+  }
+  const store = useCashSessionStore.getState();
+  const manager = isManagerCash(opts.emp.role);
+  if (shifted.use === "bank") {
+    const key = ownerKey("personal", "", opts.emp.id);
+    const owner = (store.owners ?? {})[key];
+    const open = Boolean(owner && !owner.closedAt);
+    if (!open && !store.hasPossession(opts.emp.id) && opts.cfg.drawerShift.personalBankStartCents == null) {
+      return { ok: false, error: "Open your bank first (declare opening cash)." };
+    }
+    return { ok: true, kick: false, sink: { type: "bank", employeeId: opts.emp.id } };
+  }
+  let drawer = sink.type === "drawer" ? sink.drawer : null;
+  if (!drawer) {
+    const assigned = opts.deviceId ? opts.cfg.deviceAssignment[opts.deviceId] : undefined;
+    if (assigned?.startsWith("drawer:")) drawer = drawerById(opts.cfg, assigned.slice(7)) ?? null;
+    drawer = drawer ?? opts.cfg.drawers[0] ?? null;
+  }
+  if (!drawer) return { ok: false, error: "No drawer is configured." };
+  const owner = (store.owners ?? {})[drawer.id];
+  const ownerOpen = Boolean(owner && !owner.closedAt);
+  const ring = ringCashDecision({
+    mode: shifted.mode,
+    employeeId: opts.emp.id,
+    ownerId: ownerOpen ? owner!.employeeId : null,
+    isManager: manager,
+    ownerClosed: Boolean(owner?.closedAt) && !ownerOpen,
+  });
+  if (!ring.ok) return ring;
+  return { ok: true, kick: ring.kick, sink: { type: "drawer", drawer } };
 }
 
 export function applyCashTender(opts: {
@@ -710,26 +1245,10 @@ export function applyCashTender(opts: {
   table?: import("@/lib/print/printer-assignment").TableRef;
   sections?: import("@/lib/print/printer-assignment").SectionRef[];
 }): { ok: true; skimOver?: boolean } | { ok: false; error: string } {
-  const sink = currentCashSink({
-    cfg: opts.cfg,
-    emp: opts.emp,
-    deviceRole: opts.deviceRole,
-    deviceId: opts.deviceId,
-    order: opts.order,
-  });
+  const decision = previewCashSale(opts);
+  if (!decision.ok) return decision;
+  const sink = decision.sink;
   if (sink.type === "blocked") return { ok: false, error: sink.reason };
-  if (!cashTendersOn(opts.paymentMethods)) {
-    return { ok: false, error: "Cash is off at this venue." };
-  }
-  if (!useCashSessionStore.getState().hasPossession(opts.emp.id)) {
-    return {
-      ok: false,
-      error:
-        sink.type === "bank"
-          ? "Open your bank first (declare opening cash)."
-          : "Take the drawer first (declare opening cash).",
-    };
-  }
   const blocked = tillCashBlocked?.(
     sink.type === "drawer" ? sink.drawer.id : `bank:${opts.emp.id}`,
     sink.type === "bank" ? opts.emp.id : null,
@@ -738,14 +1257,33 @@ export function applyCashTender(opts: {
     return { ok: false, error: "This till is closing. New cash sales are blocked." };
   }
   const store = useCashSessionStore.getState();
-  if (sink.type === "bank" && opts.cfg.issueBank === "first_cash_sale") {
-    const b = store.banks[opts.emp.id];
-    if (!b || b.closedAt) {
-      store.issueBank({
-        employeeId: opts.emp.id,
-        employeeName: opts.emp.name,
-        startCents: opts.cfg.serverBankStartingCents,
-      });
+  if (sink.type === "bank") {
+    const key = ownerKey("personal", "", opts.emp.id);
+    const owner = (store.owners ?? {})[key];
+    if (!owner || owner.closedAt) {
+      const start = opts.cfg.drawerShift.personalBankStartCents;
+      if (start != null || !store.hasPossession(opts.emp.id)) {
+        const claimed = store.claimDrawer({
+          mode: "personal",
+          employeeId: opts.emp.id,
+          employeeName: opts.emp.name,
+          drawerId: key,
+          countedCents: start,
+          policy: opts.cfg.drawerShift,
+          houseMode: opts.cfg.houseDrawerMode,
+        });
+        if (!claimed.ok && !store.hasPossession(opts.emp.id)) return claimed;
+      }
+    }
+    if (opts.cfg.issueBank === "first_cash_sale") {
+      const b = useCashSessionStore.getState().banks[opts.emp.id];
+      if (!b || b.closedAt) {
+        store.issueBank({
+          employeeId: opts.emp.id,
+          employeeName: opts.emp.name,
+          startCents: opts.cfg.drawerShift.personalBankStartCents ?? opts.cfg.serverBankStartingCents,
+        });
+      }
     }
   }
   if (sink.type === "drawer") {
@@ -760,6 +1298,7 @@ export function applyCashTender(opts: {
     refund: opts.refund,
   });
   if (
+    decision.kick &&
     sink.type === "drawer" &&
     opts.cfg.openOnCashSale !== "never" &&
     !opts.cfg.drawerOpenRequiresManager
