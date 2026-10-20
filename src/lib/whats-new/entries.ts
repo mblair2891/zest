@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_304_card_auth_capture",
+    date: "2026-10-19",
+    title: "Card auth then capture",
+    summary: "A card swipe authorizes the check. The tip is captured when the check closes.",
+    body: "Pay, then swipe or tap the card. That authorizes the check amount. The tip is not included yet. Enter the tip and close the check. That captures the same authorization for the check plus the tip. Void the card, or void the check, before that capture and the authorization is released. Every authorization, transfer, and reversal sends its own idempotency id.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_303_pay_check",
     date: "2026-10-19",
     title: "Compact Pay check",

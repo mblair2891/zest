@@ -5,9 +5,13 @@
  */
 import { getSql } from "@/lib/db";
 import { newId } from "@/lib/saas/ids";
-import { authorizeCardPresent } from "./finix";
+import { ForbiddenError, requireMembership } from "@/lib/saas/tenancy.server";
+import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
+import { authorizeCardPresent, captureAuthorization, voidAuthorization } from "./finix";
 import { missingFinixKeyMessage, readFinixCreds, type FinixMode } from "./finix-keys";
 import { liveCardGate } from "./finix-events";
+import { envPaymentsDefault, locationLifecycleStatus, parseLocationPaymentsMode, resolvePaymentsMode } from "./mode";
+import { finixCaptureRoute } from "./training-rail";
 import type { CardPresentInput, CardPresentResult } from "./types";
 
 export async function captureFinixCardPresent(opts: {
@@ -79,7 +83,6 @@ export async function captureFinixCardPresent(opts: {
     merchantId,
     amountCents: opts.input.amountCents,
     readerId: opts.readerId,
-    idempotencyId: opts.input.clientMutationId || undefined,
     checkId: opts.input.checkId,
     splits: opts.splits,
   });
@@ -122,7 +125,107 @@ export async function captureFinixCardPresent(opts: {
     status: "authorized",
     sandbox,
     paymentId: id,
+    authorizationId: authorized.id,
     last4: authorized.last4,
     hostBrand: opts.input.hostBrand ?? undefined,
   };
+}
+
+function setupOf(raw: unknown): LocationSetup {
+  if (!raw || typeof raw !== "object") return { ...EMPTY_LOCATION_SETUP };
+  return { ...EMPTY_LOCATION_SETUP, ...(raw as LocationSetup) };
+}
+
+async function modeForCheck(opts: {
+  userId: string;
+  locationId: string;
+  orgId: string;
+}): Promise<{ ok: true; mode: FinixMode } | { ok: false; error: string }> {
+  const sql = await getSql();
+  const rows = await sql<{ org_id: string; setup: unknown; lifecycle_status: string | null }>`
+    select org_id, setup, lifecycle_status from locations where id = ${opts.locationId} limit 1
+  `;
+  const loc = rows[0];
+  if (!loc) return { ok: false, error: "Location not found" };
+  if (loc.org_id !== opts.orgId) throw new ForbiddenError("Location mismatch");
+  await requireMembership(opts.userId, loc.org_id, undefined, opts.locationId);
+  const setup = setupOf(loc.setup);
+  const resolved = resolvePaymentsMode({
+    platformDefault: envPaymentsDefault(),
+    locationOverride: parseLocationPaymentsMode(setup.paymentsMode),
+    lifecycleStatus: locationLifecycleStatus(setup, loc.lifecycle_status),
+  });
+  const locationLive = locationLifecycleStatus(setup, loc.lifecycle_status) === "live";
+  const route = finixCaptureRoute({
+    locationLive,
+    paymentsMode: resolved.mode,
+    sandboxKeys: readFinixCreds("sandbox").ok,
+    liveKeys: readFinixCreds("live").ok,
+  });
+  if (!route.ok) {
+    const missing = route.reason === "missing-live" ? readFinixCreds("live") : readFinixCreds("sandbox");
+    const key = missing.ok ? "FINIX_USERNAME" : missing.missing;
+    return { ok: false, error: missingFinixKeyMessage(key) };
+  }
+  return { ok: true, mode: route.mode };
+}
+
+export async function captureCheckAuthorization(
+  userId: string,
+  input: {
+    locationId: string;
+    orgId: string;
+    authorizationId: string;
+    captureAmountCents: number;
+    tipCents: number;
+    checkId?: string;
+    paymentId?: string;
+  },
+): Promise<{ ok: true; transferId: string | null; sandbox: boolean } | { ok: false; error: string; sandbox: boolean }> {
+  const routed = await modeForCheck({ userId, locationId: input.locationId, orgId: input.orgId });
+  if (!routed.ok) return { ok: false, error: routed.error, sandbox: true };
+  const captured = await captureAuthorization({
+    mode: routed.mode,
+    authorizationId: input.authorizationId,
+    captureAmountCents: input.captureAmountCents,
+    tipCents: input.tipCents,
+    checkId: input.checkId,
+  });
+  if (!captured.ok) return { ok: false, error: captured.error || "The tip could not be captured. The check stays open.", sandbox: captured.sandbox };
+  const sql = await getSql();
+  const amount = Math.max(0, Math.round(input.captureAmountCents));
+  await sql`
+    update summex_payments
+    set status = ${"captured"}, amount_cents = ${amount}
+    where location_id = ${input.locationId}
+      and status = ${"authorized"}
+      and processor_payment_id = ${input.authorizationId}
+  `;
+  return { ok: true, transferId: captured.transferId ?? null, sandbox: captured.sandbox };
+}
+
+export async function voidCheckAuthorization(
+  userId: string,
+  input: {
+    locationId: string;
+    orgId: string;
+    authorizationId: string;
+    checkId?: string;
+  },
+): Promise<{ ok: true; sandbox: boolean } | { ok: false; error: string; sandbox: boolean }> {
+  const routed = await modeForCheck({ userId, locationId: input.locationId, orgId: input.orgId });
+  if (!routed.ok) return { ok: false, error: routed.error, sandbox: true };
+  const voided = await voidAuthorization({ mode: routed.mode, authorizationId: input.authorizationId });
+  if (!voided.ok) {
+    return { ok: false, error: voided.error || "The authorization could not be voided. The check stays open.", sandbox: voided.sandbox };
+  }
+  const sql = await getSql();
+  await sql`
+    update summex_payments
+    set status = ${"voided"}
+    where location_id = ${input.locationId}
+      and status = ${"authorized"}
+      and processor_payment_id = ${input.authorizationId}
+  `;
+  return { ok: true, sandbox: voided.sandbox };
 }

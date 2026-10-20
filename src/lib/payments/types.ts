@@ -61,6 +61,8 @@ export type CardPresentResult = {
   status: CardPresentStatus;
   sandbox: boolean;
   paymentId?: string;
+  /** Finix authorization id stored on the check until capture. */
+  authorizationId?: string;
   last4?: string | null;
   error?: string;
   hostBrand?: string;

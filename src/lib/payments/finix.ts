@@ -188,6 +188,35 @@ export function finixWebhookSecret(mode: FinixMode = "sandbox"): string | undefi
   return readWebhookSecret(mode);
 }
 
+/** POST /authorizations, POST /transfers, and POST /transfers/{id}/reversals. */
+export function finixPostsIdempotencyId(path: string): boolean {
+  const bare = path.split("?")[0] ?? path;
+  if (bare === "/authorizations" || bare === "/transfers") return true;
+  return /^\/transfers\/[^/]+\/reversals$/.test(bare);
+}
+
+export type FinixIdempotencyLog = {
+  method: string;
+  path: string;
+  idempotencyId: string;
+};
+
+const finixIdempotencyLog: FinixIdempotencyLog[] = [];
+
+export function finixIdempotencyLogEntries(): readonly FinixIdempotencyLog[] {
+  return finixIdempotencyLog;
+}
+
+export function resetFinixIdempotencyLog(): void {
+  finixIdempotencyLog.length = 0;
+}
+
+function rememberFinixIdempotency(entry: FinixIdempotencyLog): void {
+  finixIdempotencyLog.push(entry);
+  if (finixIdempotencyLog.length > 200) finixIdempotencyLog.shift();
+  console.info(`finix ${entry.method} ${entry.path} idempotency_id=${entry.idempotencyId}`);
+}
+
 export { finixModeForLocation, missingFinixKeyMessage, readFinixCreds };
 export type { FinixMode };
 
@@ -208,11 +237,17 @@ async function finixFetch(
     return { ok: false, status: 0, json: { error, missing: creds.missing }, body: "", error };
   }
   const auth = Buffer.from(`${creds.creds.username}:${creds.creds.password}`).toString("base64");
-  const payload = body
+  const payload: Record<string, unknown> | undefined = body
     ? opts?.application === false
-      ? body
+      ? { ...body }
       : { application: creds.creds.applicationId, ...body }
     : undefined;
+  if (payload && method === "POST" && finixPostsIdempotencyId(path)) {
+    const idempotencyId = crypto.randomUUID();
+    payload.idempotency_id = idempotencyId;
+    const bare = path.split("?")[0] ?? path;
+    rememberFinixIdempotency({ method, path: bare, idempotencyId });
+  }
   const res = await fetch(`${finixOrigin(mode)}${path}`, {
     method,
     headers: {
@@ -469,8 +504,10 @@ export async function authorizeCardPresent(opts: {
     tags: opts.checkId ? { check_id: opts.checkId.slice(0, 80) } : undefined,
   };
   const readerId = String(opts.readerId ?? "").trim();
-  if (readerId) body.device = readerId;
-  if (opts.idempotencyId) body.idempotency_id = opts.idempotencyId.slice(0, 80);
+  if (readerId) {
+    body.device = readerId;
+    body.operation_key = "CARD_PRESENT_AUTHORIZATION";
+  }
   if (others.length) {
     body.split_transfers = others.map((s) => ({
       merchant: s.merchantId,
@@ -494,6 +531,95 @@ export async function authorizeCardPresent(opts: {
       ?.last4 || (res.json as { last_four?: string }).last_four;
   const last4 = last4raw ? String(last4raw).replace(/\D/g, "").slice(-4) || null : null;
   return { ok: true, id, last4, sandbox };
+}
+
+/**
+ * Capture an open authorization for the check plus the tip.
+ * The tip is not a second sale.
+ */
+export async function captureAuthorization(opts: {
+  authorizationId: string;
+  captureAmountCents: number;
+  tipCents?: number;
+  checkId?: string | null;
+  mode?: FinixMode;
+}): Promise<{ ok: boolean; transferId?: string; error?: string; sandbox: boolean }> {
+  const mode = opts.mode ?? "sandbox";
+  const sandbox = mode === "sandbox";
+  const authorizationId = opts.authorizationId.trim();
+  if (!authorizationId) return { ok: false, sandbox, error: "Missing authorization" };
+  const captureAmount = Math.max(0, Math.round(opts.captureAmountCents));
+  if (captureAmount <= 0) return { ok: false, sandbox, error: "Invalid amount" };
+  const creds = readFinixCreds(mode);
+  if (!creds.ok) return { ok: false, sandbox, error: missingFinixKeyMessage(creds.missing) };
+  const tags: Record<string, string> = {};
+  if (opts.checkId) tags.check_id = opts.checkId.slice(0, 80);
+  if (opts.tipCents != null && Number.isFinite(opts.tipCents)) {
+    tags.tip_amount = String(Math.max(0, Math.round(opts.tipCents)));
+  }
+  const body: Record<string, unknown> = { capture_amount: captureAmount };
+  if (Object.keys(tags).length) body.tags = tags;
+  const res = await finixFetch(
+    mode,
+    "PUT",
+    `/authorizations/${encodeURIComponent(authorizationId)}`,
+    body,
+    { application: false },
+  );
+  if (!res.ok) {
+    return { ok: false, sandbox, error: transferError(res, "The tip could not be captured. The check stays open.") };
+  }
+  const transfer = res.json.transfer;
+  const transferId = typeof transfer === "string" ? transfer : "";
+  return { ok: true, transferId: transferId || undefined, sandbox };
+}
+
+/** Release an authorization that was never captured. */
+export async function voidAuthorization(opts: {
+  authorizationId: string;
+  mode?: FinixMode;
+}): Promise<{ ok: boolean; error?: string; sandbox: boolean }> {
+  const mode = opts.mode ?? "sandbox";
+  const sandbox = mode === "sandbox";
+  const authorizationId = opts.authorizationId.trim();
+  if (!authorizationId) return { ok: false, sandbox, error: "Missing authorization" };
+  const creds = readFinixCreds(mode);
+  if (!creds.ok) return { ok: false, sandbox, error: missingFinixKeyMessage(creds.missing) };
+  const res = await finixFetch(
+    mode,
+    "PUT",
+    `/authorizations/${encodeURIComponent(authorizationId)}`,
+    { void_me: true },
+    { application: false },
+  );
+  if (!res.ok) {
+    return { ok: false, sandbox, error: transferError(res, "The authorization could not be voided. The check stays open.") };
+  }
+  return { ok: true, sandbox };
+}
+
+/** Refund a captured transfer. Each reversal gets its own idempotency id. */
+export async function reverseTransfer(opts: {
+  transferId: string;
+  refundAmountCents: number;
+  mode?: FinixMode;
+}): Promise<{ ok: boolean; reversalId?: string; error?: string; sandbox: boolean }> {
+  const mode = opts.mode ?? "sandbox";
+  const sandbox = mode === "sandbox";
+  const transferId = opts.transferId.trim();
+  const refundAmount = Math.max(0, Math.round(opts.refundAmountCents));
+  if (!transferId || refundAmount <= 0) return { ok: false, sandbox, error: "Invalid reversal" };
+  const creds = readFinixCreds(mode);
+  if (!creds.ok) return { ok: false, sandbox, error: missingFinixKeyMessage(creds.missing) };
+  const res = await finixFetch(mode, "POST", `/transfers/${encodeURIComponent(transferId)}/reversals`, {
+    refund_amount: refundAmount,
+  });
+  if (!res.ok) {
+    return { ok: false, sandbox, error: transferError(res, "Reversal failed") };
+  }
+  const reversalId = typeof res.json.id === "string" ? res.json.id : "";
+  if (!reversalId) return { ok: false, sandbox, error: "Reversal failed" };
+  return { ok: true, reversalId, sandbox };
 }
 
 /** One guest authorization; each vendor merchant is paid for the lines it owns. */
@@ -540,7 +666,8 @@ export async function createSplitTransfer(opts: {
 }
 
 /**
- * Sandbox sale from a typed card. Uses the sandbox username and password.
+ * Sandbox authorization from a typed card. The tip is captured later.
+ * Uses the sandbox username and password.
  * The card number is not logged and is not stored. Live keys are not used.
  */
 export async function chargeManualCardOnFinix(opts: {
@@ -583,19 +710,16 @@ export async function chargeManualCardOnFinix(opts: {
   }
   const last4raw = (instrument.json as { last_four?: string }).last_four;
   const last4 = last4raw ? String(last4raw).replace(/\D/g, "").slice(-4) : opts.card.number.slice(-4);
-  const transfer = await finixFetch(
-    "sandbox",
-    "POST",
-    "/transfers",
-    manualTransferBody({
-      amountCents: opts.amountCents,
-      merchantId,
-      sourceId,
-      checkId: opts.checkId,
-      splits: opts.splits,
-    }),
-    { requireWebhook: false },
-  );
+  const authBody = manualTransferBody({
+    amountCents: opts.amountCents,
+    merchantId,
+    sourceId,
+    checkId: opts.checkId,
+    splits: opts.splits,
+  });
+  const transfer = await finixFetch("sandbox", "POST", "/authorizations", authBody, {
+    requireWebhook: false,
+  });
   if (!transfer.ok || !manualTransferApproved(transfer.json)) {
     return { ok: false, error: fail(transfer.json, "Card was not approved. The check stays open.") };
   }

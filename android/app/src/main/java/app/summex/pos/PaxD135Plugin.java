@@ -574,7 +574,7 @@ public class PaxD135Plugin extends Plugin {
             Log.i("PaxD135", "SDK sale start cents " + amount);
             current.startTransaction(
                 amount,
-                TransactionType.SALE,
+                TransactionType.AUTHORIZATION,
                 new MPOSTransactionCallback() {
                     @Override
                     public void onProcessing(String message) {

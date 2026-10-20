@@ -421,6 +421,7 @@ export async function recordPaxSale(
     amountCents: number;
     readerId: string;
     merchantId: string;
+    status?: "authorized" | "captured";
   },
 ): Promise<{ ok: true; duplicate: boolean; transferId: string } | { ok: false; error: string }> {
   const loc = await loadLoc(input.locationId);
@@ -433,8 +434,8 @@ export async function recordPaxSale(
     select processor_payment_id from summex_payments
     where location_id = ${loc.id}
       and check_id = ${input.checkId}
-      and status = ${"captured"}
       and method = ${"card"}
+      and status in (${"authorized"}, ${"captured"})
     limit 1
   `;
   if (prior[0]?.processor_payment_id) {
@@ -453,7 +454,7 @@ export async function recordPaxSale(
       ${input.merchantId},
       ${Math.max(0, Math.round(input.amountCents))},
       ${"usd"},
-      ${"captured"},
+      ${input.status === "authorized" ? "authorized" : "captured"},
       ${"card"},
       ${last4},
       ${"quantum_payments"},

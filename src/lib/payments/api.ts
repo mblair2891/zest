@@ -231,6 +231,7 @@ export const recordPaxSaleFn = createServerFn({ method: "POST" })
     amountCents: number;
     readerId: string;
     merchantId: string;
+    status?: "authorized" | "captured";
   }) => ({
     locationId: loc(d.locationId),
     orgId: String(d.orgId ?? "").trim().slice(0, 80),
@@ -240,6 +241,7 @@ export const recordPaxSaleFn = createServerFn({ method: "POST" })
     amountCents: Math.max(0, Math.round(Number(d.amountCents) || 0)),
     readerId: String(d.readerId ?? "").trim().slice(0, 80),
     merchantId: String(d.merchantId ?? "").trim().slice(0, 80),
+    status: d.status === "authorized" ? ("authorized" as const) : ("captured" as const),
   }))
   .handler(async ({ context, data }) => {
     const { recordPaxSale } = await import("./pax-d135.server");
@@ -294,6 +296,48 @@ export const captureCardPresentFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }): Promise<CardPresentResult> => {
     const { captureCardPresent } = await import("./facade.server");
     return captureCardPresent(context.userId, data);
+  });
+
+export const captureCheckAuthorizationFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    locationId: string;
+    orgId: string;
+    authorizationId: string;
+    captureAmountCents: number;
+    tipCents: number;
+    checkId?: string;
+    paymentId?: string;
+  }) => ({
+    locationId: loc(d.locationId),
+    orgId: String(d.orgId ?? "").trim().slice(0, 80),
+    authorizationId: String(d.authorizationId ?? "").trim().slice(0, 80),
+    captureAmountCents: Math.max(0, Math.round(Number(d.captureAmountCents) || 0)),
+    tipCents: Math.max(0, Math.round(Number(d.tipCents) || 0)),
+    checkId: d.checkId ? String(d.checkId).slice(0, 80) : undefined,
+    paymentId: d.paymentId ? String(d.paymentId).slice(0, 80) : undefined,
+  }))
+  .handler(async ({ context, data }) => {
+    const { captureCheckAuthorization } = await import("./finix-card.server");
+    return captureCheckAuthorization(context.userId, data);
+  });
+
+export const voidCheckAuthorizationFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    locationId: string;
+    orgId: string;
+    authorizationId: string;
+    checkId?: string;
+  }) => ({
+    locationId: loc(d.locationId),
+    orgId: String(d.orgId ?? "").trim().slice(0, 80),
+    authorizationId: String(d.authorizationId ?? "").trim().slice(0, 80),
+    checkId: d.checkId ? String(d.checkId).slice(0, 80) : undefined,
+  }))
+  .handler(async ({ context, data }) => {
+    const { voidCheckAuthorization } = await import("./finix-card.server");
+    return voidCheckAuthorization(context.userId, data);
   });
 
 export const chargeManualCardFn = createServerFn({ method: "POST" })

@@ -1,5 +1,6 @@
 /**
- * Sandbox manual card sale. Training and sandbox locations only.
+ * Sandbox manual card authorization. The tip is captured when the check closes.
+ * Training and sandbox locations only.
  * The card number is sent to the processor and is not stored.
  */
 import { getSql } from "@/lib/db";

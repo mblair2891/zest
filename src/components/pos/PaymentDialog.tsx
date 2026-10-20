@@ -23,6 +23,7 @@ import { captureIsSandbox } from "@/lib/lifecycle/store";
 import {
   cancelSquareCheckoutFn,
   captureCardPresentFn,
+  captureCheckAuthorizationFn,
   chargeManualCardFn,
   squareCheckoutStatusFn,
   startSquareCheckoutFn,
@@ -31,6 +32,7 @@ import {
   listPaxReadersFn,
   paxReaderSessionFn,
   recordPaxSaleFn,
+  voidCheckAuthorizationFn,
   sendGuestReceiptFn,
   sendGuestReceiptSmsFn,
 } from "@/lib/payments/api";
@@ -873,18 +875,46 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       setBusy(true);
       setError(null);
       try {
-        const { androidPaxBridge } = await import("@/lib/payments/pax-d135-native");
-        const result = await runAndroidPaxVoid({
-          link: "usb",
-          usbAttached: true,
-          transferId: auth.finixTransferId || "",
-          amountCents: auth.amountCents,
-          bridge: androidPaxBridge(),
-        });
-        if (!result.ok) {
-          setError(result.message);
+        const ctx = readTenantPosContext();
+        const locationId = usePosStore.getState().tenantLocationId || ctx?.locationId || "";
+        const orgId = ctx?.orgId || "";
+        const authorizationToVoid = auth.authorizationId || auth.finixTransferId || "";
+        let released = false;
+        if ((!locationId || !orgId || !authorizationToVoid) && cardLink !== "usb") {
+          setError("The authorization could not be voided. The check stays open.");
           setBusy(false);
           return;
+        }
+        if (locationId && orgId && authorizationToVoid) {
+          const voided = await voidCheckAuthorizationFn({
+            data: {
+              locationId,
+              orgId,
+              authorizationId: authorizationToVoid,
+              checkId: order.id,
+            },
+          });
+          released = voided.ok;
+          if (!voided.ok && cardLink !== "usb") {
+            setError(voided.error || "The authorization could not be voided. The check stays open.");
+            setBusy(false);
+            return;
+          }
+        }
+        if (!released && cardLink === "usb") {
+          const { androidPaxBridge } = await import("@/lib/payments/pax-d135-native");
+          const result = await runAndroidPaxVoid({
+            link: "usb",
+            usbAttached: true,
+            transferId: auth.finixTransferId || authorizationToVoid,
+            amountCents: auth.amountCents,
+            bridge: androidPaxBridge(),
+          });
+          if (!result.ok) {
+            setError(result.message);
+            setBusy(false);
+            return;
+          }
         }
         usePosStore.getState().setCardAuth(order.id, null);
         clearSessionCardAuth(order.id);
@@ -966,6 +996,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     let cardLast4 = method === "card" ? last4 || undefined : undefined;
     let squarePaymentId: string | undefined;
     let finixTransferId: string | undefined;
+    let authorizationId: string | undefined;
     let quantumPaymentId: string | undefined;
     let paxJournal: { readerId: string; merchantId: string; locationId: string; orgId: string } | null = null;
     const held =
@@ -990,6 +1021,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       cardLast4 = held.last4 || cardLast4;
       squarePaymentId = held.squarePaymentId;
       finixTransferId = held.finixTransferId;
+      authorizationId = held.authorizationId || held.finixTransferId;
       quantumPaymentId = held.paymentId;
     } else if (method === "card" && manualCard) {
       const ctx = readTenantPosContext();
@@ -1049,6 +1081,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         }
         cardLast4 = charged.last4 || manualCard.number.slice(-4);
         finixTransferId = charged.transferId;
+        authorizationId = charged.transferId;
       } catch (err) {
         const detail = err instanceof Error ? err.message.trim() : "";
         setError(
@@ -1197,6 +1230,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           }
           cardLast4 = sale.last4 || undefined;
           finixTransferId = sale.transferId;
+          authorizationId = sale.transferId;
           paxJournal = {
             readerId: linkNow.reader?.finixDeviceId || "",
             merchantId: linkNow.reader?.finixMerchantId || "",
@@ -1251,6 +1285,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         }
         cardLast4 = cap.last4 || cardLast4;
         if (cap.paymentId) quantumPaymentId = cap.paymentId;
+        if (cap.authorizationId) {
+          finixTransferId = cap.authorizationId;
+          authorizationId = cap.authorizationId;
+        }
       } catch {
         setError("Card requires connection. Take cash or keep the check open.");
         setBusy(false);
@@ -1266,6 +1304,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       const auth: CardAuthHold = {
         last4: cardLast4,
         finixTransferId,
+        authorizationId: authorizationId || finixTransferId,
         squarePaymentId,
         paymentId: quantumPaymentId,
         amountCents: authAmount,
@@ -1288,6 +1327,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               amountCents: authAmount,
               readerId: paxJournal.readerId,
               merchantId: paxJournal.merchantId,
+              status: "authorized",
             },
           });
         } catch {
@@ -1339,7 +1379,45 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         setBusy(false);
       }
     }
-    if (method === "card" && held && cardLink === "usb" && settings.cardProcessor !== "square") {
+    const authToCapture =
+      method === "card" && held && settings.cardProcessor !== "square" && !squarePaymentId
+        ? authorizationId || held.authorizationId || held.finixTransferId || ""
+        : "";
+    if (authToCapture && held) {
+      const ctx = readTenantPosContext();
+      const locationId = usePosStore.getState().tenantLocationId || ctx?.locationId || "";
+      const orgId = ctx?.orgId || "";
+      if (!locationId || !orgId) {
+        setError("Card requires connection. Take cash or keep the check open.");
+        setBusy(false);
+        return;
+      }
+      setBusy(true);
+      try {
+        const captured = await captureCheckAuthorizationFn({
+          data: {
+            locationId,
+            orgId,
+            authorizationId: authToCapture,
+            captureAmountCents: held.amountCents + payTip,
+            tipCents: payTip,
+            checkId: order?.id,
+            paymentId: quantumPaymentId,
+          },
+        });
+        if (!captured.ok) {
+          setError(captured.error || "The tip could not be captured. The check stays open.");
+          setBusy(false);
+          return;
+        }
+        if (captured.transferId) finixTransferId = captured.transferId;
+      } catch {
+        setError("The tip could not be captured. The check stays open.");
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+    } else if (method === "card" && held && cardLink === "usb" && settings.cardProcessor !== "square") {
       const { androidPaxBridge } = await import("@/lib/payments/pax-d135-native");
       const finished = await runAndroidPaxCapture({
         link: "usb",
@@ -1367,6 +1445,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       last4: cardLast4,
       squarePaymentId,
       finixTransferId,
+      authorizationId: authorizationId || held?.authorizationId,
       giftCardCode: method === "gift_card" ? giftCode : undefined,
       serverGift,
     });
@@ -2440,13 +2519,13 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 ) : null}
               </>
             ) : null}
-            {method === "card" && cardHoldAuth && cardLink === "usb" ? (
+            {method === "card" && cardHoldAuth ? (
               <Button
                 type="button"
                 variant="outline"
                 className="station-touch min-h-12 w-full"
                 data-void-card=""
-                disabled={busy || usbAttached !== true}
+                disabled={busy || (cardLink === "usb" && usbAttached !== true)}
                 onClick={voidUsbCard}
               >
                 Void card

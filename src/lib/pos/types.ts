@@ -608,6 +608,8 @@ export interface OrderLine {
 export interface CardAuthHold {
   last4?: string;
   finixTransferId?: string;
+  /** Finix authorization from the swipe. Capture uses this id. */
+  authorizationId?: string;
   squarePaymentId?: string;
   paymentId?: string;
   amountCents: number;
@@ -630,8 +632,10 @@ export interface Payment {
   processor?: "quantum_payments" | "zest_payments" | "square";
   /** Square Terminal payment id. Absent on cash, gift, and Finix. */
   squarePaymentId?: string;
-  /** Finix transfer id from a PAX D135 sandbox sale. */
+  /** Finix transfer id from a captured authorization, or the authorization id until capture. */
   finixTransferId?: string;
+  /** Finix authorization created when the card was presented. */
+  authorizationId?: string;
   /** Guest-facing brand on the charge (host, never an operator) */
   chargeBrand?: string;
   /** True while location or operator is in Training — Quantum Payments sandbox */

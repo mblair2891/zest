@@ -2,6 +2,7 @@ import { create, type StoreApi, type UseBoundStore } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
 import { PAX_MSG } from "@/lib/payments/pax-d135";
+import { releaseCardAuthorization } from "@/lib/payments/release-card-auth";
 import { homeViewForEmployee, homeViewForRole } from "./rbac";
 import {
 	deviceRoleFromSessionMode,
@@ -3121,7 +3122,18 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (!applied.ok) return applied;
 		const voidedIds = applied.lines.filter((l: any) => l.voided).map((l: any) => l.id);
 		const planned = applyTicketVoids(tickets, order.id, voidedIds);
-		const nextOrder = { ...order, status: "voided", lines: applied.lines, closedAt: Date.now() };
+		releaseCardAuthorization({
+			auth: order.cardAuth,
+			checkId: order.id,
+			locationId: get().tenantLocationId || "",
+		});
+		const nextOrder = {
+			...order,
+			status: "voided",
+			lines: applied.lines,
+			closedAt: Date.now(),
+			cardAuth: undefined,
+		};
 		const nextOrders = get().orders.map((o: any) => o.id === order.id ? nextOrder : o);
 		const tableIds = [order.tableId, ...(order.mergedTableIds ?? [])].filter(Boolean);
 		rememberFloorSnapshot(order.id, floorSnap(get));
@@ -3180,8 +3192,13 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		const applied = applyOpenCheckAction(order.lines, "comp", reason, compReasonsFor(cfg));
 		if (!applied.ok) return applied;
+		releaseCardAuthorization({
+			auth: order.cardAuth,
+			checkId: order.id,
+			locationId: get().tenantLocationId || "",
+		});
 		const approver = get().managerAuthEmployeeName || opts?.approval?.approverName || get().getCurrentEmployee()?.name;
-		const nextOrder = { ...order, lines: applied.lines };
+		const nextOrder = { ...order, lines: applied.lines, cardAuth: undefined };
 		const stacked = stackedCompCents(nextOrder);
 		const late = isLateWindowComp(order, amt, cfg);
 		const sentAt = Math.max(0, ...order.lines.map((l: any) => l.firedAt || (l.sent ? l.createdAt : 0)));
@@ -3522,7 +3539,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		floorSync("check", order.id);
 		if (order.tableId) floorSync("table", order.tableId);
 	},
-	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, squarePaymentId, finixTransferId, giftCardCode, houseAccountId, serverGift, keepOpen }) => {
+	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, squarePaymentId, finixTransferId, authorizationId, giftCardCode, houseAccountId, serverGift, keepOpen }) => {
 		const order = get().getActiveOrder();
 		const emp = get().getCurrentEmployee();
 		if (!order || !emp) return {
@@ -3696,6 +3713,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			last4,
 			squarePaymentId: method === "card" ? squarePaymentId : undefined,
 			finixTransferId: method === "card" && finixTransferId ? finixTransferId : undefined,
+			authorizationId: method === "card" && authorizationId ? authorizationId : undefined,
 			giftCardCode,
 			houseAccountId,
 			at: Date.now(),

@@ -423,6 +423,7 @@ export interface PosStore {
     last4?: string;
     squarePaymentId?: string;
     finixTransferId?: string;
+    authorizationId?: string;
     giftCardCode?: string;
     houseAccountId?: string;
     serverGift?: boolean;
