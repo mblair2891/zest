@@ -50,7 +50,13 @@ import { cn, formatCurrency, formatTime } from "@/lib/utils";
 import { NO_SECTION_RECEIPT } from "@/lib/print/from-store";
 import { clusterNumbers, partyHeader, tableToken } from "@/lib/pos/table-combine";
 import { displayLabel, groupMembers } from "@/lib/pos/table-groups";
-import { computeDualTotals, computeTotals } from "@/lib/pos/calculations";
+import {
+  computeDualTotals,
+  computeTotals,
+  lineCardCents,
+  lineCashCents,
+  policyForLine,
+} from "@/lib/pos/calculations";
 import {
   activeGrantForTable,
   policyOf,
@@ -96,6 +102,9 @@ import {
   type CheckHoldKind,
 } from "@/lib/pos/check-integrity";
 
+/** Last table opened on a tablet floor. Survives Back to floor and a remount. */
+let floorFocusTableId: string | null = null;
+
 function pipelineLabel(status: string): string {
   const n = normalizeTableStatus(status);
   if (n === "reserved") return "Reserved";
@@ -108,6 +117,8 @@ export function FloorView({
   mapOnly = false,
   preferMine,
   onBusyNav,
+  openCheckTableId = null,
+  onFloorCheckClose,
 }: {
   hostStand?: boolean;
   chromeActions?: boolean;
@@ -117,6 +128,10 @@ export function FloorView({
   preferMine?: boolean;
   /** Busy-night bar: Send returns to Floor; Add opens Menu; Pay opens Pay. */
   onBusyNav?: (dest: "floor" | "menu" | "pay") => void;
+  /** Checks tab: open this table’s full-screen check. */
+  openCheckTableId?: string | null;
+  /** Clears that request when the check screen closes. */
+  onFloorCheckClose?: () => void;
 }) {
   const tables = usePosStore((s) => s.tables);
   const floorRoom = usePosStore((s) => s.floorRoom);
@@ -236,6 +251,28 @@ export function FloorView({
   const detailLive = detail
     ? (tables.find((t) => t.id === detail.id) ?? detail)
     : null;
+
+  const dismissDetail = () => {
+    if (detail) floorFocusTableId = detail.id;
+    setDetail(null);
+    setQrOpen(false);
+    if (mapOnly) onFloorCheckClose?.();
+  };
+
+  const checkRequest = useRef<string | null>(null);
+  useEffect(() => {
+    if (!mapOnly) return;
+    if (!openCheckTableId) {
+      checkRequest.current = null;
+      return;
+    }
+    if (checkRequest.current === openCheckTableId) return;
+    const t = tables.find((row) => row.id === openCheckTableId);
+    if (!t) return;
+    checkRequest.current = openCheckTableId;
+    floorFocusTableId = t.id;
+    setDetail(t);
+  }, [mapOnly, openCheckTableId, tables]);
 
   useEffect(() => {
     void import("@/lib/pos/station-busy").then((m) => m.setStationFloorSheetOpen(Boolean(detailLive)));
@@ -418,6 +455,7 @@ export function FloorView({
       setTransferMode(false);
       return;
     }
+    floorFocusTableId = t.id;
     setDetail(t);
   };
 
@@ -440,7 +478,11 @@ export function FloorView({
     }
     setSeatOpen(false);
     setSeatTarget(null);
-    setDetail(null);
+    if (mapOnly && onBusyNav) {
+      floorFocusTableId = seatTarget.id;
+      return;
+    }
+    dismissDetail();
     if (mapOnly) onBusyNav?.("menu");
   };
 
@@ -535,7 +577,7 @@ export function FloorView({
     : [];
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden" data-demo="floor" data-checklist-focus="floor" tabIndex={-1}>
+    <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden" data-demo="floor" data-checklist-focus="floor" tabIndex={-1}>
       {!mapOnly && (
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="mr-2 text-sm font-semibold">
@@ -749,6 +791,7 @@ export function FloorView({
             <FloorMapCanvas
               items={mapItems}
               focusSection={namedSection}
+              selectedId={floorFocusTableId}
               onTableClick={onTableClick}
               onCombine={(draggedId, ontoId) => {
                 withManager((pin) => joinParty(draggedId, ontoId, pin));
@@ -1264,25 +1307,292 @@ export function FloorView({
         )}
       </div>
 
+      {mapOnly && detailLive && (
+        <div
+          className="absolute inset-0 z-40 flex min-h-0 flex-col bg-[#f6f3ec] text-foreground"
+          data-floor-sheet="check"
+          data-floor-check="screen"
+        >
+          <header className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-3">
+            <button
+              type="button"
+              data-back-floor
+              className="station-touch inline-flex min-h-16 shrink-0 items-center rounded-2xl bg-foreground px-5 text-lg font-semibold text-background"
+              onClick={dismissDetail}
+            >
+              Back to floor
+            </button>
+            <div className="min-w-0">
+              <h2 className="truncate text-2xl font-semibold leading-tight">
+                {detailLive.kind === "barstool" || detailLive.shape === "bar" ? "Seat" : "Table"} {detailLive.label}
+              </h2>
+              <p className="truncate text-base font-medium" data-floor-sheet-meta>
+                {openChecksOnTable(detailLive, orders).length > 0
+                  ? "CHECK OPEN"
+                  : pipelineLabel(detailLive.status)}
+                {" · "}
+                {detailLive.guestCount || detailLive.seats} covers · {detailLive.section}
+                {employees.find((e) => e.id === detailLive.serverId)?.name
+                  ? ` · ${employees.find((e) => e.id === detailLive.serverId)?.name}`
+                  : ""}
+              </p>
+            </div>
+          </header>
+          <div className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-2">
+            <TableDetailBody
+              table={detailLive}
+              openChecks={groupMembers(tables, detailLive.id).flatMap((t) => openChecksOnTable(t, orders))}
+              settings={settings}
+              employees={employees}
+              floorCfg={floorCfg}
+              canStatus={canStatus}
+              canSeat={canSeat}
+              canOrder={canOrderEntry}
+              canClean={canBusClean}
+              qrMode={qrMode}
+              demoType={demoType}
+              qrOpen={qrOpen}
+              clock={clock}
+              busy
+              compact
+              onOpenCheck={(orderId) => {
+                if (!canOrderEntry) {
+                  showBlocked(detailLive, "This PIN cannot open a table order.");
+                  return;
+                }
+                const res = selectTable(detailLive.id, orderId);
+                if (!res.ok) {
+                  showBlocked(detailLive, res.error ?? "Outside your section");
+                  return;
+                }
+              }}
+              onNewCheck={() => {
+                if (!canOrderEntry) {
+                  showBlocked(detailLive, "This PIN cannot open a table order.");
+                  return;
+                }
+                const res = newCheckOnTable(detailLive.id);
+                if (!res.ok) {
+                  showBlocked(detailLive, res.error ?? "Could not open a check");
+                  return;
+                }
+                floorFocusTableId = detailLive.id;
+              }}
+              onPrintCheck={(orderId) => {
+                const section = detailLive.section?.trim() || "this section";
+                void import("@/lib/print/from-store").then(async (m) => {
+                  const r = await m.printGuestCheck(orderId);
+                  if (r.ok) {
+                    toast.success(`Sending to ${r.sentTo || `${section} receipt printer`}`);
+                  } else {
+                    toast.error(r.error || NO_SECTION_RECEIPT);
+                  }
+                });
+              }}
+              onPrintAll={() => {
+                const checks = openChecksOnTable(detailLive, orders);
+                const section = detailLive.section?.trim() || "this section";
+                void import("@/lib/print/from-store").then(async (m) => {
+                  let ok = 0;
+                  let err = "";
+                  for (const c of checks) {
+                    const r = await m.printGuestCheck(c.id);
+                    if (r.ok) ok += 1;
+                    else err = r.error || NO_SECTION_RECEIPT;
+                  }
+                  if (ok) toast.success(`Sending to ${section} receipt printer`);
+                  if (err) toast.error(err);
+                  if (!ok && !err) toast.error(NO_SECTION_RECEIPT);
+                });
+              }}
+              onAdd={(orderId) => {
+                if (!canOrderEntry) {
+                  showBlocked(detailLive, "This PIN cannot open a table order.");
+                  return;
+                }
+                const res = selectTable(detailLive.id, orderId);
+                if (!res.ok) {
+                  showBlocked(detailLive, res.error ?? "Outside your section");
+                  return;
+                }
+                dismissDetail();
+                onBusyNav?.("menu");
+              }}
+              onAddEmpty={() => {
+                if (!canOrderEntry) {
+                  showBlocked(detailLive, "This PIN cannot open a table order.");
+                  return;
+                }
+                const openNow = openChecksOnTable(detailLive, usePosStore.getState().orders);
+                if (openNow.length === 0) {
+                  if (tableIsVacant(detailLive, usePosStore.getState().orders)) {
+                    const covers = Math.max(1, Math.min(2, detailLive.seats || 2));
+                    const seated = seatTable(detailLive.id, covers);
+                    if (!seated.ok) {
+                      showBlocked(detailLive, seated.error ?? "Cannot seat");
+                      return;
+                    }
+                  } else {
+                    const opened = newCheckOnTable(detailLive.id);
+                    if (!opened.ok) {
+                      showBlocked(detailLive, opened.error ?? "Could not open a check");
+                      return;
+                    }
+                  }
+                }
+                const id = usePosStore.getState().activeOrderId;
+                if (!id) return;
+                const res = selectTable(detailLive.id, id);
+                if (!res.ok) {
+                  showBlocked(detailLive, res.error ?? "Outside your section");
+                  return;
+                }
+                dismissDetail();
+                onBusyNav?.("menu");
+              }}
+              onSend={(orderId) => {
+                if (!canOrderEntry) {
+                  showBlocked(detailLive, "This PIN cannot send.");
+                  return;
+                }
+                const res = selectTable(detailLive.id, orderId);
+                if (!res.ok) {
+                  showBlocked(detailLive, res.error ?? "Outside your section");
+                  return;
+                }
+                const sent = usePosStore.getState().sendOrder();
+                if (!sent?.ok) {
+                  toast.error(sent?.error || "Nothing to send");
+                  return;
+                }
+                dismissDetail();
+                if (onBusyNav) onBusyNav("floor");
+                else usePosStore.getState().setActiveOrder(null);
+              }}
+              onPay={(orderId) => {
+                if (!canOrderEntry) {
+                  showBlocked(detailLive, "This PIN cannot take pay.");
+                  return;
+                }
+                const res = selectTable(detailLive.id, orderId);
+                if (!res.ok) {
+                  showBlocked(detailLive, res.error ?? "Outside your section");
+                  return;
+                }
+                dismissDetail();
+                if (onBusyNav) onBusyNav("pay");
+              }}
+              onSeat={() => {
+                const access = tableAccess(detailLive.id, "seat");
+                if (!access.ok) {
+                  showBlocked(detailLive, access.reason ?? "Outside your section");
+                  return;
+                }
+                const covers = Math.max(1, Math.min(2, detailLive.seats || 2));
+                const res = seatTable(detailLive.id, covers);
+                if (!res.ok) {
+                  showBlocked(detailLive, res.error ?? "Cannot seat");
+                  return;
+                }
+                floorFocusTableId = detailLive.id;
+              }}
+              onPartySize={() => {
+                const access = tableAccess(detailLive.id, "seat");
+                if (!access.ok) {
+                  showBlocked(detailLive, access.reason ?? "Outside your section");
+                  return;
+                }
+                setSeatTarget(detailLive);
+                setGuests(Math.min(detailLive.seats, 2));
+                setSeatServerId(preferredServerId(detailLive.section));
+                setSeatOpen(true);
+              }}
+              onClean={() => {
+                const res = markClean(detailLive.id);
+                if (res && res.ok === false) alert(res.error);
+                else dismissDetail();
+              }}
+              onStatus={(st) => {
+                const res = setTableStatus(detailLive.id, st);
+                if (!res.ok) alert(res.error);
+                if (st === "food_delivered") deliverReadyTicketsForTable(detailLive.id);
+              }}
+              onToggleQr={() => setQrOpen((v) => !v)}
+              onWaitlist={
+                isHostStand ? () => { dismissDetail(); setView("waitlist"); } : undefined
+              }
+              onRelease={() => {
+                setOfferTo(
+                  serversForSection(detailLive.section).find((e) => e.id !== emp?.id)?.id ?? "",
+                );
+                setOfferMode("staff");
+                setOfferHold("left_to_close");
+                setOfferReason(CHECK_HOLD_REASONS.left_to_close[0] ?? "Table needed");
+                setOfferErr(null);
+                setOfferOpen(true);
+              }}
+              onAccept={() => {
+                const res = acceptTable(detailLive.id);
+                if (!res.ok) alert(res.error);
+              }}
+              canRelease={
+                openChecksOnTable(detailLive, orders).length > 0 &&
+                !detailLive.releasedAt &&
+                (emp?.role === "server" ||
+                  emp?.role === "bartender" ||
+                  emp?.role === "owner" ||
+                  emp?.role === "manager" ||
+                  emp?.role === "host") &&
+                (canForceReassign ||
+                  emp?.role === "host" ||
+                  detailLive.serverId === emp?.id)
+              }
+              canAccept={!!detailLive.releasedAt && (emp?.role === "server" || emp?.role === "bartender" || canAssignServer)}
+              releasedByName={detailLive.releasedByName}
+              serverName={employees.find((e) => e.id === detailLive.serverId)?.name}
+              reassignOptions={canForceReassign ? floorServers : []}
+              reassignId={reassignId}
+              onReassignId={setReassignId}
+              onReassign={() => {
+                if (!reassignId) return;
+                const res = reassignTable(detailLive.id, reassignId);
+                if (!res.ok) alert(res.error);
+                else setReassignId("");
+              }}
+              partyLabel={partyHeader(tables, detailLive.id)}
+              onMoveChecks={
+                (detailLive.mergedChildIds?.length ?? 0) > 0
+                  ? () => {
+                      withManager((pin) => moveClusterChecksToPrimary(detailLive.id, pin));
+                    }
+                  : undefined
+              }
+              onSplitGroup={
+                (detailLive.mergedChildIds?.length ?? 0) > 0
+                  ? () => setSeparateOpen(true)
+                  : undefined
+              }
+            />
+          </div>
+        </div>
+      )}
+
       <Dialog
-        open={!!detailLive}
+        open={!!detailLive && !mapOnly}
         onOpenChange={(o) => {
-          if (!o) {
-            setDetail(null);
-            setQrOpen(false);
-          }
+          if (!o) dismissDetail();
         }}
       >
         <DialogContent
-          data-floor-sheet={mapOnly || !layout.twoCol ? "seat" : undefined}
-          overlayClassName={mapOnly || !layout.twoCol ? "bg-black/25" : undefined}
+          data-floor-sheet={!layout.twoCol ? "seat" : undefined}
+          overlayClassName={!layout.twoCol ? "bg-black/25" : undefined}
           className={
-            mapOnly || !layout.twoCol
+            !layout.twoCol
               ? "bottom-0 left-0 right-0 top-auto max-h-[min(56dvh,30rem)] w-full max-w-none translate-x-0 translate-y-0 gap-2 rounded-b-none rounded-t-2xl p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] landscape:max-h-[min(46dvh,22rem)]"
               : "max-h-[90dvh] gap-3 overflow-y-auto p-4"
           }
         >
-          {detailLive && (
+          {detailLive && !mapOnly && (
             <>
               <DialogHeader className="gap-0.5 pr-8">
                 <DialogTitle className="text-xl leading-none">
@@ -1822,6 +2132,7 @@ function TableDetailBody({
   onAdd,
   onSend,
   onPay,
+  onAddEmpty,
   onPartySize,
   compact = false,
 }: {
@@ -1864,6 +2175,8 @@ function TableDetailBody({
   onAdd?: (orderId: string) => void;
   onSend?: (orderId: string) => void;
   onPay?: (orderId: string) => void;
+  /** Empty table: seat or open, then go add items. The check stays open. */
+  onAddEmpty?: () => void;
   onPartySize?: () => void;
   /** Tablet sheet: skip the extra status card. The header already names the table. */
   compact?: boolean;
@@ -1885,9 +2198,12 @@ function TableDetailBody({
     serverName ||
     employees.find((e) => e.id === table.serverId)?.name ||
     openChecks[0]?.serverName;
+  const dualPicked = picked ? computeDualTotals(picked, settings) : null;
+  const visibleLines = picked?.lines.filter((line) => !line.voided) ?? [];
+  const unsent = Boolean(picked?.lines.some((line) => !line.sent && !line.voided && !line.held));
 
   return (
-    <div className="space-y-2" data-demo="table-detail">
+    <div className={cn(busy ? "flex min-h-0 flex-1 flex-col gap-2" : "space-y-2")} data-demo="table-detail">
       {!compact && (
       <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-bg px-3 py-1.5">
         <span className="text-sm font-semibold">
@@ -1901,7 +2217,71 @@ function TableDetailBody({
       </div>
       )}
       {busy && (
-        <div className="grid grid-cols-2 gap-2" data-busy-actions>
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background" data-check-items>
+          {openChecks.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto border-b border-border p-2">
+              {openChecks.map((check) => (
+                <button
+                  key={check.id}
+                  type="button"
+                  className={cn(
+                    "station-touch min-h-12 shrink-0 rounded-xl px-4 text-base font-semibold",
+                    picked?.id === check.id ? "bg-foreground text-background" : "bg-surface",
+                  )}
+                  onClick={() => setPickedId(check.id)}
+                >
+                  #{check.number}
+                </button>
+              ))}
+            </div>
+          )}
+          {visibleLines.length === 0 ? (
+            <p className="px-4 py-8 text-center text-lg text-muted-foreground">No items yet</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {visibleLines.map((line) => {
+                const cash = lineCashCents(line);
+                const card = lineCardCents(line, policyForLine(settings, line));
+                return (
+                  <li key={line.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                    <span className="min-w-0 text-lg leading-snug">
+                      <span className="font-semibold tabular">{line.quantity}</span> {line.name}
+                      {line.sent ? "" : " · unsent"}
+                      {line.modifiers.length > 0 && (
+                        <span className="mt-0.5 block text-sm text-muted-foreground">
+                          {line.modifiers.map((mod) => mod.optionName).join(", ")}
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-right text-sm font-semibold tabular">
+                      <span className="block">Cash {formatCurrency(cash)}</span>
+                      <span className="block text-muted-foreground">Card {formatCurrency(card)}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+      {busy && (
+        <div className="grid shrink-0 grid-cols-2 gap-3 rounded-2xl border border-border bg-background px-4 py-3" data-check-totals>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cash</p>
+            <p className="text-2xl font-semibold tabular leading-none">
+              {formatCurrency(dualPicked?.cash.totalCents ?? 0)}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Card</p>
+            <p className="text-2xl font-semibold tabular leading-none">
+              {formatCurrency(dualPicked?.card.totalCents ?? 0)}
+            </p>
+          </div>
+        </div>
+      )}
+      {busy && (
+        <div className="grid shrink-0 grid-cols-2 gap-2" data-busy-actions>
           {empty && canSeat && (
             <Button
               className="station-touch col-span-2 h-16 text-xl font-semibold"
@@ -1921,42 +2301,44 @@ function TableDetailBody({
               Mark cleaned
             </Button>
           )}
-          {hasOpen && picked && (
-            <>
-              <Button
-                className="station-touch h-16 text-lg font-semibold"
-                onClick={() => onAdd?.(picked.id)}
-                data-add
-              >
-                Add
-              </Button>
-              <Button
-                className="station-touch h-16 text-lg font-semibold"
-                disabled={!picked.lines.some((l) => !l.sent && !l.voided && !l.held)}
-                onClick={() => onSend?.(picked.id)}
-                data-send
-              >
-                Send
-              </Button>
-              <Button
-                className="station-touch h-16 text-lg font-semibold"
-                onClick={() => onPrintCheck(picked.id)}
-                data-print-check={picked.id}
-              >
-                Print check
-              </Button>
-              <Button
-                className="station-touch h-16 text-lg font-semibold"
-                onClick={() => onPay?.(picked.id)}
-                data-pay
-              >
-                Pay
-              </Button>
-            </>
-          )}
+          <Button
+            className="station-touch h-16 text-lg font-semibold"
+            disabled={!canOrder || (!picked && !empty && !occupiedNoCheck)}
+            onClick={() => {
+              if (picked) onAdd?.(picked.id);
+              else onAddEmpty?.();
+            }}
+            data-add
+          >
+            Add
+          </Button>
+          <Button
+            className="station-touch h-16 text-lg font-semibold"
+            disabled={!picked || !unsent}
+            onClick={() => picked && onSend?.(picked.id)}
+            data-send
+          >
+            Send
+          </Button>
+          <Button
+            className="station-touch h-16 text-lg font-semibold"
+            disabled={!picked}
+            onClick={() => picked && onPrintCheck(picked.id)}
+            data-print-check={picked?.id ?? ""}
+          >
+            Print check
+          </Button>
+          <Button
+            className="station-touch h-16 text-lg font-semibold"
+            disabled={!picked}
+            onClick={() => picked && onPay?.(picked.id)}
+            data-pay
+          >
+            Pay
+          </Button>
         </div>
       )}
-      {hasOpen && (
+      {hasOpen && !busy && (
         <div className="rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm" data-table-view>
           <p className="text-xs text-muted-foreground">
             {partyLabel || tableToken(table.label)} · {table.section} · {table.guestCount || table.seats} covers
@@ -2020,7 +2402,7 @@ function TableDetailBody({
       <details
         data-floor-more={busy ? "1" : undefined}
         open={busy ? undefined : true}
-        className={busy ? "rounded-xl border border-border" : undefined}
+        className={busy ? "max-h-[38%] shrink-0 overflow-y-auto rounded-xl border border-border" : undefined}
       >
         {busy && (
           <summary className="flex min-h-14 cursor-pointer list-none items-center px-4 text-lg font-semibold">
@@ -2034,13 +2416,13 @@ function TableDetailBody({
             Party size
           </Button>
         )}
-        {empty && canSeat && (
+        {!busy && empty && canSeat && (
           <Button className="h-12 px-5 text-base font-semibold" onClick={onSeat}>
             <Users className="h-4 w-4" />
             Seat
           </Button>
         )}
-        {occupiedNoCheck && canOrder && (
+        {!busy && occupiedNoCheck && canOrder && (
           <Button className="h-12 px-5 text-base font-semibold" onClick={onNewCheck} data-open-table>
             Open
           </Button>
@@ -2071,7 +2453,7 @@ function TableDetailBody({
             Mark delivered
           </Button>
         )}
-        {dirty && canClean && (
+        {!busy && dirty && canClean && (
           <Button variant="outline" onClick={onClean}>
             Mark cleaned
           </Button>

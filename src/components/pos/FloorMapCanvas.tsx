@@ -85,6 +85,7 @@ export function FloorMapCanvas({
   onTableClick,
   onCombine,
   focusSection = false,
+  selectedId = null,
 }: {
   items: FloorMapItem[];
   onTableClick: (table: Table) => void;
@@ -92,6 +93,8 @@ export function FloorMapCanvas({
   onCombine?: (draggedId: string, ontoId: string) => void;
   /** One section: fit those seats into the pane. The published floor is unchanged. */
   focusSection?: boolean;
+  /** Table whose check was opened. Stays marked after Back to floor. */
+  selectedId?: string | null;
 }) {
   const viewRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ w: 800, h: 600 });
@@ -294,7 +297,11 @@ export function FloorMapCanvas({
                 stool && "z-[2]",
                 item.flashing && "table-sla-flash-thin",
                 item.dim && "ring-2 ring-black/30",
+                !arch &&
+                  selectedId === item.table.id &&
+                  "z-20 ring-4 ring-[#1c1917] ring-offset-2 ring-offset-[#e4dfd4]",
               )}
+              data-floor-selected={!arch && selectedId === item.table.id ? "1" : undefined}
             >
               {arch ? (
                 <FloorArchitectureMark

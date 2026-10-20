@@ -32,6 +32,7 @@ const FLOOR_JOBS = new Set(["my_tables", "pick_table", "floor_seat", "new_ticket
 export function BusyNightStation({ hostStand = false }: { hostStand?: boolean }) {
   const [tab, setTab] = useState<BusyTab>("floor");
   const [payOpen, setPayOpen] = useState(false);
+  const [floorCheckTableId, setFloorCheckTableId] = useState<string | null>(null);
   const orders = usePosStore((s) => s.orders);
   const tables = usePosStore((s) => s.tables);
   const settings = usePosStore((s) => s.settings);
@@ -81,6 +82,8 @@ export function BusyNightStation({ hostStand = false }: { hostStand?: boolean })
             hostStand={hostStand}
             mapOnly
             preferMine={!hostStand}
+            openCheckTableId={floorCheckTableId}
+            onFloorCheckClose={() => setFloorCheckTableId(null)}
             onBusyNav={(dest) => {
               if (dest === "pay") {
                 setPayOpen(true);
@@ -104,7 +107,16 @@ export function BusyNightStation({ hostStand = false }: { hostStand?: boolean })
                     <button
                       type="button"
                       className="flex min-h-16 w-full items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3 text-left"
-                      onClick={() => openCheck(o.id, "menu")}
+                      onClick={() => {
+                        if (o.tableId) {
+                          selectTable(o.tableId, o.id);
+                          setFloorCheckTableId(o.tableId);
+                          setPayOpen(false);
+                          setTab("floor");
+                          return;
+                        }
+                        openCheck(o.id, "menu");
+                      }}
                     >
                       <span>
                         <span className="block text-lg font-semibold">
@@ -163,8 +175,14 @@ export function BusyNightStation({ hostStand = false }: { hostStand?: boolean })
         {tab === "menu" && (
           <OrderView
             busyNight
-            onSent={() => setTab("floor")}
-            onNeedFloor={() => setTab("floor")}
+            onSent={() => {
+              setFloorCheckTableId(null);
+              setTab("floor");
+            }}
+            onNeedFloor={() => {
+              setFloorCheckTableId(null);
+              setTab("floor");
+            }}
           />
         )}
         {payOpen && !activeOpen && (

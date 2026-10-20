@@ -144,7 +144,7 @@ test("payments and tipping guides describe the card tip buttons", () => {
   const types = read("src/lib/guide/types.ts");
   assert.match(payments, /18%, 20%, 25%, and Custom/);
   assert.match(payments, /Sandbox keys send the charge to the Finix sandbox/);
-  assert.match(payments, /matches Guide v2026\.10\.313/);
+  assert.match(payments, /matches Guide v2026\.10\.314/);
   assert.match(payments, /Insufficient funds, Invalid card number, Card declined, Canceled, Address mismatch, or Invalid CVV/);
   assert.match(payments, /does not reuse the original sale key/);
   assert.match(payments, /own idempotency id/);
@@ -153,7 +153,8 @@ test("payments and tipping guides describe the card tip buttons", () => {
   assert.match(payments, /close with no tip, retry, or cancel/);
   assert.match(tipping, /18%, 20%, 25%, and Custom/);
   assert.match(tipping, /No tip closes the check at \$0/);
-  assert.match(types, /GUIDE_VERSION = "2026\.10\.313"/);
+  assert.match(types, /GUIDE_VERSION = "2026\.10\.314"/);
+  assert.match(types, /Full-screen check/);
   assert.match(types, /Card sale idempotency/);
   assert.match(payments, /The station PIN pad and the floor, order, pay, and kitchen screens fit the display/);
 });

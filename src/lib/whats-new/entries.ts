@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_314_fullscreen_check",
+    date: "2026-10-20",
+    title: "Full-screen check",
+    summary: "Tap a table on the order tablet and the check fills the screen.",
+    body: "On an order or host tablet, tapping a table opens a full-screen check. The screen shows the table, the covers, the items, and the cash and card totals. Add, Send, Print check, Pay, and More are large buttons. Back to floor returns to the map and the table stays highlighted. The check stays open. Training and live use the same screen.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_313_card_sale_idempotency",
     date: "2026-10-20",
     title: "Card sale idempotency",
