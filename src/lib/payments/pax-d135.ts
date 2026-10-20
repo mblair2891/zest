@@ -3,6 +3,7 @@
  * The Finix Android SDK runs in the station app. This module never
  * opens Web Bluetooth and never calls Stripe.
  */
+import { DECLINE_GENERIC, displayCardDecline } from "./card-decline.ts";
 
 export const PAX_NAME_PREFIX = "PAX D135_";
 export const PAX_MODEL = "PAX_D135" as const;
@@ -1152,23 +1153,20 @@ export type PaxSdkCode =
   | "already_captured"
   | "error";
 
-export function classifyPaxError(code: string, raw?: string): { message: string; leaveOpen: true } {
+export function classifyPaxError(
+  code: string,
+  raw?: string,
+  opts?: { amountCents?: number; training?: boolean },
+): { message: string; leaveOpen: true } {
   const sdk = String(raw ?? "").replace(/\s+/g, " ").trim();
-  if (sdk) return { message: sdk, leaveOpen: true };
-  const text = `${code} ${raw ?? ""}`.toLowerCase();
-  if (code === "already_captured" || text.includes("already paid") || text.includes("second")) {
+  const text = `${code} ${sdk}`.toLowerCase();
+  if (code === "already_captured" || text.includes("already paid") || text.includes("second charge")) {
     return { message: PAX_MSG.alreadyPaid, leaveOpen: true };
   }
   if (code === "setting_up" || text.includes("setting up")) {
     return { message: PAX_MSG.stillSettingUp, leaveOpen: true };
   }
-  if (code === "declined" || text.includes("declin")) {
-    return { message: PAX_MSG.declined, leaveOpen: true };
-  }
-  if (code === "cancelled" || text.includes("cancel")) {
-    return { message: PAX_MSG.cancelled, leaveOpen: true };
-  }
-  if (code === "chip" || text.includes("chip") || text.includes("emv") || text.includes("icc")) {
+  if (code === "chip" || text.includes("chip") || text.includes("emv") || /\bicc\b/.test(text)) {
     return { message: PAX_MSG.chip, leaveOpen: true };
   }
   if (code === "timeout" || text.includes("timeout") || text.includes("timed out")) {
@@ -1177,7 +1175,19 @@ export function classifyPaxError(code: string, raw?: string): { message: string;
   if (code === "disconnect" || text.includes("disconnect") || text.includes("bluetooth")) {
     return { message: PAX_MSG.disconnect, leaveOpen: true };
   }
-  return { message: PAX_MSG.unread, leaveOpen: true };
+  const known = (Object.values(PAX_MSG) as string[]).find(
+    (line) => sdk === line && line !== PAX_MSG.declined && line !== PAX_MSG.cancelled,
+  );
+  if (known) return { message: known, leaveOpen: true };
+  const short = displayCardDecline({
+    message: sdk,
+    code,
+    amountCents: opts?.amountCents,
+    training: opts?.training === true,
+  });
+  if (short) return { message: short, leaveOpen: true };
+  if (!sdk) return { message: PAX_MSG.unread, leaveOpen: true };
+  return { message: DECLINE_GENERIC, leaveOpen: true };
 }
 
 export type PaxBridge = {
@@ -1271,7 +1281,10 @@ export async function runAndroidPaxSale(input: {
     tipCents: input.tipCents ?? 0,
   });
   if (!result.ok || !result.transferId) {
-    const classified = classifyPaxError(result.code || "error", result.message);
+    const classified = classifyPaxError(result.code || "error", result.message, {
+      amountCents: input.amountCents,
+      training: true,
+    });
     return { ok: false, message: classified.message, charged: false };
   }
   rememberCapturedCheck(input.checkId);

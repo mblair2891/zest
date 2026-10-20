@@ -31,6 +31,7 @@ const TOPIC_SCREEN: Record<string, UpdateScreen> = {
   "quantum-payments": PAYMENTS,
   "venue-payment-methods": PAYMENTS,
   "tenders-tips": PAYMENTS,
+  "card-declines": PAYMENTS,
   "cash-discount": PAYMENTS,
   "host-capture": PAYMENTS,
   "receipts-by-vendor": PAYMENTS,

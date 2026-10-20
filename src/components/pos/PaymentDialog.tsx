@@ -16,6 +16,7 @@ import { CardTipRow } from "@/components/pos/CardTipRow";
 import { cardAuthorizationCents, cardPayDueCents, computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { tipCentsForChoice, type CardTipChoice } from "@/lib/pos/card-tip";
 import { cardCloseSimulatesTip, logTipAdjust, visibleTipFailure } from "@/lib/payments/tip-capture";
+import { staffCardDecline } from "@/lib/payments/card-decline";
 import { guestStaffName } from "@/lib/labor/staff-record";
 import { formatCurrency } from "@/lib/utils";
 import type { CardAuthHold, PaymentMethod } from "@/lib/pos/types";
@@ -1171,11 +1172,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           },
         });
         if (!charged.ok) {
+          const trainingPay = Boolean(payStatus?.lifecycleForcesSandbox || payStatus?.mode === "sandbox");
           setError(
-            redactCardText(charged.error || "Card was not approved. The check stays open.", [
-              manualCard.number,
-              manualCard.securityCode,
-            ]),
+            staffCardDecline(
+              redactCardText(charged.error || "Card was not approved. The check stays open.", [
+                manualCard.number,
+                manualCard.securityCode,
+              ]),
+              { amountCents: tend, training: trainingPay },
+            ),
           );
           setBusy(false);
           return;
@@ -1185,11 +1190,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         authorizationId = charged.transferId;
       } catch (err) {
         const detail = err instanceof Error ? err.message.trim() : "";
+        const trainingPay = Boolean(payStatus?.lifecycleForcesSandbox || payStatus?.mode === "sandbox");
         setError(
-          redactCardText(detail || "Card was not approved. The check stays open.", [
-            manualCard.number,
-            manualCard.securityCode,
-          ]),
+          staffCardDecline(
+            redactCardText(detail || "Card was not approved. The check stays open.", [
+              manualCard.number,
+              manualCard.securityCode,
+            ]),
+            { amountCents: tend, training: trainingPay },
+          ),
         );
         setBusy(false);
         return;
@@ -1325,7 +1334,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             bridge: androidPaxBridge(),
           });
           if (!sale.ok) {
-            setError(sale.message);
+            setError(staffCardDecline(sale.message, { amountCents: tend, training }));
             setBusy(false);
             return;
           }
@@ -1340,7 +1349,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           };
         } catch (err) {
           const detail = err instanceof Error ? err.message.trim() : "";
-          setError(detail || PAX_MSG.unread);
+          setError(staffCardDecline(detail || PAX_MSG.unread, { amountCents: tend, training }));
           setBusy(false);
           return;
         }
@@ -1379,7 +1388,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         });
         if (!cap.ok) {
           setError(
-            cap.error || "Card requires connection. Take cash or keep the check open.",
+            staffCardDecline(cap.error || "Card requires connection. Take cash or keep the check open.", {
+              amountCents: tend,
+              training,
+            }),
           );
           setBusy(false);
           return;

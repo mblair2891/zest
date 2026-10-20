@@ -233,7 +233,8 @@ test("decline leaves the check open", async () => {
   assert.equal(result.ok, false);
   if (!result.ok) {
     assert.equal(result.charged, false);
-    assert.equal(result.message, "DECLINED");
+    assert.equal(result.message, "Card declined");
+    assert.doesNotMatch(result.message, /SALE|trace|failure_message/);
   }
   assert.equal(checkAlreadyCaptured({ checkId: "chk_1", status: "open", payments: [] }), false);
 });
@@ -328,12 +329,21 @@ test("failsafes do not charge", async () => {
   assert.equal(sales.n, 0);
   assert.equal(classifyPaxError("timeout").message, PAX_MSG.timeout);
   assert.equal(classifyPaxError("chip").message, PAX_MSG.chip);
-  assert.equal(classifyPaxError("cancelled").message, PAX_MSG.cancelled);
+  assert.equal(classifyPaxError("cancelled").message, "Canceled");
   assert.equal(
     classifyPaxError("error", "Host response 51 Insufficient funds").message,
-    "Host response 51 Insufficient funds",
+    "Insufficient funds",
   );
+  assert.equal(classifyPaxError("declined", "DECLINED").message, "Card declined");
   assert.equal(classifyPaxError("declined", "DECLINED").leaveOpen, true);
+  const blob = "failure_message DECLINED code 51 state FAILED trace SALE_abc123";
+  const triggered = classifyPaxError("error", blob, { amountCents: 193, training: true });
+  assert.equal(triggered.message, "Insufficient funds");
+  assert.doesNotMatch(triggered.message, /SALE|trace|failure_message/);
+  assert.equal(
+    classifyPaxError("timeout", blob, { amountCents: 193, training: true }).message,
+    PAX_MSG.timeout,
+  );
   assert.equal(envBlock(true, "sandbox"), PAX_MSG.sandboxOnLive);
   assert.equal(envBlock(false, "live"), PAX_MSG.liveOnSandbox);
 });

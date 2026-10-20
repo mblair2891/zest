@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_312_short_declines",
+    date: "2026-10-20",
+    title: "Short card declines",
+    summary: "A declined card shows a short reason. Back, Try another method, and Cancel stay.",
+    body: "A declined card shows one short line: Insufficient funds, Invalid card number, Card declined, Canceled, Address mismatch, or Invalid CVV. Any other card decline shows Card declined. The sale id and the full processor text stay off the pay screen. The check stays open. Back, Try another method, and Cancel stay on the screen. In training, $1.02 shows Card declined, $1.03 shows Canceled, $1.93 shows Insufficient funds, $1.94 shows Invalid card number, $8,899.86 shows Address mismatch, and $8,899.87 shows Invalid CVV.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "card-declines",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_311_tip_idempotency",
     date: "2026-10-20",
     title: "Tip close uses its own key",

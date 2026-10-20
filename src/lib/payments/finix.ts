@@ -22,6 +22,7 @@ import {
   redactCardText,
   type ManualCard,
 } from "./manual-card.ts";
+import { displayCardDecline } from "./card-decline.ts";
 import {
   TIP_CAPTURE_FAILED,
   finixAuthorizationAlreadyCaptured,
@@ -528,11 +529,19 @@ export async function authorizeCardPresent(opts: {
   }
   const res = await finixFetch(mode, "POST", "/authorizations", body);
   if (!res.ok) {
-    return {
-      ok: false,
-      sandbox,
-      error: transferError(res, "Card capture could not start. Use cash or keep the check open."),
-    };
+    const extracted = finixFailureText(res.json);
+    const detail =
+      extracted === "Card was not approved. The check stays open."
+        ? transferError(res, "Card capture could not start. Use cash or keep the check open.")
+        : extracted;
+    const failureCode = typeof res.json.failure_code === "string" ? res.json.failure_code : "";
+    const short = displayCardDecline({
+      message: detail,
+      code: failureCode,
+      amountCents: opts.amountCents,
+      training: mode !== "live",
+    });
+    return { ok: false, sandbox, error: short ?? detail };
   }
   const id = typeof res.json.id === "string" ? res.json.id : "";
   if (!id) {
@@ -753,8 +762,18 @@ export async function chargeManualCardOnFinix(opts: {
   splits?: Array<{ merchantId: string; amountCents: number }>;
 }): Promise<{ ok: true; transferId: string; last4: string } | { ok: false; error: string }> {
   const secrets = [opts.card.number, opts.card.securityCode];
-  const fail = (json: Record<string, unknown>, fallback: string) =>
-    redactCardText(finixFailureText(json) || fallback, secrets).slice(0, 200);
+  const fail = (json: Record<string, unknown>, fallback: string, applyAmount = false) => {
+    const extracted = finixFailureText(json);
+    const raw = redactCardText(extracted || fallback, secrets).slice(0, 200);
+    if (extracted === "Card was not approved. The check stays open." && !applyAmount) return raw;
+    return (
+      displayCardDecline({
+        message: raw,
+        amountCents: applyAmount ? opts.amountCents : undefined,
+        training: applyAmount,
+      }) ?? raw
+    );
+  };
   const creds = readFinixApiCreds("sandbox");
   if (!creds.ok) return { ok: false, error: missingFinixKeyMessage(creds.missing) };
   const merchantId = opts.merchantId.trim();
@@ -796,7 +815,7 @@ export async function chargeManualCardOnFinix(opts: {
     requireWebhook: false,
   });
   if (!transfer.ok || !manualTransferApproved(transfer.json)) {
-    return { ok: false, error: fail(transfer.json, "Card was not approved. The check stays open.") };
+    return { ok: false, error: fail(transfer.json, "Card was not approved. The check stays open.", true) };
   }
   const transferId = typeof transfer.json.id === "string" ? transfer.json.id.trim() : "";
   if (!transferId) return { ok: false, error: "Card was not approved. The check stays open." };
