@@ -15,7 +15,7 @@ import { useMarketingStore } from "@/lib/pos/marketing-store";
 import { CardTipRow } from "@/components/pos/CardTipRow";
 import { cardAuthorizationCents, cardPayDueCents, computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { tipCentsForChoice, type CardTipChoice } from "@/lib/pos/card-tip";
-import { TIP_CAPTURE_FAILED } from "@/lib/payments/tip-capture";
+import { TIP_CAPTURE_FAILED, logTipAdjust } from "@/lib/payments/tip-capture";
 import { guestStaffName } from "@/lib/labor/staff-record";
 import { formatCurrency } from "@/lib/utils";
 import type { CardAuthHold, PaymentMethod } from "@/lib/pos/types";
@@ -1445,6 +1445,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         setBusy(false);
       }
     }
+    const trainingCard = Boolean(
+      payStatus?.lifecycleForcesSandbox || payStatus?.mode === "sandbox" || sandbox,
+    );
+    const simulateClose = method === "card" && (trainingCard || payTip <= 0);
     const authToCapture =
       method === "card" && held && settings.cardProcessor !== "square" && !squarePaymentId
         ? authorizationId || held.authorizationId || held.finixTransferId || ""
@@ -1453,56 +1457,121 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       const ctx = readTenantPosContext();
       const locationId = usePosStore.getState().tenantLocationId || ctx?.locationId || "";
       const orgId = ctx?.orgId || "";
+      const trace = {
+        authorizationId: authToCapture,
+        captureAmountCents: held.amountCents + payTip,
+        tipCents: payTip,
+        checkId: order?.id,
+      };
       if (!locationId || !orgId) {
-        setError("Card requires connection. Take cash or keep the check open.");
-        setBusy(false);
-        return;
-      }
-      setBusy(true);
-      try {
-        const captured = await captureCheckAuthorizationFn({
-          data: {
-            locationId,
-            orgId,
+        if (!simulateClose) {
+          setError("Card requires connection. Take cash or keep the check open.");
+          setBusy(false);
+          return;
+        }
+        logTipAdjust({
+          phase: "response",
+          sandbox: trainingCard,
+          simulated: true,
+          ok: false,
+          error: "Card requires connection",
+          ...trace,
+        });
+        if (!finixTransferId) finixTransferId = authToCapture;
+      } else {
+        setBusy(true);
+        // temporary: remove after tip close is confirmed
+        logTipAdjust({ phase: "request", sandbox: trainingCard, simulated: false, ...trace });
+        try {
+          const captured = await captureCheckAuthorizationFn({
+            data: {
+              locationId,
+              orgId,
+              authorizationId: authToCapture,
+              captureAmountCents: held.amountCents + payTip,
+              tipCents: payTip,
+              checkId: order?.id,
+              paymentId: quantumPaymentId,
+            },
+          });
+          logTipAdjust({
+            phase: "response",
+            sandbox: trainingCard || Boolean(captured.sandbox),
+            simulated: !captured.ok && simulateClose,
             authorizationId: authToCapture,
             captureAmountCents: held.amountCents + payTip,
             tipCents: payTip,
             checkId: order?.id,
-            paymentId: quantumPaymentId,
-          },
-        });
-        if (!captured.ok) {
+            ok: captured.ok || simulateClose,
+            error: captured.ok ? undefined : captured.error,
+            transferId: captured.ok ? captured.transferId ?? undefined : undefined,
+          });
+          if (!captured.ok && !simulateClose) {
+            if (stale()) {
+              setBusy(false);
+              return;
+            }
+            setTipCaptureFailed(true);
+            setError(captured.error || TIP_CAPTURE_FAILED);
+            setBusy(false);
+            return;
+          }
+          if (captured.ok && captured.transferId) finixTransferId = captured.transferId;
+          else if (!finixTransferId) finixTransferId = authToCapture;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : TIP_CAPTURE_FAILED;
+          logTipAdjust({
+            phase: "response",
+            sandbox: trainingCard,
+            simulated: simulateClose,
+            ok: simulateClose,
+            error: message,
+            ...trace,
+          });
           if (stale()) {
             setBusy(false);
             return;
           }
-          setTipCaptureFailed(true);
-          setError(captured.error || TIP_CAPTURE_FAILED);
-          setBusy(false);
-          return;
+          if (!simulateClose) {
+            setTipCaptureFailed(true);
+            setError(message);
+            setBusy(false);
+            return;
+          }
+          if (!finixTransferId) finixTransferId = authToCapture;
         }
-        if (captured.transferId) finixTransferId = captured.transferId;
-      } catch {
-        if (stale()) {
-          setBusy(false);
-          return;
-        }
-        setTipCaptureFailed(true);
-        setError(TIP_CAPTURE_FAILED);
         setBusy(false);
-        return;
       }
-      setBusy(false);
     } else if (method === "card" && held && cardLink === "usb" && settings.cardProcessor !== "square") {
+      const usbTrace = {
+        authorizationId: held.finixTransferId || finixTransferId || "",
+        captureAmountCents: held.amountCents + payTip,
+        tipCents: payTip,
+        checkId: order?.id,
+      };
+      logTipAdjust({ phase: "request", sandbox: trainingCard, simulated: false, ...usbTrace });
       const { androidPaxBridge } = await import("@/lib/payments/pax-d135-native");
-      const finished = await runAndroidPaxCapture({
-        link: "usb",
-        usbAttached: usbAttached === true,
-        transferId: held.finixTransferId || finixTransferId || "",
-        amountCents: held.amountCents + payTip,
-        bridge: androidPaxBridge(),
+      let finished: { ok: true; skipped?: boolean } | { ok: false; message: string };
+      try {
+        finished = await runAndroidPaxCapture({
+          link: "usb",
+          usbAttached: usbAttached === true,
+          transferId: held.finixTransferId || finixTransferId || "",
+          amountCents: held.amountCents + payTip,
+          bridge: androidPaxBridge(),
+        });
+      } catch (err) {
+        finished = { ok: false, message: err instanceof Error ? err.message : TIP_CAPTURE_FAILED };
+      }
+      logTipAdjust({
+        phase: "response",
+        sandbox: trainingCard,
+        simulated: !finished.ok && simulateClose,
+        ok: finished.ok || simulateClose,
+        error: finished.ok ? undefined : finished.message,
+        ...usbTrace,
       });
-      if (!finished.ok) {
+      if (!finished.ok && !simulateClose) {
         if (stale()) {
           setBusy(false);
           return;
@@ -1512,6 +1581,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         setBusy(false);
         return;
       }
+      if (!finished.ok && !finixTransferId) finixTransferId = held.finixTransferId || usbTrace.authorizationId;
     }
     if (stale()) {
       setBusy(false);

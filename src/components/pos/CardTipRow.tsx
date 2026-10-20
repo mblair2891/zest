@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
@@ -14,6 +15,28 @@ import {
 } from "@/lib/pos/card-tip";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"] as const;
+
+function TipKeypadSheet({
+  host,
+  keypadRef,
+  children,
+}: {
+  host: HTMLElement | null;
+  keypadRef: RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}) {
+  const sheet = (
+    <div
+      ref={keypadRef}
+      className="mt-2 space-y-2 rounded-xl border border-border bg-bg p-3"
+      data-card-tip-keypad=""
+      {...(host ? { "data-tip-keypad-sheet": "" } : {})}
+    >
+      {children}
+    </div>
+  );
+  return host ? createPortal(sheet, host) : sheet;
+}
 
 export function CardTipRow({
   baseCents,
@@ -32,10 +55,15 @@ export function CardTipRow({
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<TipKeyMode>("amount");
   const [buffer, setBuffer] = useState("");
+  const [sheetHost, setSheetHost] = useState<HTMLElement | null>(null);
   const keypadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSheetHost(null);
+      return;
+    }
+    setSheetHost(document.querySelector("[data-station-pay]") as HTMLElement | null);
     keypadRef.current?.scrollIntoView({ block: "nearest" });
   }, [open]);
 
@@ -104,8 +132,11 @@ export function CardTipRow({
           aria-pressed={choice.kind === "custom-amount" || choice.kind === "custom-percent"}
           aria-expanded={open}
           className="station-touch h-14 min-h-14 min-w-0 flex-1 basis-0 px-1 text-base font-semibold"
-          onClick={() => {
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
             setBuffer("");
+            setMode("amount");
             setOpen(true);
           }}
         >
@@ -130,11 +161,7 @@ export function CardTipRow({
         Tip {formatCurrency(tipCents)} · Total {formatCurrency(cardChargeCents(baseCents, tipCents))}
       </p>
       {open ? (
-        <div
-          ref={keypadRef}
-          className="mt-2 space-y-2 rounded-xl border border-border bg-bg p-3"
-          data-card-tip-keypad=""
-        >
+        <TipKeypadSheet host={sheetHost} keypadRef={keypadRef}>
           <div className="flex gap-2">
             <Button
               type="button"
@@ -191,6 +218,15 @@ export function CardTipRow({
           <Button
             type="button"
             size="lg"
+            variant="outline"
+            className="station-touch min-h-12 w-full"
+            onClick={() => setOpen(false)}
+          >
+            Back
+          </Button>
+          <Button
+            type="button"
+            size="lg"
             data-card-tip-apply=""
             className="station-touch min-h-12 w-full"
             disabled={pending == null}
@@ -198,7 +234,7 @@ export function CardTipRow({
           >
             Apply
           </Button>
-        </div>
+        </TipKeypadSheet>
       ) : null}
     </div>
   );

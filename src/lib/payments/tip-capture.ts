@@ -1,7 +1,8 @@
 /**
  * Tip capture after a card authorization.
- * A training or sandbox authorization still closes the check when the processor
- * refuses the capture call. A live failure stays open so staff can retry.
+ * Training, sandbox, and a $0 tip still close the check when the processor
+ * refuses the capture call. A live non-zero failure stays open so staff can
+ * retry or close with no tip. An omitted tip is not treated as $0.
  */
 
 export const TIP_CAPTURE_FAILED = "The tip could not be captured. The check stays open.";
@@ -64,16 +65,54 @@ export function tipCaptureOutcome(input: {
   error?: string;
   transferId?: string | null;
   authorizationId?: string | null;
-}): { ok: true; transferId: string | null } | { ok: false; error: string } {
-  if (input.capturedOk) {
-    const transferId = String(input.transferId ?? "").trim();
-    return { ok: true, transferId: transferId || null };
-  }
+  /** A zero tip closes the check even when the processor tip call fails. */
+  tipCents?: number;
+}): { ok: true; transferId: string | null; simulated: boolean } | { ok: false; error: string; simulated: false } {
+  const transferId = String(input.transferId ?? "").trim();
   const authorizationId = String(input.authorizationId ?? "").trim();
-  if (input.sandbox && authorizationId) {
-    const transferId = String(input.transferId ?? "").trim();
-    return { ok: true, transferId: transferId || authorizationId };
+  if (input.capturedOk) {
+    return { ok: true, transferId: transferId || null, simulated: false };
+  }
+  const zeroTip =
+    typeof input.tipCents === "number" && Number.isFinite(input.tipCents) && Math.round(input.tipCents) <= 0;
+  if (authorizationId && (input.sandbox || zeroTip)) {
+    return { ok: true, transferId: transferId || authorizationId, simulated: true };
   }
   const error = String(input.error ?? "").trim();
-  return { ok: false, error: error || TIP_CAPTURE_FAILED };
+  return { ok: false, error: error || TIP_CAPTURE_FAILED, simulated: false };
+}
+
+/** Temporary tip-adjust trace. Remove after the close flow is confirmed. */
+export function logTipAdjust(entry: {
+  phase: "request" | "response";
+  sandbox: boolean;
+  simulated: boolean;
+  authorizationId: string;
+  captureAmountCents: number;
+  tipCents: number;
+  checkId?: string;
+  ok?: boolean;
+  status?: number;
+  error?: string;
+  transferId?: string;
+  body?: string;
+}): void {
+  const body = entry.body ? entry.body.replace(/\d{13,19}/g, "[redacted]").slice(0, 400) : undefined;
+  console.info(
+    JSON.stringify({
+      tag: "tip-adjust",
+      phase: entry.phase,
+      sandbox: entry.sandbox,
+      simulated: entry.simulated,
+      authorizationId: entry.authorizationId.slice(0, 80),
+      captureAmountCents: entry.captureAmountCents,
+      tipCents: entry.tipCents,
+      checkId: entry.checkId ? entry.checkId.slice(0, 80) : undefined,
+      ok: entry.ok,
+      status: entry.status,
+      error: entry.error ? entry.error.slice(0, 200) : undefined,
+      transferId: entry.transferId ? entry.transferId.slice(0, 80) : undefined,
+      body,
+    }),
+  );
 }

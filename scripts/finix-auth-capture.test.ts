@@ -278,6 +278,26 @@ test("training closes a sandbox tip when capture is refused and live does not", 
   if (!live.ok) assert.match(live.error, /capture_amount exceeds/);
   const empty = tipCaptureOutcome({ sandbox: true, capturedOk: false, authorizationId: "  " });
   assert.equal(empty.ok, false);
+  const zero = tipCaptureOutcome({
+    sandbox: false,
+    capturedOk: false,
+    error: "capture_amount exceeds the authorization",
+    authorizationId: "AU_live",
+    tipCents: 0,
+  });
+  assert.equal(zero.ok, true);
+  if (zero.ok) {
+    assert.equal(zero.simulated, true);
+    assert.equal(zero.transferId, "AU_live");
+  }
+  const tipped = tipCaptureOutcome({
+    sandbox: false,
+    capturedOk: false,
+    error: "capture_amount exceeds the authorization",
+    authorizationId: "AU_live",
+    tipCents: 360,
+  });
+  assert.equal(tipped.ok, false);
   const server = readFileSync("src/lib/payments/finix-card.server.ts", "utf8");
   assert.match(server, /tipCaptureOutcome/);
   assert.doesNotMatch(server, /captureSandbox/);

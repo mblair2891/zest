@@ -26,6 +26,7 @@ import {
   TIP_CAPTURE_FAILED,
   finixAuthorizationAlreadyCaptured,
   finixEmbeddedMessage,
+  logTipAdjust,
 } from "./tip-capture.ts";
 
 export type PaymentsProvider = "finix" | "sandbox";
@@ -564,6 +565,16 @@ export async function captureAuthorization(opts: {
   }
   const body: Record<string, unknown> = { capture_amount: captureAmount };
   if (Object.keys(tags).length) body.tags = tags;
+  // temporary: remove after tip close is confirmed
+  logTipAdjust({
+    phase: "request",
+    sandbox,
+    simulated: false,
+    authorizationId,
+    captureAmountCents: captureAmount,
+    tipCents: Math.max(0, Math.round(opts.tipCents ?? 0)),
+    checkId: opts.checkId ?? undefined,
+  });
   const res = await finixFetch(
     mode,
     "PUT",
@@ -590,8 +601,35 @@ export async function captureAuthorization(opts: {
       }
     }
     const embedded = finixEmbeddedMessage(res.json) || finixEmbeddedMessage(looked.json);
-    return { ok: false, sandbox, error: embedded || transferError(res, TIP_CAPTURE_FAILED) };
+    const error = embedded || transferError(res, TIP_CAPTURE_FAILED);
+    logTipAdjust({
+      phase: "response",
+      sandbox,
+      simulated: false,
+      authorizationId,
+      captureAmountCents: captureAmount,
+      tipCents: Math.max(0, Math.round(opts.tipCents ?? 0)),
+      checkId: opts.checkId ?? undefined,
+      ok: false,
+      status: res.status,
+      error,
+      body: res.body,
+    });
+    return { ok: false, sandbox, error };
   }
+  logTipAdjust({
+    phase: "response",
+    sandbox,
+    simulated: false,
+    authorizationId,
+    captureAmountCents: captureAmount,
+    tipCents: Math.max(0, Math.round(opts.tipCents ?? 0)),
+    checkId: opts.checkId ?? undefined,
+    ok: true,
+    status: res.status,
+    transferId: typeof res.json.transfer === "string" ? res.json.transfer : undefined,
+    body: res.body,
+  });
   const transfer = res.json.transfer;
   const transferId = typeof transfer === "string" ? transfer : "";
   return { ok: true, transferId: transferId || undefined, sandbox };

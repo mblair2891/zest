@@ -308,6 +308,7 @@
 
 /* Pay stays inside the station. Extras scroll. Print, tenders, and the charge stay on screen. */
 [data-station-pay] {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -315,6 +316,18 @@
   overflow: hidden;
   max-height: var(--station-vh, 100dvh);
   padding: 0.5rem;
+}
+
+[data-tip-keypad-sheet] {
+  position: absolute;
+  z-index: 40;
+  left: 0.35rem;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  max-height: min(70%, 32rem);
+  overflow: auto;
+  background: var(--color-bg, #fff);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
 }
 
 html[data-orientation="landscape"] [data-station-pay] {

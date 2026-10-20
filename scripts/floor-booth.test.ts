@@ -65,8 +65,8 @@ test("guide floorplan covers booth shapes, not fat rectangles", () => {
   assert.match(floor, /open center, not stretched to the bench/);
   assert.match(floor, /editor and the live floor both do this/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.308/);
-  assert.match(types, /Card tip closes the check/);
+  assert.match(types, /2026\.10\.309/);
+  assert.match(types, /Sandbox tip closes the check/);
 });
 
 test("booths 9–15 sit the number on the open table, not across the bench", () => {

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_309_sandbox_tip_close",
+    date: "2026-10-20",
+    title: "Sandbox tip closes the check",
+    summary: "Training simulates the tip. A $0 tip closes the check.",
+    body: "After the card is authorized, 18%, 20%, 25%, and Custom close the check. Custom opens a numeric keypad. No tip closes with a $0 tip immediately. Training and Quantum Payments sandbox simulate the tip so the check closes. A $0 tip closes even when the processor tip call fails. A live tip the processor refuses is logged, and the station still offers close with no tip, retry, or cancel. Back and Cancel stay on the pay screen. After close, the table updates and the server returns to the floor, or to the order list when the check has no table.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_308_card_tip_close",
     date: "2026-10-20",
     title: "Card tip closes the check",
