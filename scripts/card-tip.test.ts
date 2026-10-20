@@ -13,6 +13,12 @@ import {
   tipCentsForPercent,
   tipFromKeypad,
 } from "../src/lib/pos/card-tip.ts";
+import {
+  TIP_CAPTURE_FAILED,
+  TIP_PROCESSOR_DECLINED,
+  cardCloseSimulatesTip,
+  visibleTipFailure,
+} from "../src/lib/payments/tip-capture.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
@@ -76,6 +82,23 @@ test("keypad accepts dollars or a percent and refuses a percent over 100", () =>
   assert.equal(appendTipKey("18.5", "5", "percent"), "18.5");
 });
 
+test("training and a zero tip close, and the stuck sentence is not shown", () => {
+  assert.equal(cardCloseSimulatesTip({ lifecycleStatus: "training" }), true);
+  assert.equal(cardCloseSimulatesTip({ lifecycleStatus: "onboarding" }), true);
+  assert.equal(cardCloseSimulatesTip({ lifecycleStatus: "scheduled_live" }), true);
+  assert.equal(cardCloseSimulatesTip({ lifecycleStatus: "awaiting_entities" }), true);
+  assert.equal(cardCloseSimulatesTip({ paymentsMode: "sandbox" }), true);
+  assert.equal(cardCloseSimulatesTip({ lifecycleForcesSandbox: true }), true);
+  assert.equal(cardCloseSimulatesTip({ captureSandbox: true }), true);
+  assert.equal(cardCloseSimulatesTip({ serverSandbox: true }), true);
+  assert.equal(cardCloseSimulatesTip({ lifecycleStatus: "live" }), false);
+  assert.equal(cardCloseSimulatesTip({}), false);
+  assert.equal(cardCloseSimulatesTip({ lifecycleStatus: null, paymentsMode: null }), false);
+  assert.equal(visibleTipFailure(TIP_CAPTURE_FAILED), TIP_PROCESSOR_DECLINED);
+  assert.equal(visibleTipFailure(""), TIP_PROCESSOR_DECLINED);
+  assert.equal(visibleTipFailure("capture_amount exceeds the authorization"), "capture_amount exceeds the authorization");
+});
+
 test("card payment screen source shows the four buttons and no tip", () => {
   const row = read("src/components/pos/CardTipRow.tsx");
   const pay = read("src/components/pos/PaymentDialog.tsx");
@@ -104,6 +127,15 @@ test("card payment screen source shows the four buttons and no tip", () => {
   assert.match(pay, /simulateClose/);
   assert.match(pay, /payTip <= 0/);
   assert.match(pay, /logTipAdjust/);
+  assert.match(pay, /cardCloseSimulatesTip/);
+  assert.match(pay, /visibleTipFailure/);
+  assert.match(pay, /station-pay-overlay/);
+  assert.match(pay, /data-pay-tip-panel/);
+  assert.doesNotMatch(pay, /The tip could not be captured\. The check stays open\./);
+  const css = read("src/styles.css");
+  assert.match(css, /station-pay-overlay/);
+  assert.match(css, /--pay-nav-clear/);
+  assert.doesNotMatch(css, /\[data-station-pay\][\s\S]{0,400}max-height:\s*var\(--station-vh/);
 });
 
 test("payments and tipping guides describe the card tip buttons", () => {
@@ -112,14 +144,14 @@ test("payments and tipping guides describe the card tip buttons", () => {
   const types = read("src/lib/guide/types.ts");
   assert.match(payments, /18%, 20%, 25%, and Custom/);
   assert.match(payments, /Sandbox keys send the charge to the Finix sandbox/);
-  assert.match(payments, /matches Guide v2026\.10\.309/);
+  assert.match(payments, /matches Guide v2026\.10\.310/);
   assert.match(payments, /own idempotency id/);
   assert.match(payments, /A card reader connects by Bluetooth, Network, or USB/);
   assert.match(payments, /No tip closes the check with a \$0 tip/);
   assert.match(payments, /close with no tip, retry, or cancel/);
   assert.match(tipping, /18%, 20%, 25%, and Custom/);
   assert.match(tipping, /No tip closes the check at \$0/);
-  assert.match(types, /GUIDE_VERSION = "2026\.10\.309"/);
-  assert.match(types, /Sandbox tip closes the check/);
+  assert.match(types, /GUIDE_VERSION = "2026\.10\.310"/);
+  assert.match(types, /Compact pay panel/);
   assert.match(payments, /The station PIN pad and the floor, order, pay, and kitchen screens fit the display/);
 });

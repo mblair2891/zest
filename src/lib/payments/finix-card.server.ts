@@ -217,7 +217,7 @@ export async function captureCheckAuthorization(
         transferId: outcome.ok ? outcome.transferId ?? undefined : undefined,
         ...trace,
       });
-      if (!outcome.ok) return { ok: false, error: outcome.error || TIP_CAPTURE_FAILED, sandbox: false };
+      if (!outcome.ok) return { ok: false, error: outcome.error || TIP_CAPTURE_FAILED, sandbox: routed.sandbox };
       return { ok: true, transferId: outcome.transferId, sandbox: routed.sandbox };
     }
     let captured: { ok: boolean; transferId?: string; error?: string; sandbox: boolean };
@@ -251,7 +251,7 @@ export async function captureCheckAuthorization(
       ...trace,
     });
     if (!outcome.ok) {
-      return { ok: false, error: outcome.error || TIP_CAPTURE_FAILED, sandbox: false };
+      return { ok: false, error: outcome.error || TIP_CAPTURE_FAILED, sandbox: routed.sandbox };
     }
     try {
       const sql = await getSql();

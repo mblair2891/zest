@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_310_compact_pay_panel",
+    date: "2026-10-20",
+    title: "Compact pay panel",
+    summary: "Card, cash, and gift sit on a short panel. The tip still closes the check.",
+    body: "Pay opens as a compact panel over the floor or the check. Card, cash, and gift, and the tip screen, stay on that panel. The bottom navigation and the table stay visible. Back and Cancel leave the panel. After the card is authorized, 18%, 20%, and 25% apply that tip and close the check. Custom opens a numeric keypad. No tip and any $0 tip close immediately. Training and Quantum Payments sandbox simulate the tip and close the check. If the processor does not add the tip, the station logs the error and still offers close with no tip, retry, or cancel. After close, the table updates and the server returns to the floor, or to the order list when the check has no table.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_309_sandbox_tip_close",
     date: "2026-10-20",
     title: "Sandbox tip closes the check",

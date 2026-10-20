@@ -27,13 +27,17 @@ export function BusyPayPanel({ onNeedFloor }: { onNeedFloor: () => void }) {
 
   if (!order || order.status !== "open") {
     return (
-      <div className="grid h-full place-items-center p-6 text-center" data-pay-tab>
-        <div className="space-y-3">
-          <p className="text-lg font-semibold">No check to pay</p>
-          <Button className="station-touch h-16 px-8 text-lg" onClick={onNeedFloor}>
-            Floor
-          </Button>
-        </div>
+      <div
+        className="absolute inset-x-3 bottom-3 z-20 rounded-2xl border border-border bg-surface p-4 shadow-xl"
+        data-pay-tab
+      >
+        <p className="text-lg font-semibold">No check to pay</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The floor stays up. Open a check, then choose Card, Cash, or Gift.
+        </p>
+        <Button className="station-touch mt-3 min-h-12" onClick={onNeedFloor}>
+          Back
+        </Button>
       </div>
     );
   }
@@ -60,7 +64,10 @@ export function BusyPayPanel({ onNeedFloor }: { onNeedFloor: () => void }) {
   };
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto p-3" data-pay-tab>
+    <div
+      className="absolute inset-x-3 bottom-3 z-20 max-h-[min(50dvh,24rem)] overflow-y-auto rounded-2xl border border-border bg-surface p-3 shadow-xl"
+      data-pay-tab
+    >
       <div>
         <p className="text-2xl font-semibold">
           {table ? `Table ${table.label}` : order.tabName || "Check"} · #{order.number}

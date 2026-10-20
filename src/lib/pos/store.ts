@@ -3568,7 +3568,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					: "This tender is off at this venue." };
 			}
 		}
-		if ((method === "card" || method === "room_charge") && cardRequiresConnection()) {
+		if (
+			(method === "card" || method === "room_charge") &&
+			cardRequiresConnection() &&
+			!(method === "card" && (String(finixTransferId ?? "").trim() || String(authorizationId ?? "").trim()))
+		) {
 			return { ok: false, error: "Card requires connection" };
 		}
 		if (method === "card" && get().settings.cardProcessor === "square" && !squarePaymentId) {

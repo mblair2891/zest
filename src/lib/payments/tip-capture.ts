@@ -7,6 +7,42 @@
 
 export const TIP_CAPTURE_FAILED = "The tip could not be captured. The check stays open.";
 
+/** Shown when a live tip capture fails. The check can still close at $0. */
+export const TIP_PROCESSOR_DECLINED = "The processor did not add the tip.";
+
+const TRAINING_LIFECYCLES = new Set([
+  "onboarding",
+  "awaiting_entities",
+  "training",
+  "scheduled_live",
+]);
+
+/**
+ * Training and Quantum Payments sandbox close the check without a live capture.
+ * A missing lifecycle or an unloaded pay status is not training by itself.
+ */
+export function cardCloseSimulatesTip(input: {
+  lifecycleStatus?: string | null;
+  paymentsMode?: string | null;
+  lifecycleForcesSandbox?: boolean | null;
+  captureSandbox?: boolean | null;
+  serverSandbox?: boolean | null;
+}): boolean {
+  if (input.serverSandbox) return true;
+  if (input.lifecycleForcesSandbox) return true;
+  if (input.paymentsMode === "sandbox") return true;
+  if (input.captureSandbox) return true;
+  const life = input.lifecycleStatus ?? "";
+  return TRAINING_LIFECYCLES.has(life);
+}
+
+/** Never leave the station on the generic stuck sentence. */
+export function visibleTipFailure(error?: string | null): string {
+  const message = String(error ?? "").trim();
+  if (!message || message === TIP_CAPTURE_FAILED) return TIP_PROCESSOR_DECLINED;
+  return message.slice(0, 200);
+}
+
 function textOf(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }

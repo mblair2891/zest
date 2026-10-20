@@ -998,7 +998,10 @@ export function AppShell() {
       </div>
 
       {!urlStation && !stationLayout.counter && (
-      <nav className="flex shrink-0 gap-0.5 overflow-x-auto border-t border-border bg-surface px-1 py-1 safe-bottom">
+      <nav
+        className="flex shrink-0 gap-0.5 overflow-x-auto border-t border-border bg-surface px-1 py-1 safe-bottom"
+        data-app-nav=""
+      >
         {mobileItems.map((item) => {
           const Icon = item.icon;
           const reportsLocked = item.id === "reports" && emp && reportsBlockedForClose(emp.id);

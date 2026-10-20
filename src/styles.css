@@ -306,16 +306,33 @@
   overflow: hidden;
 }
 
-/* Pay stays inside the station. Extras scroll. Print, tenders, and the charge stay on screen. */
+/* Pay is a compact sheet over the floor or check. The station nav stays visible. */
+.station-pay-overlay {
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: var(--pay-nav-clear, 4.75rem) !important;
+  background: rgb(0 0 0 / 0.28) !important;
+}
+
 [data-station-pay] {
-  position: relative;
+  position: fixed;
+  left: 50% !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: var(--pay-nav-clear, 4.75rem) !important;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   box-sizing: border-box;
   overflow: hidden;
-  max-height: var(--station-vh, 100dvh);
+  width: min(100vw - 1rem, 40rem) !important;
+  max-width: 40rem;
+  transform: translateX(-50%) !important;
+  max-height: min(62dvh, 34rem) !important;
   padding: 0.5rem;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 [data-tip-keypad-sheet] {
@@ -331,7 +348,7 @@
 }
 
 html[data-orientation="landscape"] [data-station-pay] {
-  max-height: calc(var(--station-vh, 100dvh) - 0.25rem);
+  max-height: min(58dvh, 30rem) !important;
   padding: 0.5rem;
 }
 

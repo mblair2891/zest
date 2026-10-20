@@ -267,7 +267,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Houses pool tips in different ways: keep your own, tip-out by food/drink mix, FOH share, bar wells, one team pool, or food vs drink dual pools. Summex calculates the policy you set.",
       ),
       p(
-        "Card pay shows 18%, 20%, 25%, and Custom on one row. The tip is entered after the card is authorized. The paid receipt total includes that tip. It is not a second charge. Custom opens a keypad for a dollar amount or a percent. No tip closes the check at $0. Training and Quantum Payments sandbox simulate that tip and close the check. A $0 tip closes immediately. Back, Try another method, and Cancel stay on the pay screen. That tip is what the pool uses. It is not a second capture.",
+        "Pay opens as a compact panel over the floor or the check. The bottom navigation and the table stay visible. Card pay shows 18%, 20%, 25%, and Custom on one row. The tip is entered after the card is authorized. The paid receipt total includes that tip. It is not a second charge. Custom opens a keypad for a dollar amount or a percent. No tip closes the check at $0. Training and Quantum Payments sandbox simulate that tip and close the check. A $0 tip closes immediately. Back, Try another method, and Cancel stay on the pay screen. That tip is what the pool uses. It is not a second capture.",
       ),
       warn(
         "Pooling and tip-credit rules vary by state. Summex calculates your configured policy only — it is not legal advice, not a payroll processor, and does not file taxes.",

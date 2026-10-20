@@ -15,7 +15,7 @@ import { useMarketingStore } from "@/lib/pos/marketing-store";
 import { CardTipRow } from "@/components/pos/CardTipRow";
 import { cardAuthorizationCents, cardPayDueCents, computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { tipCentsForChoice, type CardTipChoice } from "@/lib/pos/card-tip";
-import { TIP_CAPTURE_FAILED, logTipAdjust } from "@/lib/payments/tip-capture";
+import { cardCloseSimulatesTip, logTipAdjust, visibleTipFailure } from "@/lib/payments/tip-capture";
 import { guestStaffName } from "@/lib/labor/staff-record";
 import { formatCurrency } from "@/lib/utils";
 import type { CardAuthHold, PaymentMethod } from "@/lib/pos/types";
@@ -305,7 +305,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const tenderBase = Number.isFinite(amountCents)
     ? Math.min(Math.max(0, amountCents), Math.max(0, balance))
     : Math.max(0, balance);
-  const cardHoldAuth = order?.cardAuth ?? null;
+  const cardHoldAuth = order?.cardAuth ?? (order ? readSessionCardAuth(order.id) : null);
   const usbBlocksCard =
     cardLink === "usb" &&
     settings.cardProcessor !== "square" &&
@@ -721,11 +721,27 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   }, [open, cardLink, usbAttached, pax.phase, assignedReader, order, settings.cardProcessor]);
 
   useEffect(() => {
-    if (!wanOnline && method === "card") {
+    if (!wanOnline && method === "card" && !cardHoldAuth) {
       const cfg = payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor);
       setMethod(firstEnabledMethod(cfg, "cash"));
     }
-  }, [wanOnline, method, settings.paymentMethods, settings.cardProcessor]);
+  }, [wanOnline, method, cardHoldAuth, settings.paymentMethods, settings.cardProcessor]);
+
+  useEffect(() => {
+    if (!open) return;
+    const root = document.documentElement;
+    const measure = () => {
+      const nav = document.querySelector("[data-busy-nav], [data-app-nav]");
+      const height = nav?.getBoundingClientRect().height ?? 0;
+      root.style.setProperty("--pay-nav-clear", height > 8 ? `${Math.ceil(height)}px` : "4.75rem");
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("resize", measure);
+      root.style.removeProperty("--pay-nav-clear");
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!giftOk && method === "gift_card") {
@@ -1050,11 +1066,6 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         return;
       }
     }
-    if ((method === "card" || method === "room_charge") && !wanOnline) {
-      setError("Card requires connection. Take another enabled tender or keep the check open.");
-      setMethod(firstEnabledMethod(payCfg, "cash"));
-      return;
-    }
     let cardLast4 = method === "card" ? last4 || undefined : undefined;
     let squarePaymentId: string | undefined;
     let finixTransferId: string | undefined;
@@ -1063,6 +1074,34 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     let paxJournal: { readerId: string; merchantId: string; locationId: string; orgId: string } | null = null;
     const held =
       method === "card" ? (order?.cardAuth ?? readSessionCardAuth(order?.id) ?? null) : null;
+    const trainingCard = cardCloseSimulatesTip({
+      lifecycleStatus: settings.lifecycleStatus,
+      paymentsMode: payStatus?.mode,
+      lifecycleForcesSandbox: payStatus?.lifecycleForcesSandbox,
+      captureSandbox: sandbox,
+    });
+    const simulateClose = method === "card" && Boolean(held) && (trainingCard || payTip <= 0);
+    if ((method === "card" || method === "room_charge") && !wanOnline && !simulateClose) {
+      if (method === "card" && held) {
+        logTipAdjust({
+          phase: "response",
+          sandbox: trainingCard,
+          simulated: false,
+          authorizationId: held.authorizationId || held.finixTransferId || "",
+          captureAmountCents: held.amountCents + payTip,
+          tipCents: payTip,
+          checkId: order?.id,
+          ok: false,
+          error: "Card requires connection",
+        });
+        setTipCaptureFailed(true);
+        setError(visibleTipFailure("Card requires connection"));
+        return;
+      }
+      setError("Card requires connection. Take another enabled tender or keep the check open.");
+      setMethod(firstEnabledMethod(payCfg, "cash"));
+      return;
+    }
     if (method === "card" && cardLink === "usb" && settings.cardProcessor !== "square" && !held) {
       const gate = usbCardStep({
         link: "usb",
@@ -1445,10 +1484,6 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         setBusy(false);
       }
     }
-    const trainingCard = Boolean(
-      payStatus?.lifecycleForcesSandbox || payStatus?.mode === "sandbox" || sandbox,
-    );
-    const simulateClose = method === "card" && (trainingCard || payTip <= 0);
     const authToCapture =
       method === "card" && held && settings.cardProcessor !== "square" && !squarePaymentId
         ? authorizationId || held.authorizationId || held.finixTransferId || ""
@@ -1463,21 +1498,39 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         tipCents: payTip,
         checkId: order?.id,
       };
-      if (!locationId || !orgId) {
-        if (!simulateClose) {
-          setError("Card requires connection. Take cash or keep the check open.");
-          setBusy(false);
-          return;
-        }
+      if (trainingCard || payTip <= 0) {
+        // temporary: remove after tip close is confirmed
+        logTipAdjust({
+          phase: "request",
+          sandbox: trainingCard,
+          simulated: true,
+          ...trace,
+        });
         logTipAdjust({
           phase: "response",
           sandbox: trainingCard,
           simulated: true,
+          ok: true,
+          ...trace,
+        });
+        if (!finixTransferId) finixTransferId = authToCapture;
+      } else if (!locationId || !orgId) {
+        logTipAdjust({
+          phase: "response",
+          sandbox: false,
+          simulated: false,
           ok: false,
           error: "Card requires connection",
           ...trace,
         });
-        if (!finixTransferId) finixTransferId = authToCapture;
+        if (stale()) {
+          setBusy(false);
+          return;
+        }
+        setTipCaptureFailed(true);
+        setError(visibleTipFailure("Card requires connection"));
+        setBusy(false);
+        return;
       } else {
         setBusy(true);
         // temporary: remove after tip close is confirmed
@@ -1494,32 +1547,33 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               paymentId: quantumPaymentId,
             },
           });
+          const closeWithTip = simulateClose || Boolean(captured.sandbox) || payTip <= 0;
           logTipAdjust({
             phase: "response",
             sandbox: trainingCard || Boolean(captured.sandbox),
-            simulated: !captured.ok && simulateClose,
+            simulated: !captured.ok && closeWithTip,
             authorizationId: authToCapture,
             captureAmountCents: held.amountCents + payTip,
             tipCents: payTip,
             checkId: order?.id,
-            ok: captured.ok || simulateClose,
+            ok: captured.ok || closeWithTip,
             error: captured.ok ? undefined : captured.error,
             transferId: captured.ok ? captured.transferId ?? undefined : undefined,
           });
-          if (!captured.ok && !simulateClose) {
+          if (!captured.ok && !closeWithTip) {
             if (stale()) {
               setBusy(false);
               return;
             }
             setTipCaptureFailed(true);
-            setError(captured.error || TIP_CAPTURE_FAILED);
+            setError(visibleTipFailure(captured.error));
             setBusy(false);
             return;
           }
           if (captured.ok && captured.transferId) finixTransferId = captured.transferId;
           else if (!finixTransferId) finixTransferId = authToCapture;
         } catch (err) {
-          const message = err instanceof Error ? err.message : TIP_CAPTURE_FAILED;
+          const message = err instanceof Error ? err.message : "The tip capture call failed.";
           logTipAdjust({
             phase: "response",
             sandbox: trainingCard,
@@ -1532,9 +1586,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             setBusy(false);
             return;
           }
-          if (!simulateClose) {
+          if (!simulateClose && payTip > 0) {
             setTipCaptureFailed(true);
-            setError(message);
+            setError(visibleTipFailure(message));
             setBusy(false);
             return;
           }
@@ -1549,6 +1603,17 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         tipCents: payTip,
         checkId: order?.id,
       };
+      if (trainingCard || payTip <= 0) {
+        logTipAdjust({ phase: "request", sandbox: trainingCard, simulated: true, ...usbTrace });
+        logTipAdjust({
+          phase: "response",
+          sandbox: trainingCard,
+          simulated: true,
+          ok: true,
+          ...usbTrace,
+        });
+        if (!finixTransferId) finixTransferId = held.finixTransferId || usbTrace.authorizationId;
+      } else {
       logTipAdjust({ phase: "request", sandbox: trainingCard, simulated: false, ...usbTrace });
       const { androidPaxBridge } = await import("@/lib/payments/pax-d135-native");
       let finished: { ok: true; skipped?: boolean } | { ok: false; message: string };
@@ -1561,7 +1626,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           bridge: androidPaxBridge(),
         });
       } catch (err) {
-        finished = { ok: false, message: err instanceof Error ? err.message : TIP_CAPTURE_FAILED };
+        finished = { ok: false, message: err instanceof Error ? err.message : "The tip capture call failed." };
       }
       logTipAdjust({
         phase: "response",
@@ -1577,11 +1642,12 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           return;
         }
         setTipCaptureFailed(true);
-        setError(finished.message);
+        setError(visibleTipFailure(finished.message));
         setBusy(false);
         return;
       }
       if (!finished.ok && !finixTransferId) finixTransferId = held.finixTransferId || usbTrace.authorizationId;
+      }
     }
     if (stale()) {
       setBusy(false);
@@ -1809,6 +1875,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     }
   };
 
+  const shownError = error ? visibleTipFailure(error) : null;
+
   if (!order || !totals || !dual) return null;
 
   return (
@@ -1846,7 +1914,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     >
       <DialogContent
         data-station-pay=""
-        className="flex max-h-[var(--station-vh,100dvh)] w-[min(calc(var(--station-vw,100vw)-0.5rem),40rem)] flex-col gap-1.5 overflow-hidden p-2.5"
+        data-pay-sheet=""
+        overlayClassName="station-pay-overlay"
+        className="bottom-[var(--pay-nav-clear,4.75rem)] left-1/2 right-auto top-auto flex max-h-[min(62dvh,34rem)] w-[min(calc(100vw-1rem),40rem)] max-w-none translate-x-[-50%] translate-y-0 flex-col gap-1.5 overflow-hidden rounded-none rounded-t-2xl p-2.5"
       >
         <DialogHeader className="shrink-0 gap-0">
           <DialogTitle className="flex items-center justify-between gap-2 pr-6 text-base leading-none">
@@ -1871,6 +1941,17 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             TRAINING — Quantum Payments sandbox. Not a live card capture. Cash and gift still work without a reader.
           </p>
         )}
+        {method === "card" && cardHoldAuth && !done && !guestFace ? (
+          <div className="shrink-0 rounded-lg border border-border bg-bg px-2 py-1.5" data-pay-tip-panel="">
+            <CardTipRow
+              baseCents={tipBase}
+              tipCents={payTip}
+              choice={cardTip}
+              onChoice={setCardTip}
+              onApply={(choice) => pay(undefined, choice)}
+            />
+          </div>
+        ) : null}
         {method === "card" && payStatus?.mode === "live" && (
           <p className="shrink-0 truncate rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium leading-none">
             Live Quantum Payments. Cash and gift work without a reader.
@@ -2157,9 +2238,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 {cardHold}
               </p>
             )}
-            {error && (
+            {shownError && (
               <p className="text-center text-sm text-danger" role="alert">
-                {error}
+                {shownError}
               </p>
             )}
             <Button
@@ -2234,7 +2315,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         )}
         </div>
         ) : (
-          <div className="flex min-h-0 flex-col gap-1.5" data-pay-body="">
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto" data-pay-body="">
             {!wanOnline && (
               <p className="truncate rounded-md border border-warn/40 bg-warn/15 px-2 py-1 text-[11px] leading-none text-foreground">
                 Card requires connection. Take cash or keep the check open. Gift and comps still work. Card is not queued.
@@ -2326,7 +2407,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                               : FileText;
                   const blockedCash = m === "cash" && odsBlocked;
                   const blockedGift = m === "gift_card" && odsBlocked;
-                  const blockedCard = m === "card" && !wanOnline;
+                  const blockedCard = m === "card" && !wanOnline && !cardHoldAuth;
                   return (
                     <Button
                       key={m}
@@ -2374,18 +2455,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 )}
                 {method === "card" ? (
                   cardHoldAuth ? (
-                    <>
                     <p className="text-xs" data-card-auth-note="">
                       Card authorized - tip not yet applied.
                     </p>
-                    <CardTipRow
-                      baseCents={tipBase}
-                      tipCents={payTip}
-                      choice={cardTip}
-                      onChoice={setCardTip}
-                      onApply={(choice) => pay(undefined, choice)}
-                    />
-                    </>
                   ) : (
                     <p className="text-xs text-muted-foreground" data-card-auth-wait="">
                       Run card. Tip choices print on the slip, then you enter the tip here.
@@ -2675,15 +2747,20 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               </div>
             </Tabs>
 
-            {error && (
+            {shownError && (
               <p className="text-center text-sm text-danger" role="alert">
-                {error}
+                {shownError}
               </p>
             )}
           </div>
         )}
         {!done && !guestFace ? (
           <div className="station-pay-actions">
+            {shownError ? (
+              <p className="text-center text-sm text-danger" role="alert">
+                {shownError}
+              </p>
+            ) : null}
             <div className="flex items-center justify-between rounded-lg border border-border bg-surface-2 px-2.5 py-1 text-sm leading-none">
               <span className="text-muted-foreground">Charging</span>
               <span className="text-base font-semibold tabular">

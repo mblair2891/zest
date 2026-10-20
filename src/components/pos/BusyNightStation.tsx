@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { FloorView } from "./FloorView";
 import { OrderView } from "./OrderView";
 import { BusyPayPanel } from "./BusyPayPanel";
+import { PaymentDialog } from "./PaymentDialog";
 import { NoSaleControl } from "./NoSaleControl";
 import { usePosStore } from "@/lib/pos/store";
 import { useStationSessionStore } from "@/lib/pos/station-session";
@@ -30,6 +31,7 @@ const FLOOR_JOBS = new Set(["my_tables", "pick_table", "floor_seat", "new_ticket
 /** Order / host full service: four huge jobs. Floor is home after Send. */
 export function BusyNightStation({ hostStand = false }: { hostStand?: boolean }) {
   const [tab, setTab] = useState<BusyTab>("floor");
+  const [payOpen, setPayOpen] = useState(false);
   const orders = usePosStore((s) => s.orders);
   const tables = usePosStore((s) => s.tables);
   const settings = usePosStore((s) => s.settings);
@@ -44,7 +46,9 @@ export function BusyNightStation({ hostStand = false }: { hostStand?: boolean })
   const hasPossession = useCashSessionStore((s) =>
     emp ? Boolean(s.possessions[emp.id]) : false,
   );
+  const activeOrderId = usePosStore((s) => s.activeOrderId);
   const open = orders.filter((o) => o.status === "open" && !o.holdKind);
+  const activeOpen = open.some((o) => o.id === activeOrderId);
   const other = stationMenuItems({
     deviceRole: hostStand ? "host" : "order",
     employeeRole: emp?.role,
@@ -71,13 +75,21 @@ export function BusyNightStation({ hostStand = false }: { hostStand?: boolean })
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-busy-night="">
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {tab === "floor" && (
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {(tab === "floor" || tab === "pay") && (
           <FloorView
             hostStand={hostStand}
             mapOnly
             preferMine={!hostStand}
-            onBusyNav={setTab}
+            onBusyNav={(dest) => {
+              if (dest === "pay") {
+                setPayOpen(true);
+                setTab("floor");
+                return;
+              }
+              setPayOpen(false);
+              setTab(dest);
+            }}
           />
         )}
         {tab === "checks" && (
@@ -155,7 +167,14 @@ export function BusyNightStation({ hostStand = false }: { hostStand?: boolean })
             onNeedFloor={() => setTab("floor")}
           />
         )}
-        {tab === "pay" && <BusyPayPanel onNeedFloor={() => setTab("floor")} />}
+        {payOpen && !activeOpen && (
+          <BusyPayPanel
+            onNeedFloor={() => {
+              setPayOpen(false);
+              setTab("floor");
+            }}
+          />
+        )}
       </div>
       <nav
         className="grid shrink-0 grid-cols-4 border-t border-border bg-surface safe-bottom"
@@ -168,15 +187,25 @@ export function BusyNightStation({ hostStand = false }: { hostStand?: boolean })
             type="button"
             className={cn(
               "station-touch min-h-20 text-lg font-semibold",
-              tab === item.id ? "bg-primary text-primary-foreground" : "text-foreground",
+              (item.id === "pay" ? payOpen : tab === item.id)
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground",
             )}
-            aria-current={tab === item.id ? "page" : undefined}
-            onClick={() => setTab(item.id)}
+            aria-current={item.id === "pay" ? (payOpen ? "page" : undefined) : tab === item.id ? "page" : undefined}
+            onClick={() => {
+              if (item.id === "pay") {
+                setPayOpen(true);
+                return;
+              }
+              setPayOpen(false);
+              setTab(item.id);
+            }}
           >
             {item.label}
           </button>
         ))}
       </nav>
+      <PaymentDialog open={payOpen && activeOpen} onOpenChange={setPayOpen} />
     </div>
   );
 }
