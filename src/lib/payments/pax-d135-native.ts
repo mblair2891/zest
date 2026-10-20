@@ -50,12 +50,18 @@ type PaxPlugin = {
     message?: string;
     skipped?: boolean;
   }>;
-  sale: (input: { amountCents: number; checkId: string; tipCents: number }) => Promise<{
+  sale: (input: {
+    amountCents: number;
+    checkId: string;
+    tipCents: number;
+    idempotencyId: string;
+  }) => Promise<{
     ok: boolean;
     code?: string;
     transferId?: string;
     last4?: string | null;
     message?: string;
+    idempotencyId?: string;
   }>;
   addListener: (
     event: "status",

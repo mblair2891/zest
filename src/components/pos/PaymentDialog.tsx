@@ -64,6 +64,7 @@ import {
   readerCheckEntityBanner,
   readerEntityLabel,
   readerForSerial,
+  reuseCardSaleIdempotencyId,
   runAndroidPaxCapture,
   runAndroidPaxSale,
   runAndroidPaxVoid,
@@ -938,6 +939,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           }
         }
         usePosStore.getState().setCardAuth(order.id, null);
+        usePosStore.getState().setCardSaleIdempotencyId(order.id, null);
         clearSessionCardAuth(order.id);
         setCardHold(null);
         setCardTip({ kind: "none" });
@@ -956,6 +958,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     if (!current || current.status !== "open") return;
     const auth = current.cardAuth ?? readSessionCardAuth(current.id);
     usePosStore.getState().setCardAuth(current.id, null);
+    if (auth) usePosStore.getState().setCardSaleIdempotencyId(current.id, null);
     clearSessionCardAuth(current.id);
     const authorizationId = auth?.authorizationId || auth?.finixTransferId || "";
     if (!authorizationId) return;
@@ -1312,6 +1315,12 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         try {
           const { androidPaxBridge } = await import("@/lib/payments/pax-d135-native");
           const locationLive = Boolean(payStatus && payStatus.mode === "live" && !payStatus.lifecycleForcesSandbox);
+          const currentOrder =
+            usePosStore.getState().orders.find((row) => row.id === order.id) ?? order;
+          const idempotencyId = reuseCardSaleIdempotencyId(currentOrder.cardSaleIdempotencyId);
+          if (currentOrder.cardSaleIdempotencyId !== idempotencyId) {
+            usePosStore.getState().setCardSaleIdempotencyId(order.id, idempotencyId);
+          }
           const sale = await runAndroidPaxSale({
             checkId: order.id,
             amountCents: tend,
@@ -1331,9 +1340,13 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             bluetoothOff: cardLink === "usb" ? false : linkNow.phase === "bluetooth",
             link: cardLink,
             usbAttached: usbAttached === true,
+            idempotencyId,
             bridge: androidPaxBridge(),
           });
           if (!sale.ok) {
+            if (!sale.keepIdempotency) {
+              usePosStore.getState().setCardSaleIdempotencyId(order.id, null);
+            }
             setError(staffCardDecline(sale.message, { amountCents: tend, training }));
             setBusy(false);
             return;

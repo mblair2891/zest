@@ -415,6 +415,8 @@ export interface PosStore {
   setOrderNote: (note: string) => void;
   printCheck: () => void;
   setCardAuth: (orderId: string, auth: CardAuthHold | null) => void;
+  /** Persist the station reader sale id on the check. Null clears it after a finished attempt. */
+  setCardSaleIdempotencyId: (orderId: string, idempotencyId: string | null) => void;
   takePayment: (opts: {
     method: PaymentMethod;
     amountCents: number;

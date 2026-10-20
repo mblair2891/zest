@@ -63,6 +63,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Still setting up: no charge.",
         "A failed connection shows the reason. The connection timed out. The reader rejected the connection. The reader did not respond. Allow Nearby devices and Location, then scan again. The station does not return to the scan prompt.",
         "The reader disconnected. The check is not paid. Try again. That line shows only when the link drops after Reader ready. A timeout leaves the check unpaid. Try again.",
+        "A card sale on this reader sends one idempotency id. The check keeps that id. Trying that sale again uses the same id and does not create another transfer.",
         "A paid check is not charged a second time.",
         "A decline, a cancel, or a chip error leaves the check open.",
         "A sandbox reader at a live location is refused, and a live reader in sandbox is refused.",

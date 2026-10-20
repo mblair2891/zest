@@ -697,6 +697,11 @@ export interface Order {
   pendingAcceptName?: string;
   /** Authorized card, before the tip is entered and the check closes. */
   cardAuth?: CardAuthHold;
+  /**
+   * Idempotency id for the in-flight station reader sale.
+   * Null means that attempt finished and the next sale mints a new id.
+   */
+  cardSaleIdempotencyId?: string | null;
   /** Handheld asked a terminal to print the paid receipt. */
   receiptPendingAt?: number;
   receiptPendingBy?: string;

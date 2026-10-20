@@ -215,6 +215,101 @@ test("unregistered serial is refused", () => {
   if (!pick.ok) assert.equal(pick.message, PAX_MSG.notRegistered);
 });
 
+test("a reader sale reuses one idempotency id until the card is declined", async () => {
+  resetPaxSaleGuards();
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const timed: string[] = [];
+  const saleInput = {
+    checkId: "chk_idem",
+    amountCents: 1800,
+    locationLive: false,
+    reader,
+    sellingEntityId: "ent_bbq",
+    alreadyCaptured: false,
+    settingUp: false,
+    connected: true,
+    bridge: {
+      sale: async (input: { idempotencyId: string }) => {
+        timed.push(input.idempotencyId);
+        return { ok: false, code: "timeout", message: "timed out" };
+      },
+    },
+  };
+  const first = await runAndroidPaxSale(saleInput);
+  const second = await runAndroidPaxSale(saleInput);
+  assert.equal(first.ok, false);
+  assert.equal(second.ok, false);
+  if (!first.ok) assert.equal(first.keepIdempotency, true);
+  if (!second.ok) assert.equal(second.keepIdempotency, true);
+  assert.equal(timed.length, 2);
+  assert.match(timed[0] ?? "", uuid);
+  assert.equal(timed[0], timed[1]);
+
+  const saved = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  const explicit: string[] = [];
+  const reused = await runAndroidPaxSale({
+    ...saleInput,
+    checkId: "chk_explicit",
+    idempotencyId: saved,
+    bridge: {
+      sale: async (input: { idempotencyId: string }) => {
+        explicit.push(input.idempotencyId);
+        return { ok: false, code: "timeout", message: "timed out" };
+      },
+    },
+  });
+  assert.equal(explicit[0], saved);
+  if (!reused.ok) assert.equal(reused.keepIdempotency, true);
+
+  resetPaxSaleGuards();
+  const declined: string[] = [];
+  const declineBridge = {
+    sale: async (input: { idempotencyId: string }) => {
+      declined.push(input.idempotencyId);
+      return { ok: false, code: "declined", message: "DECLINED" };
+    },
+  };
+  const denied = await runAndroidPaxSale({
+    ...saleInput,
+    checkId: "chk_decline_id",
+    bridge: declineBridge,
+  });
+  const again = await runAndroidPaxSale({
+    ...saleInput,
+    checkId: "chk_decline_id",
+    bridge: declineBridge,
+  });
+  assert.equal(again.ok, false);
+  if (!again.ok) assert.equal(again.keepIdempotency, false);
+  assert.equal(denied.ok, false);
+  if (!denied.ok) {
+    assert.equal(denied.keepIdempotency, false);
+    assert.equal(denied.message, "Card declined");
+  }
+  assert.equal(declined.length, 2);
+  assert.notEqual(declined[0], declined[1]);
+  assert.match(declined[1] ?? "", uuid);
+
+  const duplicate = await runAndroidPaxSale({
+    ...saleInput,
+    checkId: "chk_dup",
+    idempotencyId: saved,
+    bridge: {
+      sale: async () => ({
+        ok: false,
+        code: "error",
+        message: "idempotency_id has already been used",
+      }),
+    },
+  });
+  assert.equal(duplicate.ok, false);
+  if (!duplicate.ok) {
+    assert.equal(duplicate.message, PAX_MSG.alreadySent);
+    assert.equal(duplicate.keepIdempotency, true);
+    assert.doesNotMatch(duplicate.message, /Card declined/);
+  }
+});
+
 test("decline leaves the check open", async () => {
   resetPaxSaleGuards();
   const sales = { n: 0 };
@@ -438,6 +533,18 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.doesNotMatch(args, /checkId/);
   assert.match(sale, /resolveSaleFailure\(call, errorMessage\)/);
   assert.match(sale, /saleFailureText\(result\)/);
+  assert.match(sale, /PromptForSignature\.Never\.INSTANCE,\s*idempotencyId/);
+  assert.match(plugin, /getString\("idempotencyId"/);
+  assert.match(plugin, /isSaleIdempotencyId\(idempotencyId\)/);
+  assert.match(plugin, /The sale could not start\. No charge was sent\./);
+  assert.match(plugin, /The last argument is the refund idempotency slot/);
+  assert.match(plugin, /startRefund\([\s\S]*\}, null\);/);
+  const floorServer = readFileSync("src/lib/pos/floor.server.ts", "utf8");
+  assert.match(floorServer, /card_sale_idempotency_id = case/);
+  assert.match(floorServer, /when \$\{saleToken\} = '-' then null/);
+  assert.match(floorServer, /when \$\{saleToken\} is null then pos_checks\.card_sale_idempotency_id/);
+  const sync = readFileSync("src/lib/pos/floor-sync.ts", "utf8");
+  assert.match(sync, /cardSaleIdempotencyId === null/);
   const failureText = plugin.slice(plugin.indexOf("String saleFailureText"), plugin.indexOf("void appendSalePart"));
   assert.doesNotMatch(failureText, /getMaskedAccountNumber|getCryptogram/);
   const manifest = readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
@@ -445,6 +552,8 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(manifest, /ACCESS_FINE_LOCATION/);
   assert.doesNotMatch(manifest, /neverForLocation/);
   const dialog = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
+  assert.match(dialog, /reuseCardSaleIdempotencyId/);
+  assert.match(dialog, /keepIdempotency/);
   assert.match(dialog, /Scan for reader/);
   assert.match(dialog, /paxScanPresentation/);
   assert.match(dialog, /runAndroidPaxSale/);

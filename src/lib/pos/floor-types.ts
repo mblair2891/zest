@@ -91,6 +91,11 @@ export type FloorCheck = {
   createdAt: number;
   updatedAt: number;
   closedAt: number | null;
+  /**
+   * Reader sale idempotency id.
+   * A UUID is stored. "-" clears it. Null leaves the saved value.
+   */
+  cardSaleIdempotencyId?: string | null;
 };
 
 export type FloorTicketItem = {

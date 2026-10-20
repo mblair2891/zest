@@ -3,7 +3,15 @@
  * The Finix Android SDK runs in the station app. This module never
  * opens Web Bluetooth and never calls Stripe.
  */
-import { DECLINE_GENERIC, displayCardDecline } from "./card-decline.ts";
+import {
+  DECLINE_AVS,
+  DECLINE_CANCELED,
+  DECLINE_CVV,
+  DECLINE_GENERIC,
+  DECLINE_INSUFFICIENT,
+  DECLINE_INVALID_NUMBER,
+  displayCardDecline,
+} from "./card-decline.ts";
 
 export const PAX_NAME_PREFIX = "PAX D135_";
 export const PAX_MODEL = "PAX_D135" as const;
@@ -82,7 +90,60 @@ export const PAX_MSG = {
   /** New PAX D135, and when saving the id on an open reader. */
   deviceIdRequired: "Enter the Finix device ID.",
   usbNotConnected: CARD_READER_USB_NOT_CONNECTED,
+  /** The reader sale had no idempotency id, so no charge was sent. */
+  saleNotStarted: "The sale could not start. No charge was sent.",
+  /** Finix already accepted this sale id. A retry must not create another transfer. */
+  alreadySent: "This sale was already sent. The check stays open.",
 } as const;
+
+const CARD_SALE_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const saleIdempotencyIds = new Map<string, string>();
+
+/** Keep a saved UUID. Mint a new one only when the check does not have one yet. */
+export function reuseCardSaleIdempotencyId(existing: string | null | undefined): string {
+  const id = String(existing ?? "").trim();
+  if (CARD_SALE_UUID.test(id)) return id;
+  return crypto.randomUUID();
+}
+
+/**
+ * Id for this check's in-flight reader sale.
+ * A caller-supplied UUID wins. Otherwise the id from the last attempt on this check is reused.
+ */
+export function cardSaleIdempotencyFor(checkId: string, existing?: string | null): string {
+  const given = String(existing ?? "").trim();
+  if (CARD_SALE_UUID.test(given)) {
+    saleIdempotencyIds.set(checkId, given);
+    return given;
+  }
+  const prior = saleIdempotencyIds.get(checkId);
+  if (prior && CARD_SALE_UUID.test(prior)) return prior;
+  const minted = crypto.randomUUID();
+  saleIdempotencyIds.set(checkId, minted);
+  return minted;
+}
+
+export function clearCardSaleIdempotency(checkId: string): void {
+  saleIdempotencyIds.delete(checkId.trim());
+}
+
+function shortCardDecline(message: string): boolean {
+  return (
+    message === DECLINE_INSUFFICIENT ||
+    message === DECLINE_INVALID_NUMBER ||
+    message === DECLINE_GENERIC ||
+    message === DECLINE_CANCELED ||
+    message === DECLINE_AVS ||
+    message === DECLINE_CVV
+  );
+}
+
+function duplicateSaleId(raw: string): boolean {
+  const text = raw.toLowerCase();
+  return text.includes("idempotency") || text.includes("already been used");
+}
 
 /** Bluetooth when the saved row has no connection, or an unknown one. */
 export function normalizePaxLink(raw: unknown): PaxReaderLink {
@@ -130,6 +191,7 @@ const capturedChecks = new Set<string>();
 
 export function resetPaxSaleGuards(): void {
   capturedChecks.clear();
+  saleIdempotencyIds.clear();
 }
 
 export function rememberCapturedCheck(checkId: string): void {
@@ -1191,12 +1253,18 @@ export function classifyPaxError(
 }
 
 export type PaxBridge = {
-  sale: (input: { amountCents: number; checkId: string; tipCents: number }) => Promise<{
+  sale: (input: {
+    amountCents: number;
+    checkId: string;
+    tipCents: number;
+    idempotencyId: string;
+  }) => Promise<{
     ok: boolean;
     code?: string;
     transferId?: string;
     last4?: string | null;
     message?: string;
+    idempotencyId?: string;
   }>;
   capture?: (input: { transferId: string; amountCents: number }) => Promise<{
     ok: boolean;
@@ -1226,37 +1294,40 @@ export async function runAndroidPaxSale(input: {
   link?: PaxReaderLink;
   /** True only while the USB reader is plugged in. Bluetooth and Network ignore it. */
   usbAttached?: boolean;
+  /** Saved on the check. A retry of this sale passes the same id. */
+  idempotencyId?: string | null;
   bridge: PaxBridge;
 }): Promise<
-  | { ok: true; transferId: string; last4: string | null }
-  | { ok: false; message: string; charged: false }
+  | { ok: true; transferId: string; last4: string | null; idempotencyId: string }
+  | { ok: false; message: string; charged: false; keepIdempotency: boolean }
 > {
   if (input.alreadyCaptured || checkCapturedLocally(input.checkId)) {
-    return { ok: false, message: PAX_MSG.alreadyPaid, charged: false };
+    return { ok: false, message: PAX_MSG.alreadyPaid, charged: false, keepIdempotency: true };
   }
   if (input.locationLive) {
     const message = input.reader
       ? envBlock(true, input.reader.env) || PAX_MSG.liveBuild
       : PAX_MSG.liveBuild;
-    return { ok: false, message, charged: false };
+    return { ok: false, message, charged: false, keepIdempotency: true };
   }
   if (input.reader && input.reader.env === "live") {
-    return { ok: false, message: PAX_MSG.liveOnSandbox, charged: false };
+    return { ok: false, message: PAX_MSG.liveOnSandbox, charged: false, keepIdempotency: true };
   }
   const link = normalizePaxLink(input.link ?? input.reader?.link);
   const usb = usbCardStep({ link, usbAttached: input.usbAttached, step: "authorize" });
-  if (!usb.ok) return { ok: false, message: usb.message, charged: false };
+  if (!usb.ok) return { ok: false, message: usb.message, charged: false, keepIdempotency: true };
   if (link !== "usb" && input.bluetoothOff) {
-    return { ok: false, message: PAX_MSG.bluetooth, charged: false };
+    return { ok: false, message: PAX_MSG.bluetooth, charged: false, keepIdempotency: true };
   }
   if (input.settingUp) {
-    return { ok: false, message: PAX_MSG.stillSettingUp, charged: false };
+    return { ok: false, message: PAX_MSG.stillSettingUp, charged: false, keepIdempotency: true };
   }
   if (!input.reader) {
     return {
       ok: false,
       message: link === "usb" ? CARD_READER_USB_NOT_CONNECTED : PAX_MSG.notConnected,
       charged: false,
+      keepIdempotency: true,
     };
   }
   if (
@@ -1266,30 +1337,50 @@ export async function runAndroidPaxSale(input: {
       sellingEntityIds: input.sellingEntityIds,
     })
   ) {
-    return { ok: false, message: PAX_MSG.wrongEntity, charged: false };
+    return { ok: false, message: PAX_MSG.wrongEntity, charged: false, keepIdempotency: true };
   }
   if (!input.connected) {
     return {
       ok: false,
       message: link === "usb" ? CARD_READER_USB_NOT_CONNECTED : PAX_MSG.notConnected,
       charged: false,
+      keepIdempotency: true,
     };
   }
+  const idempotencyId = cardSaleIdempotencyFor(input.checkId, input.idempotencyId);
   const result = await input.bridge.sale({
     amountCents: input.amountCents,
     checkId: input.checkId,
     tipCents: input.tipCents ?? 0,
+    idempotencyId,
   });
   if (!result.ok || !result.transferId) {
+    const raw = `${result.code || ""} ${result.message || ""}`;
+    if (duplicateSaleId(raw)) {
+      return {
+        ok: false,
+        message: PAX_MSG.alreadySent,
+        charged: false,
+        keepIdempotency: true,
+      };
+    }
     const classified = classifyPaxError(result.code || "error", result.message, {
       amountCents: input.amountCents,
       training: true,
     });
-    return { ok: false, message: classified.message, charged: false };
+    const keepIdempotency = !shortCardDecline(classified.message);
+    if (!keepIdempotency) clearCardSaleIdempotency(input.checkId);
+    return { ok: false, message: classified.message, charged: false, keepIdempotency };
   }
   rememberCapturedCheck(input.checkId);
   const last4 = result.last4 ? String(result.last4).replace(/\D/g, "").slice(-4) || null : null;
-  return { ok: true, transferId: result.transferId, last4 };
+  const echoed = String(result.idempotencyId ?? "").trim();
+  return {
+    ok: true,
+    transferId: result.transferId,
+    last4,
+    idempotencyId: CARD_SALE_UUID.test(echoed) ? echoed : idempotencyId,
+  };
 }
 
 /**

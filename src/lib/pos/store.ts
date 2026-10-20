@@ -1,7 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
-import { PAX_MSG } from "@/lib/payments/pax-d135";
+import { clearCardSaleIdempotency, PAX_MSG } from "@/lib/payments/pax-d135";
 import { releaseCardAuthorization } from "@/lib/payments/release-card-auth";
 import { homeViewForEmployee, homeViewForRole } from "./rbac";
 import {
@@ -3521,6 +3521,15 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			),
 		});
 	},
+	setCardSaleIdempotencyId: (orderId, idempotencyId) => {
+		if (idempotencyId == null) clearCardSaleIdempotency(orderId);
+		set({
+			orders: get().orders.map((o: any) =>
+				o.id === orderId ? { ...o, cardSaleIdempotencyId: idempotencyId } : o,
+			),
+		});
+		floorSync("check", orderId);
+	},
 	printCheck: () => {
 		const order = get().getActiveOrder();
 		if (!order) return;
@@ -3738,7 +3747,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			...order,
 			payments,
 			cardAuth: method === "card" ? undefined : order.cardAuth,
+			cardSaleIdempotencyId: method === "card" ? null : order.cardSaleIdempotencyId,
 		};
+		if (method === "card") clearCardSaleIdempotency(order.id);
 		const totals = computeTotals(updated, get().settings, {
 			tender: method === "cash" ? "cash" : "card",
 		});

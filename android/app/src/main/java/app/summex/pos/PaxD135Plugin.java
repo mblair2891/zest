@@ -105,6 +105,8 @@ public class PaxD135Plugin extends Plugin {
     static final String MSG_ALREADY = "This check is already paid. No second charge was sent.";
     static final String MSG_TIMEOUT = "The card read timed out. The check is not paid. Try again.";
     static final String MSG_UNREAD = "The card could not be read. The check stays open.";
+    /** Missing sale id. Matches the station line so the pay screen does not call it a decline. */
+    static final String MSG_SALE_ID = "The sale could not start. No charge was sent.";
     static final long SALE_TIMEOUT_MS = 90_000L;
     /** First Finix or Bluetooth callback. Key download uses CONNECT_TIMEOUT_MS after that. */
     static final long FIRST_RESPONSE_MS = 15_000L;
@@ -309,6 +311,7 @@ public class PaxD135Plugin extends Plugin {
             return;
         }
         try {
+            // The last argument is the refund idempotency slot. Null leaves this void without an id.
             current.startRefund(transferId.trim(), amount, new MPOSRefundCallback() {
                 @Override
                 public void onSuccess(RefundResult result) {
@@ -322,7 +325,7 @@ public class PaxD135Plugin extends Plugin {
                     String shown = error == null ? "" : error.replaceAll("\\s+", " ").trim();
                     resolveMessage(call, shown.isEmpty() ? MSG_USB : shown);
                 }
-            });
+            }, null);
         } catch (Exception e) {
             String detail = e.getMessage() == null ? "" : e.getMessage().trim();
             resolveMessage(call, detail.isEmpty() ? MSG_USB : detail);
@@ -399,7 +402,24 @@ public class PaxD135Plugin extends Plugin {
             call.resolve(ret);
             return;
         }
-        onWorker(() -> saleOnWorker(call, current, checkId, amount));
+        final String idempotencyId = call.getString("idempotencyId", "");
+        if (!isSaleIdempotencyId(idempotencyId)) {
+            JSObject ret = new JSObject();
+            ret.put("ok", false);
+            ret.put("code", "error");
+            ret.put("message", MSG_SALE_ID);
+            call.resolve(ret);
+            return;
+        }
+        onWorker(() -> saleOnWorker(call, current, checkId, amount, idempotencyId));
+    }
+
+    /** UUID v4. The station saves this on the check and sends the same value on a retry. */
+    private static boolean isSaleIdempotencyId(String value) {
+        if (value == null) return false;
+        return value.matches(
+            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        );
     }
 
     private void connectOnWorker(
@@ -555,7 +575,13 @@ public class PaxD135Plugin extends Plugin {
         }
     }
 
-    private void saleOnWorker(PluginCall call, MPOSFinix current, String checkId, int amount) {
+    private void saleOnWorker(
+        PluginCall call,
+        MPOSFinix current,
+        String checkId,
+        int amount,
+        String idempotencyId
+    ) {
         final AtomicBoolean settled = new AtomicBoolean(false);
         final Runnable timeout = () -> {
             if (!settled.compareAndSet(false, true)) return;
@@ -571,7 +597,7 @@ public class PaxD135Plugin extends Plugin {
             // The check id is metadata. It is not a Finix buyer identity.
             HashMap<String, String> tags = new HashMap<>();
             if (checkId != null && !checkId.isEmpty()) tags.put("check", checkId);
-            Log.i("PaxD135", "SDK sale start cents " + amount);
+            Log.i("PaxD135", "SDK sale start cents " + amount + " idempotency " + idempotencyId);
             current.startTransaction(
                 amount,
                 TransactionType.AUTHORIZATION,
@@ -586,7 +612,7 @@ public class PaxD135Plugin extends Plugin {
                     public void onSuccess(TransactionResult result) {
                         if (!settled.compareAndSet(false, true)) return;
                         main.removeCallbacks(timeout);
-                        finishSale(call, checkId, result);
+                        finishSale(call, checkId, result, idempotencyId);
                     }
 
                     @Override
@@ -601,7 +627,8 @@ public class PaxD135Plugin extends Plugin {
                 null,
                 null,
                 null,
-                PromptForSignature.Never.INSTANCE
+                PromptForSignature.Never.INSTANCE,
+                idempotencyId
             );
         } catch (Exception e) {
             if (!settled.compareAndSet(false, true)) return;
@@ -645,7 +672,7 @@ public class PaxD135Plugin extends Plugin {
         out.append(label).append(' ').append(value);
     }
 
-    private void finishSale(PluginCall call, String checkId, TransactionResult result) {
+    private void finishSale(PluginCall call, String checkId, TransactionResult result, String idempotencyId) {
         String id = result == null || result.getId() == null ? "" : result.getId().trim();
         String failure = result == null || result.getFailureCode() == null ? "" : result.getFailureCode().trim();
         String state = result == null || result.getState() == null ? "" : result.getState();
@@ -659,6 +686,7 @@ public class PaxD135Plugin extends Plugin {
         }
         ret.put("ok", true);
         ret.put("transferId", id);
+        if (idempotencyId != null && !idempotencyId.isEmpty()) ret.put("idempotencyId", idempotencyId);
         String last4 = last4(result.getMaskedAccountNumber());
         if (last4 != null) ret.put("last4", last4);
         call.resolve(ret);

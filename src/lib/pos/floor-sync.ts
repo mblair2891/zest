@@ -117,6 +117,21 @@ export function orderLineToFloor(line: OrderLine, tickets: KitchenTicket[]): Flo
   };
 }
 
+const CARD_SALE_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Null on the order clears the saved id. A UUID stores it. Omitted leaves the server value. */
+function cardSaleSyncToken(value: string | null | undefined): string | null {
+  if (value === null) return "-";
+  const id = String(value ?? "").trim();
+  return CARD_SALE_UUID.test(id) ? id : null;
+}
+
+function cardSaleFromServer(value: string | null | undefined): string | undefined {
+  const id = String(value ?? "").trim();
+  return CARD_SALE_UUID.test(id) ? id : undefined;
+}
+
 export function orderToFloorCheck(order: Order, locationId: string, tickets: KitchenTicket[]): FloorCheck {
   return {
     id: order.id,
@@ -141,6 +156,7 @@ export function orderToFloorCheck(order: Order, locationId: string, tickets: Kit
     createdAt: order.createdAt,
     updatedAt: Date.now(),
     closedAt: order.closedAt ?? null,
+    cardSaleIdempotencyId: cardSaleSyncToken(order.cardSaleIdempotencyId),
   };
 }
 
@@ -232,6 +248,7 @@ function floorCheckToOrder(check: FloorCheck): Order {
     serviceChargeCents: check.serviceChargeCents,
     createdAt: check.createdAt,
     closedAt: check.closedAt ?? undefined,
+    cardSaleIdempotencyId: cardSaleFromServer(check.cardSaleIdempotencyId),
     note: check.note ?? undefined,
     checkPrintedAt: check.checkPrintedAt ?? undefined,
     mergedTableIds: check.mergedTableIds,
@@ -311,7 +328,19 @@ export function applyOpenFloor(floor: OpenFloor): void {
     return note ? [note] : [];
   });
 
-  const nextOrders = mergedOrders;
+  const nextOrders = mergedOrders.map((order) => {
+    const local = s.orders.find((row) => row.id === order.id);
+    if (!local) return order;
+    if (local.cardSaleIdempotencyId === null) return { ...order, cardSaleIdempotencyId: null };
+    if (
+      typeof local.cardSaleIdempotencyId === "string" &&
+      CARD_SALE_UUID.test(local.cardSaleIdempotencyId) &&
+      !order.cardSaleIdempotencyId
+    ) {
+      return { ...order, cardSaleIdempotencyId: local.cardSaleIdempotencyId };
+    }
+    return order;
+  });
   const activeStill = nextOrders.some((o) => o.id === s.activeOrderId);
   const prevById = new Map(s.tickets.map((t) => [t.id, t.status]));
   const overlay = parseItem86(floor.item86);

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_313_card_sale_idempotency",
+    date: "2026-10-20",
+    title: "Card sale idempotency",
+    summary: "A card on the station reader uses one idempotency id for that sale.",
+    body: "A card on the station reader sends one idempotency id with that sale. The check keeps that id. Trying that sale again uses the same id and does not create another transfer. A declined card can be tried again with a new id. Tip close still uses its own key.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_312_short_declines",
     date: "2026-10-20",
     title: "Short card declines",

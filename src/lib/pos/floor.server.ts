@@ -91,7 +91,23 @@ type CheckRow = {
   created_at_ms: number | string;
   updated_at_ms: number | string;
   closed_at_ms: number | string | null;
+  card_sale_idempotency_id?: string | null;
 };
+
+const CARD_SALE_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** UUID stores the reader sale id. "-" clears it. Anything else leaves the saved value. */
+function cardSaleIdempotencyToken(value: string | null | undefined): string | null {
+  if (value === "-") return "-";
+  const id = String(value ?? "").trim();
+  return CARD_SALE_UUID.test(id) ? id : null;
+}
+
+function readCardSaleIdempotencyId(value: string | null | undefined): string | null {
+  const token = cardSaleIdempotencyToken(value);
+  return token && token !== "-" ? token : null;
+}
 
 type ItemRow = {
   id: string;
@@ -451,6 +467,7 @@ function mapCheck(
     createdAt: n(row.created_at_ms),
     updatedAt: n(row.updated_at_ms),
     closedAt: row.closed_at_ms == null ? null : n(row.closed_at_ms),
+    cardSaleIdempotencyId: readCardSaleIdempotencyId(row.card_sale_idempotency_id),
   };
 }
 
@@ -551,12 +568,14 @@ async function upsertCheckRow(
   if (existing[0] && existing[0].location_id !== ctx.locationId) {
     throw new ForbiddenError("Check belongs to another location");
   }
+  const saleToken = cardSaleIdempotencyToken(check.cardSaleIdempotencyId);
   await sql`
     insert into pos_checks (
       id, location_id, org_id, table_id, tab_name, number, type, status,
       server_id, server_name, guest_count, discount_percent, discount_cents,
       auto_grat_applied, service_charge_cents, note, check_printed_at_ms,
-      merged_table_ids, client_mutation_id, created_at_ms, updated_at_ms, closed_at_ms
+      merged_table_ids, client_mutation_id, created_at_ms, updated_at_ms, closed_at_ms,
+      card_sale_idempotency_id
     ) values (
       ${check.id},
       ${ctx.locationId},
@@ -579,7 +598,8 @@ async function upsertCheckRow(
       ${clientMutationId},
       ${check.createdAt || now},
       ${now},
-      ${check.closedAt}
+      ${check.closedAt},
+      case when ${saleToken} = '-' then null else ${saleToken} end
     )
     on conflict (id) do update set
       table_id = excluded.table_id,
@@ -598,7 +618,12 @@ async function upsertCheckRow(
       check_printed_at_ms = excluded.check_printed_at_ms,
       merged_table_ids = excluded.merged_table_ids,
       updated_at_ms = excluded.updated_at_ms,
-      closed_at_ms = excluded.closed_at_ms
+      closed_at_ms = excluded.closed_at_ms,
+      card_sale_idempotency_id = case
+        when ${saleToken} = '-' then null
+        when ${saleToken} is null then pos_checks.card_sale_idempotency_id
+        else ${saleToken}
+      end
     where pos_checks.location_id = ${ctx.locationId}
   `;
 }

@@ -279,7 +279,7 @@ test("the printer probe connects without a payload and the reader timeout stays"
     new URL("../android/app/build.gradle", import.meta.url),
     "utf8",
   );
-  assert.match(gradle, /implementation\("com\.finix:pax-mpos-sdk-android:3\.7\.0"\)/);
+  assert.match(gradle, /implementation\("com\.finix:pax-mpos-sdk-android:3\.8\.0"\)/);
   assert.match(pax, /FIRST_RESPONSE_MS = 15_000L/);
   assert.match(pax, /CONNECT_TIMEOUT_MS = 4L \* 60L \* 1000L/);
   assert.match(pax, /Allow Nearby devices and Location, then scan again\./);
