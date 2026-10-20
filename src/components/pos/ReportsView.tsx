@@ -16,7 +16,7 @@ import { canEmployee } from "@/lib/access/permissions";
 import { HOST_SCOPE, canViewPayroll, canViewSalesReports, entityLoginScope } from "@/lib/access/entity-grants";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { hrPayrollExportFn } from "@/lib/hr/api";
-import { computePayPeriod, hoursExportStatus, parseLaborRules } from "@/lib/labor/rules";
+import { computePayPeriod, hoursExportStatus, laborRulesAt, parseLaborRules } from "@/lib/labor/rules";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { REPORT_GROUP_LABEL, reportsFor } from "@/lib/reports/catalog";
@@ -1164,7 +1164,11 @@ function PayrollReportSlice() {
       ? settings.name || "Host"
       : vendors.find((v) => v.id === employerId)?.shortName ?? employerId;
   const labor = useOpsStore((s) => s.labor);
-  const periodWin = computePayPeriod(Date.now(), parseLaborRules(labor));
+  const laborByEntity = useOpsStore((s) => s.laborByEntity);
+  const periodWin = computePayPeriod(
+    Date.now(),
+    laborRulesAt(parseLaborRules(laborByEntity[employerId] ?? labor), Date.now()),
+  );
   const [from, setFrom] = useState(() => periodWin.startIso);
   const [to, setTo] = useState(() => periodWin.endIso);
   const [err, setErr] = useState<string | null>(null);

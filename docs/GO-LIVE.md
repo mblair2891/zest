@@ -28,6 +28,7 @@ A SaaS-onboarded host can operate in **TRAINING** when these are true.
 - Starter dining room + kitchen/bar menu if the house was empty.
 - Seat → order → Order Display Start/Bump → originating server notified → cash or sandbox card → bus.
 - Cash drawer mode is Assigned, Shared, Personal bank, or None (location, section, or device). The owner claims with a blind count. A mid-shift transfer counts out, the next person counts in or confirms, and the drawer stays open. Closeout is the current owner.
+- Each selling entity sets its own pay period (weekly, bi-weekly, semi-monthly, monthly, or custom). Clock punches, shift approvals, and the hours export use that cycle. A mid-cycle change starts on the next period unless Apply now is chosen.
 - Gift ledger + settlement math as practice. Gift is first-party (not Quantum Payments).
 - Devices: This station (Server, Host stand, Kitchen/Bar Order Display, Kiosk, Cashier) + split screen.
 - Elo side-mounted MSR: Devices → Add device → Elo side-mounted MSR, link a tablet, and set Gift card, Loyalty, or General swipe. Gift swipes use the house ledger. No new key.

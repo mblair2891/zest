@@ -16,10 +16,16 @@ import type {
   ApprovalMode,
   AutoPayrollTrigger,
   ClockWindowAction,
-  PayPeriodType,
   PayrollSendMode,
 } from "@/lib/pos/ops-types";
-import { computePayPeriod, hoursExportStatus, parseLaborRules } from "@/lib/labor/rules";
+import {
+  computePayPeriod,
+  hoursExportStatus,
+  laborRulesAt,
+  parseLaborRules,
+  recordedInPeriod,
+} from "@/lib/labor/rules";
+import { EntityPayPeriodSettingsList } from "@/components/pos/EntityPayPeriodSettings";
 import { hrPayrollExportFn } from "@/lib/hr/api";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
@@ -61,6 +67,7 @@ export function LaborOpsView() {
   const current = employees.find((e) => e.id === currentEmployeeId);
 
   const labor = useOpsStore((s) => s.labor);
+  const laborByEntity = useOpsStore((s) => s.laborByEntity);
   const punches = useOpsStore((s) => s.punches);
   const alerts = useOpsStore((s) => s.alerts);
   const closeouts = useOpsStore((s) => s.closeouts);
@@ -93,7 +100,12 @@ export function LaborOpsView() {
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const rules = parseLaborRules(labor);
-  const period = computePayPeriod(Date.now(), rules);
+  const periodEntity = opScope || current?.operatorId || HOST_SCOPE;
+  const periodRules = laborRulesAt(
+    parseLaborRules(laborByEntity[periodEntity] ?? labor),
+    Date.now(),
+  );
+  const period = computePayPeriod(Date.now(), periodRules);
 
   const supervisorName = current?.name ?? "Supervisor";
 
@@ -390,6 +402,9 @@ export function LaborOpsView() {
                     ` · ${p.minutesFromLastTicket}m after last ticket`}
                   {p.regularMinutes != null &&
                     ` · ${(p.regularMinutes / 60).toFixed(2)}h reg`}
+                  {p.payPeriodStart != null
+                    ? ` · period ${new Date(p.payPeriodStart).toISOString().slice(0, 10)}`
+                    : ""}
                 </p>
                 {p.redFlagReason && (
                   <p className="mt-1 text-xs text-warn">{p.redFlagReason}</p>
@@ -679,45 +694,11 @@ export function LaborOpsView() {
                 onChange={(tipPooling) => updateLabor({ tipPooling })}
               />
             )}
-            <p className="pt-2 text-xs font-semibold">Pay period (hours export, not a payroll run)</p>
-            <label className="block text-xs text-muted-foreground">
-              Period
-              <select
-                className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
-                value={rules.payPeriodType}
-                onChange={(e) => updateLabor({ payPeriodType: e.target.value as PayPeriodType })}
-              >
-                <option value="weekly">Weekly</option>
-                <option value="biweekly">Biweekly</option>
-                <option value="semimonthly">Semi-monthly</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-            <Field
-              label="Period start weekday (0=Sun)"
-              value={String(rules.payPeriodStartWeekday)}
-              onChange={(v) => updateLabor({ payPeriodStartWeekday: parseInt(v, 10) || 0 })}
-            />
-            <Field
-              label="Anchor date (YYYY-MM-DD, biweekly/custom)"
-              value={rules.payPeriodAnchorDate}
-              onChange={(v) => updateLabor({ payPeriodAnchorDate: v })}
-            />
-            <Field
-              label="Custom length (days)"
-              value={String(rules.payPeriodCustomDays)}
-              onChange={(v) => updateLabor({ payPeriodCustomDays: parseInt(v, 10) || 14 })}
-            />
-            <Field
-              label="Pay date (days after period end)"
-              value={String(rules.payDateOffsetDays)}
-              onChange={(v) => updateLabor({ payDateOffsetDays: parseInt(v, 10) || 0 })}
-            />
-            <Field
-              label="Period-end time (venue timezone, HH:mm)"
-              value={rules.payPeriodEndTime}
-              onChange={(v) => updateLabor({ payPeriodEndTime: v })}
-            />
+            <p className="pt-2 text-xs font-semibold">Pay period</p>
+            <p className="text-xs text-muted-foreground">
+              Each selling entity sets this under Entity Settings → Scheduling / Payroll.
+            </p>
+            <EntityPayPeriodSettingsList write={canWriteSettings} onlyEntityId={opScope || undefined} />
             <label className="flex items-center gap-2 text-xs">
               <input
                 type="checkbox"
@@ -809,7 +790,7 @@ export function LaborOpsView() {
           <div className="space-y-3" data-demo="payroll">
             <PeriodExportCard
               period={period}
-              rules={rules}
+              rules={periodRules}
               punches={punches}
               orgId={orgId}
               locationId={locId}
@@ -849,14 +830,16 @@ export function LaborOpsView() {
               </p>
               <Button
                 onClick={() => {
-                  const res = runPayroll();
+                  const res = runPayroll(periodEntity);
                   setFlash(res.message);
                 }}
               >
                 Prepare hours file
               </Button>
             </div>
-            {payPeriods.map((pp) => (
+            {payPeriods
+              .filter((pp) => !pp.entityId || pp.entityId === periodEntity)
+              .map((pp) => (
               <div
                 key={pp.id}
                 className="rounded-xl border border-border bg-surface p-3 text-sm"
@@ -1032,7 +1015,14 @@ function PeriodExportCard({
 }: {
   period: ReturnType<typeof computePayPeriod>;
   rules: ReturnType<typeof parseLaborRules>;
-  punches: { status: string; clockOutAt?: number }[];
+  punches: {
+    status: string;
+    clockOutAt?: number;
+    clockInAt?: number;
+    payPeriodStart?: number;
+    payPeriodEnd?: number;
+    operatorId?: string;
+  }[];
   orgId: string;
   locationId: string;
   employerId: string;
@@ -1042,8 +1032,10 @@ function PeriodExportCard({
   const pending = punches.filter(
     (p) =>
       p.status === "pending_review" &&
-      (p.clockOutAt ?? 0) >= period.start &&
-      (p.clockOutAt ?? 0) <= period.end,
+      recordedInPeriod(
+        { payPeriodStart: p.payPeriodStart, payPeriodEnd: p.payPeriodEnd, at: p.clockInAt },
+        period,
+      ),
   ).length;
   const st = hoursExportStatus({
     now: Date.now(),

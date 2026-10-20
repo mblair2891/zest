@@ -23,13 +23,19 @@ import {
   computePayPeriod,
   evaluateClockIn,
   evaluateClockOut,
+  laborRulesAt,
   parseLaborMap,
   parseLaborRules,
+  payPeriodPolicyOf,
   pickClockShift,
+  planPayPeriodChange,
+  recordedInPeriod,
   roundPunch,
   unscheduledClockGate,
   DEFAULT_LABOR_RULES,
   type EntityLaborRules,
+  type PayPeriodChange,
+  type PayPeriodPolicy,
 } from "@/lib/labor/rules";
 import { consecutiveDaysWorked, splitWorkedMinutes } from "@/lib/labor/hours-split";
 import { copyWeekShifts, missedPublishedShifts, publishedShiftsForClock } from "@/lib/labor/schedule-entity";
@@ -529,6 +535,13 @@ interface OpsState {
 
   updateLabor: (patch: Partial<LaborSettings>) => void;
   setLaborForEntity: (entityId: string, patch: Partial<EntityLaborRules>) => void;
+  /** Save this entity’s pay period. Mid-cycle queues the next cycle unless applyNow. */
+  setPayPeriodForEntity: (
+    entityId: string,
+    patch: Partial<PayPeriodPolicy>,
+    applyNow: boolean,
+  ) => PayPeriodChange;
+  promoteDuePayPeriods: (now?: number) => void;
   recordTicketClosed: (employeeId: string, at?: number) => void;
   clockIn: (
     employeeId: string,
@@ -571,7 +584,7 @@ interface OpsState {
   rejectPunch: (punchId: string, supervisorName: string, notes: string) => void;
   resolveAlert: (id: string) => void;
   runDailyCloseout: () => DailyCloseout;
-  runPayroll: () => { ok: boolean; message: string; period?: PayPeriod };
+  runPayroll: (entityId?: string) => { ok: boolean; message: string; period?: PayPeriod };
   setPar: (stockId: string, par: number, reorderPoint?: number) => void;
   receiveStock: (stockId: string, qty: number) => void;
   generateInventoryReport: (
@@ -630,6 +643,96 @@ export const useOpsStore = create<OpsState>()(
         void import("@/lib/pos/persist-location-setup").then((m) => m.persistLaborMap());
       },
 
+      setPayPeriodForEntity: (entityId, patch, applyNow) => {
+        const id = String(entityId || HOST_SCOPE);
+        const cur = parseLaborRules(get().laborByEntity[id] ?? get().labor);
+        const plan = planPayPeriodChange({
+          current: payPeriodPolicyOf(cur),
+          next: { ...payPeriodPolicyOf(cur), ...patch },
+          now: Date.now(),
+          applyNow,
+        });
+        const changed = plan.applied === "now" || plan.pending != null;
+        const oldPolicy = payPeriodPolicyOf(cur);
+        const stampedPunches: TimePunch[] = [];
+        const stampedShifts: ScheduledShift[] = [];
+        const punches = changed
+          ? get().punches.map((p) => {
+              if ((p.operatorId || HOST_SCOPE) !== id) return p;
+              if (p.payPeriodStart != null && p.payPeriodEnd != null) return p;
+              const w = computePayPeriod(p.clockInAt, oldPolicy);
+              const next = { ...p, payPeriodStart: w.start, payPeriodEnd: w.end };
+              stampedPunches.push(next);
+              return next;
+            })
+          : get().punches;
+        const shifts = changed
+          ? get().shifts.map((s) => {
+              if ((s.operatorId || HOST_SCOPE) !== id) return s;
+              if (s.payPeriodStart != null && s.payPeriodEnd != null) return s;
+              const w = computePayPeriod(s.start, oldPolicy);
+              const next = { ...s, payPeriodStart: w.start, payPeriodEnd: w.end };
+              stampedShifts.push(next);
+              return next;
+            })
+          : get().shifts;
+        const next = parseLaborRules({
+          ...cur,
+          ...plan.policy,
+          payPeriodPending: plan.pending,
+          payPeriodPendingAt: plan.pendingAt,
+        });
+        set({
+          punches,
+          shifts,
+          todayShifts: shifts.filter((s) => sameDay(s.start, Date.now())),
+          laborByEntity: { ...get().laborByEntity, [id]: next },
+        });
+        void import("@/lib/pos/persist-location-setup").then((m) => m.persistLaborMap());
+        if (stampedPunches.length) {
+          void import("@/lib/labor/persist-punch").then((m) => {
+            for (const p of stampedPunches) m.persistPunchToServer(p);
+          });
+        }
+        if (stampedShifts.length) {
+          void Promise.all([
+            import("@/lib/pos/saas-store"),
+            import("@/lib/pos/store"),
+            import("@/lib/labor/api"),
+          ]).then(([{ useSaasStore }, { usePosStore }, { saveShiftsFn }]) => {
+            const orgId = useSaasStore.getState().org.id;
+            const locationId = usePosStore.getState().tenantLocationId;
+            if (!orgId || !locationId) return;
+            void saveShiftsFn({
+              data: { orgId, locationId, shifts: stampedShifts },
+            }).catch(() => undefined);
+          });
+        }
+        return plan;
+      },
+
+      promoteDuePayPeriods: (now = Date.now()) => {
+        const laborByEntity = { ...get().laborByEntity };
+        let changed = false;
+        for (const [id, raw] of Object.entries(laborByEntity)) {
+          const cur = parseLaborRules(raw);
+          const next = laborRulesAt(cur, now);
+          if (next.payPeriodPendingAt !== cur.payPeriodPendingAt || next.payPeriodType !== cur.payPeriodType) {
+            laborByEntity[id] = next;
+            changed = true;
+          }
+        }
+        const labor = laborRulesAt(parseLaborRules(get().labor), now);
+        const laborChanged =
+          labor.payPeriodPendingAt !== get().labor.payPeriodPendingAt ||
+          labor.payPeriodType !== get().labor.payPeriodType;
+        if (!changed && !laborChanged) return;
+        set({ laborByEntity, ...(laborChanged ? { labor } : {}) });
+        if (changed) {
+          void import("@/lib/pos/persist-location-setup").then((m) => m.persistLaborMap());
+        }
+      },
+
       recordTicketClosed: (employeeId, at = Date.now()) => {
         set({
           lastTicketByEmployee: {
@@ -651,10 +754,24 @@ export const useOpsStore = create<OpsState>()(
 
       upsertShift: (input) => {
         const id = input.id || uid("ts");
+        const prev = get().shifts.find((s) => s.id === id);
+        const operatorId = input.operatorId || HOST_SCOPE;
+        const kept =
+          prev?.payPeriodStart != null && prev.payPeriodEnd != null
+            ? { payPeriodStart: prev.payPeriodStart, payPeriodEnd: prev.payPeriodEnd }
+            : input.payPeriodStart != null && input.payPeriodEnd != null
+              ? { payPeriodStart: input.payPeriodStart, payPeriodEnd: input.payPeriodEnd }
+              : null;
+        const rules = laborRulesAt(
+          parseLaborRules(get().laborByEntity[operatorId] ?? get().labor),
+          input.start,
+        );
+        const fresh = computePayPeriod(input.start, rules);
+        const stamped = kept ?? { payPeriodStart: fresh.start, payPeriodEnd: fresh.end };
         const next: ScheduledShift = {
           id,
           employeeId: input.employeeId,
-          operatorId: input.operatorId || HOST_SCOPE,
+          operatorId,
           start: input.start,
           end: input.end,
           published: Boolean(input.published),
@@ -664,6 +781,8 @@ export const useOpsStore = create<OpsState>()(
           section: input.section,
           breakMinutes: input.breakMinutes,
           patternId: input.patternId || undefined,
+          payPeriodStart: stamped.payPeriodStart,
+          payPeriodEnd: stamped.payPeriodEnd,
         };
         const shifts = get().shifts.some((s) => s.id === id)
           ? get().shifts.map((s) => (s.id === id ? next : s))
@@ -780,6 +899,12 @@ export const useOpsStore = create<OpsState>()(
           return { ok: false, error: evalIn.error, forceRequired: evalIn.forceRequired, flags: evalIn.flags };
         }
 
+        const punchEntity = shift?.operatorId || homeOp;
+        const punchRules = laborRulesAt(
+          parseLaborRules(get().laborByEntity[punchEntity] ?? windowLabor),
+          now,
+        );
+        const punchPeriod = computePayPeriod(now, punchRules);
         const punch: TimePunch = {
           id: uid("tp"),
           employeeId,
@@ -787,12 +912,14 @@ export const useOpsStore = create<OpsState>()(
           shiftId: unscheduled ? undefined : shift?.id,
           scheduledStart: unscheduled ? undefined : shift?.start,
           scheduledEnd: unscheduled ? undefined : shift?.end,
-          operatorId: shift?.operatorId || homeOp,
+          operatorId: punchEntity,
           clockInAt: now,
           status: "open",
           redFlag: evalIn.flags.length > 0,
           redFlagReason: unscheduled ? "Unscheduled" : evalIn.flags[0],
           unscheduled: unscheduled || undefined,
+          payPeriodStart: punchPeriod.start,
+          payPeriodEnd: punchPeriod.end,
         };
         let alerts = get().alerts;
         if (evalIn.notify.length) {
@@ -1106,16 +1233,24 @@ export const useOpsStore = create<OpsState>()(
         return co;
       },
 
-      runPayroll: () => {
-        const labor = parseLaborRules(get().labor);
+      runPayroll: (entityId) => {
+        get().promoteDuePayPeriods();
+        const id = String(entityId || HOST_SCOPE);
+        const labor = laborRulesAt(
+          parseLaborRules(get().laborByEntity[id] ?? get().labor),
+          Date.now(),
+        );
         const window = computePayPeriod(Date.now(), labor);
         const finished = get().punches.filter(
           (p) =>
+            (p.operatorId || HOST_SCOPE) === id &&
             p.clockOutAt &&
             p.status !== "open" &&
             p.status !== "rejected" &&
-            (p.clockOutAt ?? 0) >= window.start &&
-            (p.clockOutAt ?? 0) <= window.end,
+            recordedInPeriod(
+              { payPeriodStart: p.payPeriodStart, payPeriodEnd: p.payPeriodEnd, at: p.clockInAt },
+              window,
+            ),
         );
         const stillPending = finished.filter((p) => p.status === "pending_review");
 
@@ -1128,6 +1263,7 @@ export const useOpsStore = create<OpsState>()(
 
         const period: PayPeriod = {
           id: uid("pp"),
+          entityId: id,
           start: window.start,
           end: window.end,
           payDate: window.payDate,

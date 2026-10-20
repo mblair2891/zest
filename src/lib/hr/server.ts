@@ -991,8 +991,19 @@ export async function buildPayrollExport(
     from location_punches
     where location_id = ${ctx.locationId}
       and employer_id = ${data.employerId}
-      and clock_in_at >= ${new Date(startMs).toISOString()}
-      and clock_in_at <= ${new Date(periodEndInclusive).toISOString()}
+      and (
+        (
+          pay_period_start is not null
+          and pay_period_end is not null
+          and to_char(pay_period_start at time zone 'UTC', 'YYYY-MM-DD') = ${data.periodStart.slice(0, 10)}
+          and to_char(pay_period_end at time zone 'UTC', 'YYYY-MM-DD') = ${data.periodEnd.slice(0, 10)}
+        )
+        or (
+          pay_period_start is null
+          and clock_in_at >= ${new Date(startMs).toISOString()}
+          and clock_in_at <= ${new Date(periodEndInclusive).toISOString()}
+        )
+      )
   `;
   const pays = await sql<{
     employee_id: string;

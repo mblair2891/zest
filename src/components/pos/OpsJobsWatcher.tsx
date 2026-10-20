@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { isProspectDemo } from "@/lib/demo/session";
-import { computePayPeriod, parseLaborRules } from "@/lib/labor/rules";
+import { computePayPeriod, laborRulesAt, parseLaborRules } from "@/lib/labor/rules";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { fireKeyFor, parseOpsJobsConfig, shouldFireCadence } from "@/lib/ops-jobs/config";
 import { executeOpsJob } from "@/lib/ops-jobs/run";
 import { useOpsJobsStore } from "@/lib/ops-jobs/store";
@@ -26,11 +27,20 @@ export function OpsJobsWatcher() {
       const now = new Date();
       for (const cadence of JOB_CADENCES) {
         if (cadence === "pay_period") {
-          const labor = parseLaborRules(useOpsStore.getState().labor);
-          const period = computePayPeriod(now.getTime(), labor);
-          if (now.getTime() < period.end) continue;
+          const ops = useOpsStore.getState();
+          const pos = usePosStore.getState();
+          const base = parseLaborRules(ops.labor);
+          const peer = Boolean(pos.settings.peerVenue || pos.settings.operatingModel === "peer_venue");
+          const ids = [...(peer ? [] : [HOST_SCOPE]), ...pos.vendors.map((v) => v.id)];
+          if (!ids.length) ids.push(HOST_SCOPE);
+          const due = ids.some((id) => {
+            const rules = laborRulesAt(parseLaborRules(ops.laborByEntity[id] ?? base), now.getTime());
+            const period = computePayPeriod(now.getTime(), rules);
+            return now.getTime() >= period.end;
+          });
+          if (!due) continue;
           if (now.getHours() !== cfg.cadences.pay_period.hour) continue;
-          const key = fireKeyFor("pay_period", now, `:${period.startIso}`);
+          const key = fireKeyFor("pay_period", now, ":entities");
           if (last.pay_period === key) continue;
           if (!cfg.cadences.pay_period.enabled) continue;
           await executeOpsJob("pay_period", { fireKey: key });

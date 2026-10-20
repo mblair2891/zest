@@ -130,6 +130,7 @@ Not card-blockers, but they will bite the first real house.
 | Settlement host capture + operator split + $35 CB | **DONE** (math) / **PARTIAL** (money movement) | `settlement.ts`; `chargeback.test.mjs`; close queues Finix transfer stub if approved | Live ACH/transfer needs approved operator accounts + keys. |
 | Cash discount + round-up | **DONE** | `cash-discount.ts`; tests; PaymentDialog | None. |
 | Cash drawer modes and ownership transfer | **DONE** | `drawer-shift.ts`; Cash drawer claim, transfer, accept, close | Till loans stay a separate transfer. |
+| Per-entity pay periods | **DONE** | `pay-period.ts`; Entity Settings → Scheduling / Payroll | A mid-cycle change starts next period unless Apply now. Recorded punches and shifts keep their period. |
 | Reports + AI insights | **PARTIAL** | `ReportsView.tsx`; `reports/from-store.ts`; `ops-ai/api.ts` | Insights = this device’s cached metrics unless floor is hydrated. |
 | Costs / invoices / variance / suppliers | **PARTIAL** | `src/lib/costs/store.ts` local; `parseCostInvoiceFn` | Postgres suppliers/invoices if required at go-live. |
 | Offline PWA + outbox | **DONE** (code) | `public/offline-sw.js`; IDB snapshot (hashed PINs); `apply.server.ts` applies floor + cash; card rejected | Prime each device online once. |

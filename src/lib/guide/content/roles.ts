@@ -449,10 +449,12 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Shared employees: one entity per shift. You cannot drop a bar person onto the kitchen board without an explicit “work for other entity this shift” grant. A kitchen clock cannot take a published bar shift.",
         "Clock in is a PIN-pad action, separate from Enter. Clock out is Close out. Hours post to the entity on the shift.",
         "Approved punches lock for export. Unapproved punches stay in Exceptions.",
+        "Entity Settings → Scheduling / Payroll sets this entity’s pay period: weekly, bi-weekly, semi-monthly, monthly, or custom (a start day and a length in days). The start day or start date is on that screen. A location admin sees the same control when editing the entity. Two entities in one location can run different cycles. Clock punches, shift approvals, and the hours export use that entity’s period. A change while a period is open warns you and starts on the next cycle unless you choose Apply now. Punches and shifts already recorded stay on the period they were recorded in.",
         "Hours export is entity-scoped CSV/PDF (regular vs OT flags from owner-entered venue rules). If a payroll provider is connected, send automatic / after review / manual. Summex does not calculate net pay, file taxes, or move money.",
         "Boards stay empty until you add staff in Users. No users or shifts are auto-created.",
       ),
       steps(
+        "Entity Settings → Scheduling / Payroll. Choose weekly, bi-weekly, semi-monthly, monthly, or custom. Set the start day or start date. Save. If the current period is still open, the new cycle starts next period unless you choose Apply now.",
         "Open Schedule. Confirm the switcher is your home entity (bar operator or food operator).",
         "Add a shift for that entity’s staff (role, times, optional station/section/break). Copy last week if the grid repeats. Publish week — the other entity’s board is unchanged.",
         "Set shifts: name the pattern, pick the days, start, end, and role, then Save. The pattern stays empty. Later pick that pattern, the staff, and a date range or a number of weeks, then Place. Publish week before those drafts show on the clock. Update placed rewrites hours and role on days still in the pattern, and removes a shift for a day that left the pattern. Remove on the grid deletes that shift.",

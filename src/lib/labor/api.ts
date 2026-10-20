@@ -29,6 +29,8 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
       section?: string;
       breakMinutes?: number;
       patternId?: string;
+      payPeriodStart?: number | null;
+      payPeriodEnd?: number | null;
     }[];
   }) => ({
     orgId: String(d.orgId ?? "").trim(),
@@ -40,6 +42,8 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
           section: s.section ? String(s.section).slice(0, 80) : "",
           breakMinutes: Math.max(0, Math.round(Number(s.breakMinutes) || 0)),
           patternId: s.patternId ? String(s.patternId).slice(0, 80) : "",
+          payPeriodStart: Number(s.payPeriodStart) > 0 ? Number(s.payPeriodStart) : null,
+          payPeriodEnd: Number(s.payPeriodEnd) > 0 ? Number(s.payPeriodEnd) : null,
         }))
       : [],
   }))
@@ -69,14 +73,16 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
       await sql`
         insert into location_shifts (
           id, location_id, operator_id, employee_id, start_at, end_at, published, role,
-          station, section, break_minutes, pattern_id
+          station, section, break_minutes, pattern_id, pay_period_start, pay_period_end
         )
         values (
           ${s.id}, ${data.locationId}, ${s.operatorId || HOST_SCOPE}, ${s.employeeId},
           ${new Date(s.start).toISOString()}, ${new Date(s.end).toISOString()},
           ${s.published}, ${s.role ?? null},
           ${s.station || null}, ${s.section || null}, ${s.breakMinutes || 0},
-          ${s.patternId || null}
+          ${s.patternId || null},
+          ${s.payPeriodStart ? new Date(s.payPeriodStart).toISOString() : null},
+          ${s.payPeriodEnd ? new Date(s.payPeriodEnd).toISOString() : null}
         )
         on conflict (id) do update set
           operator_id = excluded.operator_id,
@@ -88,7 +94,9 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
           station = excluded.station,
           section = excluded.section,
           break_minutes = excluded.break_minutes,
-          pattern_id = excluded.pattern_id
+          pattern_id = excluded.pattern_id,
+          pay_period_start = coalesce(location_shifts.pay_period_start, excluded.pay_period_start),
+          pay_period_end = coalesce(location_shifts.pay_period_end, excluded.pay_period_end)
       `;
     }
     return { ok: true as const, count: data.shifts.length };
@@ -177,9 +185,11 @@ export const listShiftsFn = createServerFn({ method: "POST" })
           section: string | null;
           break_minutes: number | null;
           pattern_id: string | null;
+          pay_period_start: unknown;
+          pay_period_end: unknown;
         }>`
           select id, employee_id, operator_id, start_at, end_at, published, role,
-                 station, section, break_minutes, pattern_id
+                 station, section, break_minutes, pattern_id, pay_period_start, pay_period_end
           from location_shifts
           where location_id = ${data.locationId} and operator_id = ${data.operatorId}
           order by start_at asc
@@ -196,13 +206,20 @@ export const listShiftsFn = createServerFn({ method: "POST" })
           section: string | null;
           break_minutes: number | null;
           pattern_id: string | null;
+          pay_period_start: unknown;
+          pay_period_end: unknown;
         }>`
           select id, employee_id, operator_id, start_at, end_at, published, role,
-                 station, section, break_minutes, pattern_id
+                 station, section, break_minutes, pattern_id, pay_period_start, pay_period_end
           from location_shifts
           where location_id = ${data.locationId}
           order by start_at asc
         `;
+    const stamp = (raw: unknown) => {
+      if (raw == null || raw === "") return undefined;
+      const n = new Date(raw as string | number | Date).getTime();
+      return Number.isFinite(n) && n > 0 ? n : undefined;
+    };
     return rows.map((r) => ({
       id: r.id,
       employeeId: r.employee_id,
@@ -215,6 +232,8 @@ export const listShiftsFn = createServerFn({ method: "POST" })
       section: r.section ?? "",
       breakMinutes: r.break_minutes ?? 0,
       patternId: r.pattern_id ?? "",
+      payPeriodStart: stamp(r.pay_period_start),
+      payPeriodEnd: stamp(r.pay_period_end),
     }));
   });
 
@@ -475,6 +494,8 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
         otMinutes?: number;
         status: string;
         unscheduled?: boolean;
+        payPeriodStart?: number | null;
+        payPeriodEnd?: number | null;
       };
     }) => ({
       orgId: String(d.orgId ?? "").trim(),
@@ -492,6 +513,8 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
         otMinutes: Math.max(0, Math.round(Number(d.punch.otMinutes) || 0)),
         status: String(d.punch.status ?? "open").slice(0, 40),
         unscheduled: d.punch.unscheduled === true,
+        payPeriodStart: Number(d.punch.payPeriodStart) > 0 ? Number(d.punch.payPeriodStart) : null,
+        payPeriodEnd: Number(d.punch.payPeriodEnd) > 0 ? Number(d.punch.payPeriodEnd) : null,
       },
     }),
   )
@@ -532,12 +555,16 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
     await sql`
       insert into location_punches (
         id, org_id, location_id, employer_id, employee_id, employee_name,
-        clock_in_at, clock_out_at, regular_minutes, ot_minutes, status, unscheduled, updated_at
+        clock_in_at, clock_out_at, regular_minutes, ot_minutes, status, unscheduled,
+        pay_period_start, pay_period_end, updated_at
       ) values (
         ${data.punch.id}, ${orgId}, ${locationId}, ${employerId},
         ${data.punch.employeeId}, ${data.punch.employeeName},
         ${inAt}, ${outAt}, ${data.punch.regularMinutes}, ${data.punch.otMinutes},
-        ${data.punch.status}, ${data.punch.unscheduled}, now()
+        ${data.punch.status}, ${data.punch.unscheduled},
+        ${data.punch.payPeriodStart ? new Date(data.punch.payPeriodStart).toISOString() : null},
+        ${data.punch.payPeriodEnd ? new Date(data.punch.payPeriodEnd).toISOString() : null},
+        now()
       )
       on conflict (id) do update set
         clock_out_at = excluded.clock_out_at,
@@ -546,6 +573,8 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
         status = excluded.status,
         employee_name = excluded.employee_name,
         unscheduled = excluded.unscheduled,
+        pay_period_start = coalesce(location_punches.pay_period_start, excluded.pay_period_start),
+        pay_period_end = coalesce(location_punches.pay_period_end, excluded.pay_period_end),
         updated_at = now()
     `;
     return { ok: true as const };

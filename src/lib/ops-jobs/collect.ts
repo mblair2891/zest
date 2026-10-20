@@ -2,7 +2,7 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { useCostStore } from "@/lib/costs/store";
 import { salesQtyByMenuItem, theoreticalUse } from "@/lib/costs/theoretical";
 import { DEFAULT_TARGET_COST_PCT } from "@/lib/costs/types";
-import { computePayPeriod, parseLaborRules } from "@/lib/labor/rules";
+import { computePayPeriod, laborRulesAt, parseLaborRules, recordedInPeriod } from "@/lib/labor/rules";
 import { daypartOf, useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { buildShiftRecommendations } from "@/lib/ops-ai/engine";
 import { daypartBaseline30m, salesInWindow } from "@/lib/ops-ai/staffing";
@@ -633,42 +633,62 @@ export function collectOpsJobFacts(
   }
 
   if (cadence === "pay_period") {
-    const period = computePayPeriod(now, labor);
-    const punches = (useOpsStore.getState().punches ?? []).filter(
-      (p) => p.clockInAt >= period.start && p.clockInAt <= period.end,
-    );
-    const approved = punches.filter((p) => p.status === "approved" || p.status === "auto_approved");
-    const hours = punches.reduce((s, p) => {
-      const out = p.clockOutAt ?? now;
-      return s + Math.max(0, (out - p.clockInAt) / 3_600_000);
-    }, 0);
-    const ccPaycheck = closeouts
-      .filter((c) => c.at >= period.start && c.at <= period.end)
-      .reduce((s, c) => s + (c.cardTipsToPayrollCents || 0), 0);
-    const cashAtClose = closeouts
-      .filter((c) => c.at >= period.start && c.at <= period.end)
-      .reduce((s, c) => s + (c.cardTipsCashDueCents || 0) + (c.declaredCashDueCents || 0), 0);
-    seedRows.push(
-      row(
-        "pay_period",
-        "info",
-        `Pay period ${period.startIso}–${period.endIso}: ${hours.toFixed(1)} hours, ${approved.length}/${punches.length} punches approved. CC tips on paycheck $${(ccPaycheck / 100).toFixed(2)} vs cash-at-close $${(cashAtClose / 100).toFixed(2)}`,
-        "Export ADP / Intuit / CSV only. Summex is not the payroll processor.",
-        { amountCents: ccPaycheck },
-      ),
-    );
-    const notes = closeouts
-      .filter((c) => c.at >= period.start && (c.overShortNote || c.pendingReason))
-      .slice(0, 8);
-    for (const n of notes) {
+    const byEntity = useOpsStore.getState().laborByEntity ?? {};
+    const peer = Boolean(pos.settings.peerVenue || pos.settings.operatingModel === "peer_venue");
+    const ids = [...(peer ? [] : [HOST_SCOPE]), ...vendors.map((v) => v.id)];
+    if (!ids.length) ids.push(HOST_SCOPE);
+    const seen = new Set<string>();
+    for (const entityId of ids) {
+      if (!entityId || seen.has(entityId)) continue;
+      seen.add(entityId);
+      const entityRules = laborRulesAt(parseLaborRules(byEntity[entityId] ?? labor), now);
+      const period = computePayPeriod(now, entityRules);
+      const punches = (useOpsStore.getState().punches ?? []).filter(
+        (p) =>
+          (p.operatorId || HOST_SCOPE) === entityId &&
+          recordedInPeriod(
+            { payPeriodStart: p.payPeriodStart, payPeriodEnd: p.payPeriodEnd, at: p.clockInAt },
+            period,
+          ),
+      );
+      const approved = punches.filter((p) => p.status === "approved" || p.status === "auto_approved");
+      const hours = punches.reduce((s, p) => {
+        const out = p.clockOutAt ?? now;
+        return s + Math.max(0, (out - p.clockInAt) / 3_600_000);
+      }, 0);
+      const ccPaycheck = closeouts
+        .filter((c) => c.at >= period.start && c.at <= period.end)
+        .reduce((s, c) => s + (c.cardTipsToPayrollCents || 0), 0);
+      const cashAtClose = closeouts
+        .filter((c) => c.at >= period.start && c.at <= period.end)
+        .reduce((s, c) => s + (c.cardTipsCashDueCents || 0) + (c.declaredCashDueCents || 0), 0);
+      const entityName =
+        entityId === HOST_SCOPE
+          ? pos.settings.name || "Host"
+          : vendors.find((v) => v.id === entityId)?.shortName || entityId;
       seedRows.push(
         row(
           "pay_period",
           "info",
-          `${n.employeeName}: ${n.overShortNote || n.pendingReason || "exception note"}`,
-          "Attach to the hours export. Do not invent processor charges.",
+          `${entityName} pay period ${period.startIso}–${period.endIso}: ${hours.toFixed(1)} hours, ${approved.length}/${punches.length} punches approved. CC tips on paycheck $${(ccPaycheck / 100).toFixed(2)} vs cash-at-close $${(cashAtClose / 100).toFixed(2)}`,
+          "Export ADP / Intuit / CSV only. Summex is not the payroll processor.",
+          { amountCents: ccPaycheck, entityId, entityName },
         ),
       );
+      const notes = closeouts
+        .filter((c) => c.at >= period.start && c.at <= period.end && (c.overShortNote || c.pendingReason))
+        .slice(0, 8);
+      for (const n of notes) {
+        seedRows.push(
+          row(
+            "pay_period",
+            "info",
+            `${entityName} · ${n.employeeName}: ${n.overShortNote || n.pendingReason || "exception note"}`,
+            "Attach to the hours export. Do not invent processor charges.",
+            { entityId, entityName },
+          ),
+        );
+      }
     }
   }
 

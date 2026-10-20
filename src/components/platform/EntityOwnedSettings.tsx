@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BrandLogoField } from "@/components/brand/BrandLogoField";
+import { EntityPayPeriodSettings } from "@/components/pos/EntityPayPeriodSettings";
 import { loadEntitySettingsFn, saveEntitySettingsFn } from "@/lib/access/api";
 import {
   ENTITY_FIELD_PLACEHOLDERS,
@@ -185,6 +186,7 @@ export function EntityOwnedSettings(props: {
             <option value="6">6</option>
           </select>
         </label>
+        <EntityPayPeriodSettings entityId={props.operatorId} write={props.write} />
         {props.write ? (
           <Button type="button" size="sm" disabled={busy || !ready} data-entity-settings-save onClick={() => void save()}>
             {busy ? "Saving…" : "Save entity"}

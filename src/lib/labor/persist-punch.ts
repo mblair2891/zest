@@ -30,6 +30,8 @@ export function persistPunchToServer(punch: TimePunch): void {
             otMinutes: punch.otMinutes ?? 0,
             status: punch.status,
             unscheduled: punch.unscheduled === true,
+            payPeriodStart: punch.payPeriodStart ?? null,
+            payPeriodEnd: punch.payPeriodEnd ?? null,
           },
         },
       });

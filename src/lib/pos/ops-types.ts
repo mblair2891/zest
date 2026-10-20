@@ -31,6 +31,9 @@ export interface ScheduledShift {
   breakMinutes?: number;
   /** Set when this draft was placed from a named pattern. Copy week drops it. */
   patternId?: string;
+  /** Pay period this shift was recorded in. A later cycle change does not move it. */
+  payPeriodStart?: number;
+  payPeriodEnd?: number;
 }
 
 export interface TimePunch {
@@ -56,6 +59,9 @@ export interface TimePunch {
   operatorId?: string;
   /** Punch started with no shift covering now, after the person confirmed. */
   unscheduled?: boolean;
+  /** Pay period this punch was recorded in. A later cycle change does not move it. */
+  payPeriodStart?: number;
+  payPeriodEnd?: number;
 }
 
 export interface SupervisorAlert {
@@ -78,6 +84,8 @@ export interface DailyCloseout {
 
 export interface PayPeriod {
   id: string;
+  /** Selling entity this file was prepared for. */
+  entityId?: string;
   start: number;
   end: number;
   payDate?: number;

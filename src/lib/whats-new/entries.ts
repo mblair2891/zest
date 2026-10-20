@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_307_entity_pay_period",
+    date: "2026-10-20",
+    title: "Per-entity pay periods",
+    summary: "Each selling entity sets its own pay period. A mid-cycle change starts next period.",
+    body: "Entity Settings → Scheduling / Payroll sets the pay period for that selling entity. Weekly, bi-weekly, semi-monthly, monthly, or a custom length with a start day. A location admin sees the same control when editing the entity. Two entities in one location can use different cycles. Clock punches, shift approvals, and the hours export follow that entity’s period. A change during an open period starts on the next cycle unless you choose Apply now. Punches and shifts already recorded stay on the period they were recorded in.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "entity-schedule-payroll",
+    tags: ["schedule", "payroll"],
+  },
+  {
     id: "upd_2026_10_306_drawer_shift",
     date: "2026-10-20",
     title: "Cash drawer modes and transfer",

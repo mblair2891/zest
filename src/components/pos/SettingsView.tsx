@@ -84,6 +84,7 @@ import { LaborBasisSettings } from "./LaborBasisSettings";
 import { RevenueShareSettings } from "./RevenueShareSettings";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { UnscheduledClockSetting } from "@/components/pos/UnscheduledClockSetting";
+import { EntityPayPeriodSettingsList } from "@/components/pos/EntityPayPeriodSettings";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
@@ -1208,6 +1209,7 @@ export function SettingsView() {
             })
           }
         />
+        <EntityPayPeriodSettingsList write={write} />
         <StaffingRecsSettings
           cfg={parseLaborRules(labor).staffingRecs}
           write={write}

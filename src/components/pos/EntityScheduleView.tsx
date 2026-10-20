@@ -6,7 +6,7 @@ import { useOpsStore } from "@/lib/pos/ops-store";
 import { usePosStore } from "@/lib/pos/store";
 import { HOST_SCOPE, canEditSchedule, canViewSchedule, isHostPrivileged } from "@/lib/access/entity-grants";
 import { addDays, formatDayLabel, startOfWeek, weekDays, sameDay } from "@/lib/labor/week";
-import { computePayPeriod, parseLaborRules } from "@/lib/labor/rules";
+import { computePayPeriod, laborRulesAt, parseLaborRules } from "@/lib/labor/rules";
 import {
   canPlaceEmployeeOnEntityBoard,
   defaultScheduleEntity,
@@ -135,6 +135,8 @@ export function EntityScheduleView() {
           section: r.section,
           breakMinutes: r.breakMinutes,
           patternId: r.patternId || undefined,
+          payPeriodStart: r.payPeriodStart,
+          payPeriodEnd: r.payPeriodEnd,
         }));
         useOpsStore.setState({
           shifts: [...keep, ...incoming],
@@ -195,7 +197,10 @@ export function EntityScheduleView() {
 
   const period = computePayPeriod(
     weekStart + 3 * 86_400_000,
-    parseLaborRules(laborByEntity[boardEntity] ?? labor),
+    laborRulesAt(
+      parseLaborRules(laborByEntity[boardEntity] ?? labor),
+      weekStart + 3 * 86_400_000,
+    ),
   );
   const days =
     gridMode === "period"

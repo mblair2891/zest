@@ -16,9 +16,13 @@ import {
   type RevenueBasis,
 } from "./revenue-basis";
 
+import { type PayPeriodKind, type PayPeriodPolicy, type PayPeriodWindow } from "./pay-period";
+
+export type { PayPeriodKind, PayPeriodPolicy, PayPeriodWindow, PayPeriodChange } from "./pay-period";
+export { computePayPeriod, planPayPeriodChange, recordedInPeriod, samePayPeriodPolicy } from "./pay-period";
+
 export type ClockWindowAction = "block" | "flag";
 export type ApprovalMode = "manual" | "auto_shift_end" | "auto_last_ticket";
-export type PayPeriodKind = "weekly" | "biweekly" | "semimonthly" | "custom";
 export type PayrollSendMode = "automatic" | "automatic_after_review" | "manual";
 export type AutoPayrollTrigger = "time_of_day" | "days_before_pay";
 export type PayrollMode = "auto_export" | "manual";
@@ -52,6 +56,15 @@ export type EntityLaborRules = {
   payPeriodStartWeekday: number;
   payPeriodAnchorDate: string;
   payPeriodCustomDays: number;
+  /** Monthly start day, or semi-monthly first-half start day (1 keeps 1–15 / 16–end). */
+  payPeriodStartDay: number;
+  /**
+   * Queued cycle. Live fields stay in force until `payPeriodPendingAt`.
+   * Null until a mid-cycle change is saved for the next period.
+   */
+  payPeriodPending: PayPeriodPolicy | null;
+  /** Epoch ms when `payPeriodPending` becomes live. 0 when nothing is queued. */
+  payPeriodPendingAt: number;
   payDateOffsetDays: number;
   autoPayroll: boolean;
   autoPayrollTrigger: AutoPayrollTrigger;
@@ -124,6 +137,9 @@ export const DEFAULT_LABOR_RULES: EntityLaborRules = {
   payPeriodStartWeekday: 0,
   payPeriodAnchorDate: "",
   payPeriodCustomDays: 14,
+  payPeriodStartDay: 1,
+  payPeriodPending: null,
+  payPeriodPendingAt: 0,
   payDateOffsetDays: 5,
   autoPayroll: false,
   autoPayrollTrigger: "days_before_pay",
@@ -151,6 +167,61 @@ export const DEFAULT_LABOR_RULES: EntityLaborRules = {
   otSeventhDay: false,
   tipCreditCents: null,
 };
+
+const PAY_PERIOD_KINDS: readonly PayPeriodKind[] = [
+  "weekly",
+  "biweekly",
+  "semimonthly",
+  "monthly",
+  "custom",
+];
+
+function pendingAtMs(raw: unknown): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round(n);
+}
+
+function parsePayPeriodPending(raw: unknown): PayPeriodPolicy | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const kind = o.payPeriodType;
+  if (!PAY_PERIOD_KINDS.includes(kind as PayPeriodKind)) return null;
+  return {
+    payPeriodType: kind as PayPeriodKind,
+    payPeriodStartWeekday: int(o.payPeriodStartWeekday, 0, 0, 6),
+    payPeriodAnchorDate: String(o.payPeriodAnchorDate ?? "").slice(0, 10),
+    payPeriodCustomDays: int(o.payPeriodCustomDays, 14, 1, 62),
+    payPeriodEndTime: String(o.payPeriodEndTime ?? "04:00").slice(0, 8) || "04:00",
+    payPeriodStartDay: int(o.payPeriodStartDay, 1, 1, 28),
+    payDateOffsetDays: int(o.payDateOffsetDays, 5, 0, 45),
+  };
+}
+
+export function payPeriodPolicyOf(rules: EntityLaborRules): PayPeriodPolicy {
+  return {
+    payPeriodType: rules.payPeriodType,
+    payPeriodStartWeekday: rules.payPeriodStartWeekday,
+    payPeriodAnchorDate: rules.payPeriodAnchorDate,
+    payPeriodCustomDays: rules.payPeriodCustomDays,
+    payPeriodEndTime: rules.payPeriodEndTime,
+    payPeriodStartDay: rules.payPeriodStartDay,
+    payDateOffsetDays: rules.payDateOffsetDays,
+  };
+}
+
+/** Live policy until `payPeriodPendingAt`, then the queued cycle. */
+export function laborRulesAt(rules: EntityLaborRules, now: number): EntityLaborRules {
+  if (!rules.payPeriodPending || !rules.payPeriodPendingAt || now < rules.payPeriodPendingAt) {
+    return rules;
+  }
+  return parseLaborRules({
+    ...rules,
+    ...rules.payPeriodPending,
+    payPeriodPending: null,
+    payPeriodPendingAt: 0,
+  });
+}
 
 function int(raw: unknown, fallback: number, min = 0, max = 10_080): number {
   const n = Math.round(Number(raw));
@@ -180,11 +251,9 @@ export function parseLaborRules(raw: unknown): EntityLaborRules {
     o.payPeriodType === "weekly" ||
     o.payPeriodType === "biweekly" ||
     o.payPeriodType === "semimonthly" ||
-    o.payPeriodType === "custom" ||
-    o.payPeriodType === "monthly"
-      ? o.payPeriodType === "monthly"
-        ? "custom"
-        : o.payPeriodType
+    o.payPeriodType === "monthly" ||
+    o.payPeriodType === "custom"
+      ? o.payPeriodType
       : d.payPeriodType;
   const sendMode: PayrollSendMode =
     o.sendMode === "automatic" || o.sendMode === "automatic_after_review" || o.sendMode === "manual"
@@ -236,6 +305,9 @@ export function parseLaborRules(raw: unknown): EntityLaborRules {
     payPeriodStartWeekday: int(o.payPeriodStartWeekday ?? o.payPeriodEndDay, d.payPeriodStartWeekday, 0, 6),
     payPeriodAnchorDate: String(o.payPeriodAnchorDate ?? "").slice(0, 10),
     payPeriodCustomDays: int(o.payPeriodCustomDays, 14, 1, 62),
+    payPeriodStartDay: int(o.payPeriodStartDay, d.payPeriodStartDay, 1, 28),
+    payPeriodPending: parsePayPeriodPending(o.payPeriodPending),
+    payPeriodPendingAt: pendingAtMs(o.payPeriodPendingAt),
     payDateOffsetDays: int(o.payDateOffsetDays, d.payDateOffsetDays, 0, 45),
     autoPayroll,
     autoPayrollTrigger,
@@ -321,68 +393,6 @@ function startOfLocalDay(ms: number): number {
 function parseHm(hm: string): { h: number; m: number } {
   const [h, m] = hm.split(":").map((n) => Number(n));
   return { h: Number.isFinite(h) ? h : 6, m: Number.isFinite(m) ? m : 0 };
-}
-
-export type PayPeriodWindow = {
-  start: number;
-  end: number;
-  payDate: number;
-  startIso: string;
-  endIso: string;
-  payDateIso: string;
-};
-
-function iso(ms: number): string {
-  return new Date(ms).toISOString().slice(0, 10);
-}
-
-export function computePayPeriod(now: number, rules: EntityLaborRules): PayPeriodWindow {
-  const day = startOfLocalDay(now);
-  let start = day;
-  let end = day + 7 * 86_400_000 - 1;
-  if (rules.payPeriodType === "weekly") {
-    const wd = new Date(day).getDay();
-    const back = (wd - rules.payPeriodStartWeekday + 7) % 7;
-    start = day - back * 86_400_000;
-    end = start + 7 * 86_400_000 - 1;
-  } else if (rules.payPeriodType === "biweekly") {
-    const anchor = rules.payPeriodAnchorDate
-      ? startOfLocalDay(Date.parse(rules.payPeriodAnchorDate + "T00:00:00"))
-      : (() => {
-          const wd = new Date(day).getDay();
-          const back = (wd - rules.payPeriodStartWeekday + 7) % 7;
-          return day - back * 86_400_000;
-        })();
-    const span = 14 * 86_400_000;
-    const n = Math.floor((day - anchor) / span);
-    start = anchor + n * span;
-    end = start + span - 1;
-  } else if (rules.payPeriodType === "semimonthly") {
-    const d = new Date(day);
-    if (d.getDate() <= 15) {
-      start = startOfLocalDay(new Date(d.getFullYear(), d.getMonth(), 1).getTime());
-      end = startOfLocalDay(new Date(d.getFullYear(), d.getMonth(), 16).getTime()) - 1;
-    } else {
-      start = startOfLocalDay(new Date(d.getFullYear(), d.getMonth(), 16).getTime());
-      end = startOfLocalDay(new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime()) - 1;
-    }
-  } else {
-    const days = rules.payPeriodCustomDays || 14;
-    const anchor = rules.payPeriodAnchorDate
-      ? startOfLocalDay(Date.parse(rules.payPeriodAnchorDate + "T00:00:00"))
-      : day;
-    const span = days * 86_400_000;
-    const n = Number.isFinite(anchor) ? Math.floor((day - anchor) / span) : 0;
-    start = (Number.isFinite(anchor) ? anchor : day) + n * span;
-    end = start + span - 1;
-  }
-  const { h, m } = parseHm(rules.payPeriodEndTime || rules.dailyCloseoutTime || "04:00");
-  const morningAfter = startOfLocalDay(end + 1);
-  const close = new Date(morningAfter);
-  close.setHours(h, m, 0, 0);
-  end = close.getTime();
-  const payDate = startOfLocalDay(end) + rules.payDateOffsetDays * 86_400_000;
-  return { start, end, payDate, startIso: iso(start), endIso: iso(end), payDateIso: iso(payDate) };
 }
 
 export function autoExportDueAt(period: PayPeriodWindow, rules: EntityLaborRules): number {
