@@ -38,11 +38,16 @@ function withKeys(fn: () => Promise<void>): Promise<void> {
 test("a card swipe authorizes the base amount and the tip captures that authorization", async () => {
   await withKeys(async () => {
     resetFinixIdempotencyLog();
-    const calls: { method: string; url: string; body: Record<string, unknown> }[] = [];
+    const calls: { method: string; url: string; body: Record<string, unknown>; headers: Record<string, string> }[] = [];
     const prev = globalThis.fetch;
     globalThis.fetch = async (input, init) => {
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
-      calls.push({ method: String(init?.method ?? "GET"), url: String(input), body });
+      const rawHeaders = init?.headers;
+      const headers: Record<string, string> = {};
+      if (rawHeaders && typeof rawHeaders === "object" && !Array.isArray(rawHeaders) && !(rawHeaders instanceof Headers)) {
+        for (const [key, value] of Object.entries(rawHeaders)) headers[key] = String(value);
+      }
+      calls.push({ method: String(init?.method ?? "GET"), url: String(input), body, headers });
       const path = String(input);
       const id = path.includes("/reversals")
         ? "RV_1"
@@ -104,6 +109,7 @@ test("a card swipe authorizes the base amount and the tip captures that authoriz
       assert.equal(authCall.body.device, "DVreader");
       assert.equal(typeof authCall.body.idempotency_id, "string");
       assert.match(String(authCall.body.idempotency_id), UUID);
+      assert.equal(authCall.headers["Idempotency-Key"], authCall.body.idempotency_id);
       assert.equal(authCall.body.capture_amount, undefined);
 
       const captureCall = calls[1]!;
@@ -111,7 +117,9 @@ test("a card swipe authorizes the base amount and the tip captures that authoriz
       assert.match(captureCall.url, /\/authorizations\/AU_check_1$/);
       assert.equal(captureCall.body.capture_amount, base + tip);
       assert.deepEqual(captureCall.body.tags, { check_id: "chk_12", tip_amount: String(tip) });
-      assert.equal(captureCall.body.idempotency_id, undefined);
+      assert.match(String(captureCall.body.idempotency_id), UUID);
+      assert.equal(captureCall.headers["Idempotency-Key"], captureCall.body.idempotency_id);
+      assert.notEqual(captureCall.body.idempotency_id, authCall.body.idempotency_id);
       assert.equal(captureCall.body.application, undefined);
 
       const secondAuth = calls[2]!;
@@ -124,20 +132,21 @@ test("a card swipe authorizes the base amount and the tip captures that authoriz
       const reversalCall = calls[4]!;
       assert.match(reversalCall.url, /\/transfers\/TR_1\/reversals$/);
       assert.match(String(reversalCall.body.idempotency_id), UUID);
-      const ids = [authCall, secondAuth, transferCall, reversalCall].map((call) => call.body.idempotency_id);
+      const ids = [authCall, captureCall, secondAuth, transferCall, reversalCall].map((call) => call.body.idempotency_id);
       assert.equal(new Set(ids).size, ids.length);
 
       const voidCall = calls[5]!;
       assert.equal(voidCall.method, "PUT");
       assert.equal(voidCall.body.void_me, true);
       assert.equal(voidCall.body.idempotency_id, undefined);
+      assert.equal(voidCall.headers["Idempotency-Key"], undefined);
       assert.equal(voidCall.body.application, undefined);
 
       const logged = finixIdempotencyLogEntries();
-      assert.equal(logged.length, 4);
+      assert.equal(logged.length, 5);
       for (const row of logged) {
         assert.match(row.idempotencyId, UUID);
-        assert.match(`${row.method} ${row.path}`, /POST \/authorizations|POST \/transfers/);
+        assert.match(`${row.method} ${row.path}`, /POST \/authorizations|POST \/transfers|PUT \/authorizations/);
       }
       assert.deepEqual(
         logged.map((row) => row.idempotencyId),
@@ -145,6 +154,57 @@ test("a card swipe authorizes the base amount and the tip captures that authoriz
       );
     } finally {
       globalThis.fetch = prev;
+    }
+  });
+});
+
+test("a failed tip capture logs its own key and the Finix body", async () => {
+  await withKeys(async () => {
+    const finixBody = JSON.stringify({
+      _embedded: { errors: [{ message: "idempotency_id has already been used" }] },
+    });
+    const prevFetch = globalThis.fetch;
+    const prevInfo = console.info;
+    const lines: string[] = [];
+    console.info = (...args: unknown[]) => {
+      lines.push(args.map((part) => String(part)).join(" "));
+    };
+    globalThis.fetch = async (_input, init) => {
+      if (String(init?.method) === "PUT") {
+        const body = JSON.parse(String(init?.body ?? "{}")) as { idempotency_id?: string };
+        const headers = init?.headers as Record<string, string>;
+        assert.equal(headers["Idempotency-Key"], body.idempotency_id);
+        assert.match(String(body.idempotency_id), UUID);
+      }
+      return new Response(finixBody, { status: 422, headers: { "content-type": "application/json" } });
+    };
+    try {
+      const first = await captureAuthorization({
+        mode: "sandbox",
+        authorizationId: "AU_tip",
+        captureAmountCents: 2160,
+        tipCents: 360,
+        checkId: "chk_tip",
+      });
+      const second = await captureAuthorization({
+        mode: "sandbox",
+        authorizationId: "AU_tip",
+        captureAmountCents: 2160,
+        tipCents: 360,
+        checkId: "chk_tip",
+      });
+      assert.equal(first.ok, false);
+      assert.equal(second.ok, false);
+      if (!first.ok) assert.match(first.error || "", /idempotency_id has already been used/);
+      const joined = lines.join("\n");
+      assert.match(joined, /"Idempotency-Key":"[0-9a-f-]{36}"/);
+      assert.match(joined, /idempotency_id has already been used/);
+      assert.doesNotMatch(joined, /sandbox-pass/);
+      const keys = [...new Set([...joined.matchAll(/"idempotencyKey":"([0-9a-f-]{36})"/g)].map((match) => match[1]))];
+      assert.equal(keys.length, 2);
+    } finally {
+      globalThis.fetch = prevFetch;
+      console.info = prevInfo;
     }
   });
 });
@@ -313,6 +373,7 @@ test("the pay screen stores the authorization and captures it with the tip", () 
   assert.match(finix, /CARD_PRESENT_AUTHORIZATION/);
   assert.match(finix, /crypto\.randomUUID\(\)/);
   assert.match(finix, /idempotency_id=/);
+  assert.match(finix, /Idempotency-Key/);
   const plugin = readFileSync("android/app/src/main/java/app/summex/pos/PaxD135Plugin.java", "utf8");
   assert.match(plugin, /TransactionType\.AUTHORIZATION/);
   assert.doesNotMatch(plugin, /TransactionType\.SALE/);

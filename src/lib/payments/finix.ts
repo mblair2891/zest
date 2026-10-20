@@ -235,7 +235,7 @@ async function finixFetch(
   method: string,
   path: string,
   body?: Record<string, unknown>,
-  opts?: { requireWebhook?: boolean; application?: boolean },
+  opts?: { requireWebhook?: boolean; application?: boolean; idempotencyId?: string },
 ): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; body: string; error?: string }> {
   const creds = opts?.requireWebhook === false ? readFinixApiCreds(mode) : readFinixCreds(mode);
   if (!creds.ok) {
@@ -248,19 +248,25 @@ async function finixFetch(
       ? { ...body }
       : { application: creds.creds.applicationId, ...body }
     : undefined;
+  const headers: Record<string, string> = {
+    Authorization: `Basic ${auth}`,
+    "Content-Type": "application/json",
+    "Finix-Version": "2022-02-01",
+  };
+  const bare = path.split("?")[0] ?? path;
   if (payload && method === "POST" && finixPostsIdempotencyId(path)) {
     const idempotencyId = crypto.randomUUID();
     payload.idempotency_id = idempotencyId;
-    const bare = path.split("?")[0] ?? path;
+    headers["Idempotency-Key"] = idempotencyId;
     rememberFinixIdempotency({ method, path: bare, idempotencyId });
+  } else if (payload && opts?.idempotencyId) {
+    payload.idempotency_id = opts.idempotencyId;
+    headers["Idempotency-Key"] = opts.idempotencyId;
+    rememberFinixIdempotency({ method, path: bare, idempotencyId: opts.idempotencyId });
   }
   const res = await fetch(`${finixOrigin(mode)}${path}`, {
     method,
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/json",
-      "Finix-Version": "2022-02-01",
-    },
+    headers,
     body: payload ? JSON.stringify(payload) : undefined,
   });
   const raw = await res.text();
@@ -565,6 +571,9 @@ export async function captureAuthorization(opts: {
   }
   const body: Record<string, unknown> = { capture_amount: captureAmount };
   if (Object.keys(tags).length) body.tags = tags;
+  const tipCents = Math.max(0, Math.round(opts.tipCents ?? 0));
+  const idempotencyId = crypto.randomUUID();
+  const requestHeaders = { "Idempotency-Key": idempotencyId };
   // temporary: remove after tip close is confirmed
   logTipAdjust({
     phase: "request",
@@ -572,17 +581,35 @@ export async function captureAuthorization(opts: {
     simulated: false,
     authorizationId,
     captureAmountCents: captureAmount,
-    tipCents: Math.max(0, Math.round(opts.tipCents ?? 0)),
+    tipCents,
     checkId: opts.checkId ?? undefined,
+    idempotencyKey: idempotencyId,
+    requestHeaders,
   });
   const res = await finixFetch(
     mode,
     "PUT",
     `/authorizations/${encodeURIComponent(authorizationId)}`,
     body,
-    { application: false, requireWebhook: false },
+    { application: false, requireWebhook: false, idempotencyId },
   );
   if (!res.ok) {
+    const embedded = finixEmbeddedMessage(res.json);
+    const error = embedded || transferError(res, TIP_CAPTURE_FAILED);
+    logTipAdjust({
+      phase: "response",
+      sandbox,
+      simulated: false,
+      authorizationId,
+      captureAmountCents: captureAmount,
+      tipCents,
+      checkId: opts.checkId ?? undefined,
+      ok: false,
+      status: res.status,
+      error,
+      idempotencyKey: idempotencyId,
+      body: res.body,
+    });
     const already = finixAuthorizationAlreadyCaptured(res.json);
     if (already.captured) {
       return { ok: true, transferId: already.transferId || undefined, sandbox };
@@ -600,22 +627,8 @@ export async function captureAuthorization(opts: {
         return { ok: true, transferId: again.transferId || undefined, sandbox };
       }
     }
-    const embedded = finixEmbeddedMessage(res.json) || finixEmbeddedMessage(looked.json);
-    const error = embedded || transferError(res, TIP_CAPTURE_FAILED);
-    logTipAdjust({
-      phase: "response",
-      sandbox,
-      simulated: false,
-      authorizationId,
-      captureAmountCents: captureAmount,
-      tipCents: Math.max(0, Math.round(opts.tipCents ?? 0)),
-      checkId: opts.checkId ?? undefined,
-      ok: false,
-      status: res.status,
-      error,
-      body: res.body,
-    });
-    return { ok: false, sandbox, error };
+    const lookedMessage = finixEmbeddedMessage(looked.json);
+    return { ok: false, sandbox, error: embedded || lookedMessage || error };
   }
   logTipAdjust({
     phase: "response",
@@ -623,11 +636,12 @@ export async function captureAuthorization(opts: {
     simulated: false,
     authorizationId,
     captureAmountCents: captureAmount,
-    tipCents: Math.max(0, Math.round(opts.tipCents ?? 0)),
+    tipCents,
     checkId: opts.checkId ?? undefined,
     ok: true,
     status: res.status,
     transferId: typeof res.json.transfer === "string" ? res.json.transfer : undefined,
+    idempotencyKey: idempotencyId,
     body: res.body,
   });
   const transfer = res.json.transfer;

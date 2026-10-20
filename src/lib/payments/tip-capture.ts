@@ -118,6 +118,10 @@ export function tipCaptureOutcome(input: {
   return { ok: false, error: error || TIP_CAPTURE_FAILED, simulated: false };
 }
 
+function redactTipLog(value: string, max: number): string {
+  return value.replace(/\d{13,19}/g, "[redacted]").slice(0, max);
+}
+
 /** Temporary tip-adjust trace. Remove after the close flow is confirmed. */
 export function logTipAdjust(entry: {
   phase: "request" | "response";
@@ -132,8 +136,18 @@ export function logTipAdjust(entry: {
   error?: string;
   transferId?: string;
   body?: string;
+  /** Tip-only key. Never the sale authorization key. */
+  idempotencyKey?: string;
+  requestHeaders?: Record<string, string>;
 }): void {
-  const body = entry.body ? entry.body.replace(/\d{13,19}/g, "[redacted]").slice(0, 400) : undefined;
+  const body = entry.body ? redactTipLog(entry.body, 400) : undefined;
+  const requestHeaders = entry.requestHeaders
+    ? Object.fromEntries(
+        Object.entries(entry.requestHeaders)
+          .filter(([name]) => !/authorization|password|cookie/i.test(name))
+          .map(([name, value]) => [name, redactTipLog(value, 80)]),
+      )
+    : undefined;
   console.info(
     JSON.stringify({
       tag: "tip-adjust",
@@ -146,8 +160,10 @@ export function logTipAdjust(entry: {
       checkId: entry.checkId ? entry.checkId.slice(0, 80) : undefined,
       ok: entry.ok,
       status: entry.status,
-      error: entry.error ? entry.error.slice(0, 200) : undefined,
+      error: entry.error ? redactTipLog(entry.error, 200) : undefined,
       transferId: entry.transferId ? entry.transferId.slice(0, 80) : undefined,
+      idempotencyKey: entry.idempotencyKey ? redactTipLog(entry.idempotencyKey, 80) : undefined,
+      requestHeaders,
       body,
     }),
   );

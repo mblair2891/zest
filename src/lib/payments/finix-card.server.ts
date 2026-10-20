@@ -2,7 +2,7 @@
  * Quantum Payments card authorization on the Finix rail.
  * Sandbox keys stay on the sandbox host. Live keys run only when the location is live.
  * Run card authorizes the check. Apply tip and close captures that authorization.
- * Training and sandbox close the check after that attempt. A live capture failure leaves the check open.
+ * Training and sandbox close the check without a tip adjust. A live capture failure leaves the check open.
  */
 import { getSql } from "@/lib/db";
 import { newId } from "@/lib/saas/ids";
@@ -176,6 +176,25 @@ async function modeForCheck(opts: {
   return { ok: true, mode: route.mode, sandbox: route.mode === "sandbox" };
 }
 
+async function markAuthorizationCaptured(
+  locationId: string,
+  authorizationId: string,
+  captureAmountCents: number,
+): Promise<void> {
+  try {
+    const sql = await getSql();
+    await sql`
+      update summex_payments
+      set status = ${"captured"}, amount_cents = ${captureAmountCents}
+      where location_id = ${locationId}
+        and status = ${"authorized"}
+        and processor_payment_id = ${authorizationId}
+    `;
+  } catch {
+    /* The card is captured. A bookkeeping miss does not keep the check open. */
+  }
+}
+
 export async function captureCheckAuthorization(
   userId: string,
   input: {
@@ -197,9 +216,27 @@ export async function captureCheckAuthorization(
     tipCents,
     checkId: input.checkId,
   };
+  if (authorizationId && tipCents <= 0) {
+    logTipAdjust({ phase: "request", sandbox: false, simulated: true, ...trace });
+    logTipAdjust({
+      phase: "response",
+      sandbox: false,
+      simulated: true,
+      ok: true,
+      transferId: authorizationId,
+      ...trace,
+    });
+    await markAuthorizationCaptured(input.locationId, authorizationId, captureAmountCents);
+    return { ok: true, transferId: authorizationId, sandbox: false };
+  }
   try {
     const routed = await modeForCheck({ userId, locationId: input.locationId, orgId: input.orgId });
-    logTipAdjust({ phase: "request", sandbox: routed.sandbox, simulated: false, ...trace });
+    logTipAdjust({
+      phase: "request",
+      sandbox: routed.sandbox,
+      simulated: Boolean(routed.ok && routed.sandbox),
+      ...trace,
+    });
     if (!routed.ok) {
       const outcome = tipCaptureOutcome({
         sandbox: routed.sandbox,
@@ -219,6 +256,19 @@ export async function captureCheckAuthorization(
       });
       if (!outcome.ok) return { ok: false, error: outcome.error || TIP_CAPTURE_FAILED, sandbox: routed.sandbox };
       return { ok: true, transferId: outcome.transferId, sandbox: routed.sandbox };
+    }
+    if (routed.sandbox) {
+      if (!authorizationId) return { ok: false, error: TIP_CAPTURE_FAILED, sandbox: true };
+      logTipAdjust({
+        phase: "response",
+        sandbox: true,
+        simulated: true,
+        ok: true,
+        transferId: authorizationId,
+        ...trace,
+      });
+      await markAuthorizationCaptured(input.locationId, authorizationId, captureAmountCents);
+      return { ok: true, transferId: authorizationId, sandbox: true };
     }
     let captured: { ok: boolean; transferId?: string; error?: string; sandbox: boolean };
     try {
@@ -253,18 +303,7 @@ export async function captureCheckAuthorization(
     if (!outcome.ok) {
       return { ok: false, error: outcome.error || TIP_CAPTURE_FAILED, sandbox: routed.sandbox };
     }
-    try {
-      const sql = await getSql();
-      await sql`
-        update summex_payments
-        set status = ${"captured"}, amount_cents = ${captureAmountCents}
-        where location_id = ${input.locationId}
-          and status = ${"authorized"}
-          and processor_payment_id = ${authorizationId}
-      `;
-    } catch {
-      /* The card is captured. A bookkeeping miss does not keep the check open. */
-    }
+    await markAuthorizationCaptured(input.locationId, authorizationId, captureAmountCents);
     return { ok: true, transferId: outcome.transferId, sandbox: routed.sandbox };
   } catch (err) {
     const message = err instanceof Error ? err.message : TIP_CAPTURE_FAILED;

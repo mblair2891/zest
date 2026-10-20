@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_311_tip_idempotency",
+    date: "2026-10-20",
+    title: "Tip close uses its own key",
+    summary: "The tip close uses its own key. It does not reuse the sale key.",
+    body: "Tip close uses its own key, independent of the original sale key. The card authorization keeps the key from the sale. 18%, 20%, 25%, and Custom send a new key for that tip and close the check. No tip closes with a $0 tip and does not send a tip adjust. Training and Quantum Payments sandbox simulate the tip and close the check. If the processor does not add the tip, the station logs the processor response and still offers close with no tip, retry, or cancel. Pay stays a compact panel. After close, the table updates and the server returns to the floor, or to the order list when the check has no table.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_310_compact_pay_panel",
     date: "2026-10-20",
     title: "Compact pay panel",
