@@ -737,7 +737,10 @@ public class PaxD135Plugin extends Plugin {
             String saleRequest =
                 "SDK sale request amountCents=" + amount
                 + " transactionType=AUTHORIZATION"
+                + " splitTransfers=null"
                 + " buyerIdentityId=null"
+                + " surcharge=null"
+                + " tipAmount=null"
                 + " tags.check=" + checkId
                 + " promptForSignature=Never"
                 + " idempotencyId=" + idempotencyId

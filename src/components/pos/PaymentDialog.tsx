@@ -1449,7 +1449,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       }
       if (finixTransferId && paxJournal && order) {
         try {
-          await recordPaxSaleFn({
+          const recorded = await recordPaxSaleFn({
             data: {
               locationId: paxJournal.locationId,
               orgId: paxJournal.orgId,
@@ -1463,6 +1463,19 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               idempotencyId: saleIdempotencyId,
             },
           });
+          if (recorded.ok && recorded.transferId) {
+            finixTransferId = recorded.transferId;
+            authorizationId = recorded.transferId;
+            const current = usePosStore.getState().orders.find((row) => row.id === order.id)?.cardAuth;
+            if (
+              current &&
+              (current.finixTransferId !== finixTransferId || current.authorizationId !== authorizationId)
+            ) {
+              const next = { ...current, finixTransferId, authorizationId };
+              usePosStore.getState().setCardAuth(order.id, next);
+              writeSessionCardAuth(order.id, next);
+            }
+          }
         } catch {
           /* The authorization is stored on the check. Do not send another sale. */
         }

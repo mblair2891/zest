@@ -9,6 +9,7 @@ import {
   finixIdempotencyLogEntries,
   resetFinixIdempotencyLog,
   reverseTransfer,
+  settleSdkCardPresentTransfer,
   voidAuthorization,
 } from "../src/lib/payments/finix.ts";
 import { finixAttemptIdempotencyId } from "../src/lib/payments/idempotency.ts";
@@ -468,6 +469,191 @@ test("training closes a sandbox tip when capture is refused and live does not", 
   const server = readFileSync("src/lib/payments/finix-card.server.ts", "utf8");
   assert.match(server, /tipCaptureOutcome/);
   assert.doesNotMatch(server, /captureSandbox/);
+});
+
+test("a reader transfer with an empty idempotency id is replaced by one that stores the sale id", async () => {
+  await withKeys(async () => {
+    resetFinixIdempotencyLog();
+    const saleKey = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+    const prev = globalThis.fetch;
+    type Call = { method: string; url: string; body: Record<string, unknown>; headers: Record<string, string> };
+    const calls: Call[] = [];
+    const headersOf = (init?: RequestInit): Record<string, string> => {
+      const headers: Record<string, string> = {};
+      const raw = init?.headers;
+      if (raw && typeof raw === "object" && !Array.isArray(raw) && !(raw instanceof Headers)) {
+        for (const [key, value] of Object.entries(raw)) headers[key] = String(value);
+      }
+      return headers;
+    };
+    const respond = (status: number, payload: Record<string, unknown>) =>
+      new Response(JSON.stringify(payload), {
+        status,
+        headers: { "content-type": "application/json" },
+      });
+    const install = (
+      route: (method: string, url: string, body: Record<string, unknown>) => { status: number; payload: Record<string, unknown> },
+    ) => {
+      calls.length = 0;
+      globalThis.fetch = async (input, init) => {
+        const method = String(init?.method ?? "GET");
+        const url = String(input);
+        const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
+        calls.push({ method, url, body, headers: headersOf(init) });
+        const next = route(method, url, body);
+        return respond(next.status, next.payload);
+      };
+    };
+    const posts = () => calls.filter((call) => call.method === "POST" && new URL(call.url).pathname === "/transfers");
+    const reversals = () => calls.filter((call) => call.method === "POST" && call.url.includes("/reversals"));
+    try {
+      install((method, url) => {
+        if (method === "GET" && url.includes("/authorizations/")) return { status: 404, payload: {} };
+        if (method === "GET" && url.includes("/transfers?")) return { status: 200, payload: { _embedded: { transfers: [] } } };
+        if (method === "GET" && url.includes("/transfers/TRsdk")) {
+          return {
+            status: 200,
+            payload: {
+              id: "TRsdk",
+              source: "PIcard",
+              merchant: "MUgrill",
+              amount: 1800,
+              idempotency_id: null,
+            },
+          };
+        }
+        if (method === "POST" && url.includes("/reversals")) return { status: 201, payload: { id: "RVsdk" } };
+        if (method === "POST" && url.includes("/transfers")) {
+          return { status: 201, payload: { id: "TRkept", idempotency_id: saleKey, amount: 1800 } };
+        }
+        return { status: 404, payload: {} };
+      });
+      const replaced = await settleSdkCardPresentTransfer({
+        mode: "sandbox",
+        sdkId: "TRsdk",
+        idempotencyId: saleKey,
+        merchantId: "MUgrill",
+        amountCents: 1800,
+        checkId: "chk_reader",
+      });
+      assert.equal(replaced.ok, true);
+      if (replaced.ok) assert.equal(replaced.transferId, "TRkept");
+      const created = posts();
+      assert.equal(created.length, 1);
+      assert.equal(created[0]?.body.idempotency_id, saleKey);
+      assert.equal(created[0]?.headers["Idempotency-Key"], saleKey);
+      assert.equal(created[0]?.body.source, "PIcard");
+      assert.equal(created[0]?.body.merchant, "MUgrill");
+      assert.equal(created[0]?.body.amount, 1800);
+      const undone = reversals();
+      assert.equal(undone.length, 1);
+      assert.match(undone[0]?.url ?? "", /\/transfers\/TRsdk\/reversals$/);
+      assert.notEqual(undone[0]?.body.idempotency_id, saleKey);
+      assert.match(String(undone[0]?.body.idempotency_id), UUID);
+
+      install((method, url) => {
+        if (method === "GET" && url.includes("/authorizations/")) return { status: 404, payload: {} };
+        if (method === "GET" && url.includes("/transfers/TRready")) {
+          return {
+            status: 200,
+            payload: {
+              id: "TRready",
+              source: "PIcard",
+              merchant: "MUgrill",
+              amount: 1800,
+              idempotency_id: saleKey,
+            },
+          };
+        }
+        return { status: 500, payload: { id: "TRunexpected" } };
+      });
+      const kept = await settleSdkCardPresentTransfer({
+        mode: "sandbox",
+        sdkId: "TRready",
+        idempotencyId: saleKey,
+        merchantId: "MUgrill",
+        amountCents: 1800,
+        checkId: "chk_ready",
+      });
+      assert.equal(kept.ok, true);
+      if (kept.ok) assert.equal(kept.transferId, "TRready");
+      assert.equal(calls.filter((call) => call.method === "POST").length, 0);
+
+      install((method, url) => {
+        if (method === "GET" && url.includes("/authorizations/")) return { status: 404, payload: {} };
+        if (method === "GET" && url.includes("/transfers?")) return { status: 200, payload: { _embedded: { transfers: [] } } };
+        if (method === "GET" && url.includes("/transfers/TRsdk")) {
+          return {
+            status: 200,
+            payload: { id: "TRsdk", source: "PIcard", merchant: "MUgrill", amount: 900, idempotency_id: null },
+          };
+        }
+        if (method === "POST" && url.includes("/reversals")) return { status: 201, payload: { id: "RVbad" } };
+        if (method === "POST" && url.includes("/transfers")) return { status: 201, payload: { id: "TRbad", amount: 900 } };
+        return { status: 404, payload: {} };
+      });
+      const dropped = await settleSdkCardPresentTransfer({
+        mode: "sandbox",
+        sdkId: "TRsdk",
+        idempotencyId: saleKey,
+        merchantId: "MUgrill",
+        amountCents: 900,
+        checkId: "chk_drop",
+      });
+      assert.equal(dropped.ok, false);
+      if (!dropped.ok) assert.equal(dropped.transferId, "TRsdk");
+      assert.equal(reversals().length, 1);
+      assert.match(reversals()[0]?.url ?? "", /\/transfers\/TRbad\/reversals$/);
+
+      install((method) => {
+        if (method === "GET") return { status: 404, payload: {} };
+        return { status: 201, payload: { id: "TRblind" } };
+      });
+      const missed = await settleSdkCardPresentTransfer({
+        mode: "sandbox",
+        sdkId: "TRmissing",
+        idempotencyId: saleKey,
+        merchantId: "MUgrill",
+        amountCents: 1800,
+        checkId: "chk_miss",
+      });
+      assert.equal(missed.ok, false);
+      if (!missed.ok) assert.equal(missed.transferId, "TRmissing");
+      assert.equal(calls.filter((call) => call.method === "POST").length, 0);
+
+      install((method, url) => {
+        if (method === "GET" && url.includes("/authorizations/")) return { status: 404, payload: {} };
+        if (method === "GET" && url.includes("/transfers?")) return { status: 200, payload: { _embedded: { transfers: [] } } };
+        if (method === "GET" && url.includes("/transfers/TRsdk")) {
+          return {
+            status: 200,
+            payload: { id: "TRsdk", source: "PIcard", merchant: "MUgrill", amount: 1800, idempotency_id: null },
+          };
+        }
+        if (method === "POST" && url.includes("/transfers/TRkept/reversals")) return { status: 201, payload: { id: "RVkept" } };
+        if (method === "POST" && url.includes("/reversals")) return { status: 500, payload: {} };
+        if (method === "POST" && url.includes("/transfers")) {
+          return { status: 201, payload: { id: "TRkept", idempotency_id: saleKey, amount: 1800 } };
+        }
+        return { status: 404, payload: {} };
+      });
+      const rolled = await settleSdkCardPresentTransfer({
+        mode: "sandbox",
+        sdkId: "TRsdk",
+        idempotencyId: saleKey,
+        merchantId: "MUgrill",
+        amountCents: 1800,
+        checkId: "chk_roll",
+      });
+      assert.equal(rolled.ok, false);
+      if (!rolled.ok) assert.equal(rolled.transferId, "TRsdk");
+      assert.equal(reversals().length, 2);
+      assert.match(reversals()[0]?.url ?? "", /\/transfers\/TRsdk\/reversals$/);
+      assert.match(reversals()[1]?.url ?? "", /\/transfers\/TRkept\/reversals$/);
+    } finally {
+      globalThis.fetch = prev;
+    }
+  });
 });
 
 test("the pay screen stores the authorization and captures it with the tip", () => {

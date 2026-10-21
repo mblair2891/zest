@@ -416,6 +416,13 @@ test("a card-present SDK sale includes a non-null idempotency_id", async () => {
   assert.match(sale, /PromptForSignature\.Never\.INSTANCE,\s*idempotencyId\s*\)/);
   assert.doesNotMatch(sale, /startTransaction\([\s\S]*?null\s*\)\s*;/);
   assert.match(sale, /Idempotency-Key=" \+ idempotencyId/);
+  assert.match(sale, /splitTransfers=null/);
+  assert.match(sale, /surcharge=null/);
+  assert.match(sale, /tipAmount=null/);
+  const splitAt = sale.indexOf("splitTransfers=null");
+  const surchargeAt = sale.indexOf("surcharge=null");
+  const tipAt = sale.indexOf("tipAmount=null");
+  assert.ok(splitAt >= 0 && surchargeAt > splitAt && tipAt > surchargeAt && namedAt > tipAt);
   const hookAt = sale.indexOf("ensureSaleIdempotencyHeader(current)");
   assert.ok(hookAt > logAt && callAt > hookAt);
   const hook = plugin.slice(
@@ -438,6 +445,20 @@ test("a card-present SDK sale includes a non-null idempotency_id", async () => {
   assert.match(bridge, /sale: \(input\) => PaxD135\.sale\(input\)/);
   const dialog = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
   assert.match(dialog, /idempotencyId,\s*bridge: androidPaxBridge\(\)/);
+  assert.match(dialog, /recorded\.transferId/);
+  const closeRecord = dialog.slice(dialog.lastIndexOf("recordPaxSaleFn("));
+  assert.match(closeRecord, /order\.cardSaleIdempotencyId \?\? saleIdempotencyId/);
+  assert.doesNotMatch(closeRecord.slice(0, closeRecord.indexOf("catch")), /status: "authorized"/);
+  const server = readFileSync("src/lib/payments/pax-d135.server.ts", "utf8");
+  assert.match(server, /settleSdkCardPresentTransfer/);
+  assert.match(server, /input\.status === "authorized" && idempotencyId/);
+  assert.doesNotMatch(server, /\/transfers|authorizeCardPresent|captureCardPresent/);
+  const helper = server.slice(
+    server.indexOf("async function readerTransferId"),
+    server.indexOf("export async function recordPaxSale"),
+  );
+  assert.match(helper, /input\.status !== "authorized"/);
+  assert.match(helper, /settleSdkCardPresentTransfer/);
 });
 
 test("decline leaves the check open", async () => {

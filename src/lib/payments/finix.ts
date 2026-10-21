@@ -747,6 +747,195 @@ export async function reverseTransfer(opts: {
   return { ok: true, reversalId, sandbox };
 }
 
+type ReaderCharge = {
+  authorizationId: string;
+  transferId: string;
+  transferIdempotencyId: string | null;
+  sourceId: string;
+  merchantId: string;
+  amountCents: number;
+};
+
+function blankReaderCharge(): ReaderCharge {
+  return {
+    authorizationId: "",
+    transferId: "",
+    transferIdempotencyId: null,
+    sourceId: "",
+    merchantId: "",
+    amountCents: 0,
+  };
+}
+
+function readerMoney(json: Record<string, unknown>): {
+  sourceId: string;
+  merchantId: string;
+  amountCents: number;
+} {
+  const amount = json.amount;
+  return {
+    sourceId: typeof json.source === "string" ? json.source.trim() : "",
+    merchantId: typeof json.merchant === "string" ? json.merchant.trim() : "",
+    amountCents: typeof amount === "number" && Number.isFinite(amount) ? Math.round(amount) : 0,
+  };
+}
+
+async function readFinixResource(mode: FinixMode, path: string): Promise<Record<string, unknown> | null> {
+  const res = await finixFetch(mode, "GET", path, undefined, { requireWebhook: false });
+  const id = typeof res.json.id === "string" ? res.json.id.trim() : "";
+  if (!res.ok || !id) return null;
+  return res.json;
+}
+
+async function lookupSdkCharge(mode: FinixMode, sdkId: string): Promise<ReaderCharge> {
+  const charge = blankReaderCharge();
+  const auth = await readFinixResource(mode, `/authorizations/${encodeURIComponent(sdkId)}`);
+  const direct = await readFinixResource(mode, `/transfers/${encodeURIComponent(sdkId)}`);
+  if (auth) {
+    charge.authorizationId = String(auth.id).trim();
+    const money = readerMoney(auth);
+    charge.sourceId = money.sourceId;
+    charge.merchantId = money.merchantId;
+    charge.amountCents = money.amountCents;
+    const linked = typeof auth.transfer === "string" ? auth.transfer.trim() : "";
+    if (linked) charge.transferId = linked;
+  }
+  let transferJson = direct;
+  if (!transferJson && charge.transferId) {
+    transferJson = await readFinixResource(mode, `/transfers/${encodeURIComponent(charge.transferId)}`);
+  }
+  if (transferJson) {
+    const money = readerMoney(transferJson);
+    if (money.sourceId) charge.sourceId = money.sourceId;
+    if (money.merchantId) charge.merchantId = money.merchantId;
+    if (money.amountCents > 0) charge.amountCents = money.amountCents;
+    charge.transferId = String(transferJson.id).trim();
+    charge.transferIdempotencyId = finixAttemptIdempotencyId(transferJson.idempotency_id);
+  }
+  return charge;
+}
+
+async function findTransferByIdempotency(
+  mode: FinixMode,
+  idempotencyId: string,
+): Promise<{ id: string } | null> {
+  const listed = await finixFetch(
+    mode,
+    "GET",
+    `/transfers?idempotency_id=${encodeURIComponent(idempotencyId)}&limit=1`,
+    undefined,
+    { requireWebhook: false },
+  );
+  const embedded = listed.json._embedded as { transfers?: Record<string, unknown>[] } | undefined;
+  const row = embedded?.transfers?.[0];
+  if (!row) return null;
+  const id = typeof row.id === "string" ? row.id.trim() : "";
+  if (!id || finixAttemptIdempotencyId(row.idempotency_id) !== idempotencyId) return null;
+  return { id };
+}
+
+async function reverseReaderTransfer(mode: FinixMode, transferId: string, amountCents: number): Promise<boolean> {
+  const amount = Math.max(0, Math.round(amountCents));
+  if (!transferId || amount <= 0) return false;
+  const res = await finixFetch(
+    mode,
+    "POST",
+    `/transfers/${encodeURIComponent(transferId)}/reversals`,
+    { refund_amount: amount },
+    { application: false, requireWebhook: false },
+  );
+  return res.ok && typeof res.json.id === "string" && res.json.id.trim().length > 0;
+}
+
+/**
+ * The card reader posts the chip read. That post leaves idempotency_id empty.
+ * This creates the Transfer on POST /transfers with the sale's idempotency id.
+ * The reader charge is released only after that Transfer stores the same id.
+ * A failed release reverses the new Transfer, so the card is not charged twice.
+ */
+export async function settleSdkCardPresentTransfer(opts: {
+  mode?: FinixMode;
+  sdkId: string;
+  idempotencyId: string;
+  merchantId: string;
+  amountCents: number;
+  checkId: string;
+}): Promise<{ ok: true; transferId: string } | { ok: false; transferId: string }> {
+  const mode = opts.mode ?? "sandbox";
+  const sdkId = opts.sdkId.trim();
+  const idempotencyId = finixAttemptIdempotencyId(opts.idempotencyId);
+  if (!sdkId || !idempotencyId) return { ok: false, transferId: sdkId };
+  const charge = await lookupSdkCharge(mode, sdkId);
+  if (!charge.authorizationId && !charge.transferId) return { ok: false, transferId: sdkId };
+  if (charge.transferId && charge.transferIdempotencyId) {
+    console.info(`pax sale transfer idempotency_id=${charge.transferIdempotencyId}`);
+    return { ok: true, transferId: charge.transferId };
+  }
+  const merchant = charge.merchantId.startsWith("MU") ? charge.merchantId : opts.merchantId.trim();
+  const amount = charge.amountCents > 0 ? charge.amountCents : Math.round(opts.amountCents);
+  if (!charge.sourceId.startsWith("PI") || !merchant.startsWith("MU") || amount <= 0) {
+    return { ok: false, transferId: charge.transferId || sdkId };
+  }
+  const prior = await findTransferByIdempotency(mode, idempotencyId);
+  if (prior) {
+    if (charge.transferId && charge.transferId !== prior.id) {
+      await reverseReaderTransfer(mode, charge.transferId, amount);
+    } else if (charge.authorizationId && !charge.transferId) {
+      await voidAuthorization({ mode, authorizationId: charge.authorizationId });
+    }
+    console.info(`pax sale transfer idempotency_id=${idempotencyId}`);
+    return { ok: true, transferId: prior.id };
+  }
+  const body: Record<string, unknown> = {
+    merchant,
+    source: charge.sourceId,
+    amount,
+    currency: "USD",
+  };
+  if (opts.checkId) body.tags = { check: opts.checkId.slice(0, 80) };
+  const created = await finixFetch(mode, "POST", "/transfers", body, {
+    application: false,
+    requireWebhook: false,
+    idempotencyId,
+  });
+  const postedId = typeof created.json.id === "string" ? created.json.id.trim() : "";
+  let transferId = postedId;
+  let stored = finixAttemptIdempotencyId(created.json.idempotency_id);
+  let createdHere = created.ok && postedId.length > 0 && stored === idempotencyId;
+  if (!createdHere) {
+    const found = await findTransferByIdempotency(mode, idempotencyId);
+    if (found) {
+      if (postedId && postedId !== found.id && postedId !== charge.transferId && postedId !== sdkId) {
+        await reverseReaderTransfer(mode, postedId, amount);
+      }
+      transferId = found.id;
+      stored = idempotencyId;
+      createdHere = false;
+    }
+  }
+  if (!transferId || stored !== idempotencyId) {
+    if (transferId && transferId !== charge.transferId && transferId !== sdkId) {
+      await reverseReaderTransfer(mode, transferId, amount);
+    }
+    return { ok: false, transferId: charge.transferId || sdkId };
+  }
+  const released = charge.transferId && charge.transferId !== transferId
+    ? await reverseReaderTransfer(mode, charge.transferId, charge.amountCents > 0 ? charge.amountCents : amount)
+    : charge.authorizationId
+      ? (await voidAuthorization({ mode, authorizationId: charge.authorizationId })).ok
+      : true;
+  if (!released) {
+    if (createdHere) {
+      await reverseReaderTransfer(mode, transferId, amount);
+      return { ok: false, transferId: charge.transferId || sdkId };
+    }
+    console.info(`pax sale transfer idempotency_id=${idempotencyId}`);
+    return { ok: true, transferId };
+  }
+  console.info(`pax sale transfer idempotency_id=${idempotencyId}`);
+  return { ok: true, transferId };
+}
+
 /** One guest authorization; each vendor merchant is paid for the lines it owns. */
 export async function createSplitTransfer(opts: {
   parentMerchantId: string;

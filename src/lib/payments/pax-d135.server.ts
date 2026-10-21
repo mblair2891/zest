@@ -1,7 +1,8 @@
 /**
- * Register a sandbox PAX D135 and journal the SDK transfer.
- * The sale itself is created by the Android SDK. This file does not call Stripe
- * and does not post a second transfer.
+ * Register a sandbox PAX D135 and journal the chip sale.
+ * The chip read is started by the Android SDK. This file does not call Stripe.
+ * An authorized sale stores the sale idempotency id on the Transfer, then journals
+ * that Transfer. A captured close journals the same sale and does not start another charge.
  */
 import { readServerEnv } from "@/lib/database-url";
 import { getSql } from "@/lib/db";
@@ -12,6 +13,7 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLocationDevices, type LocationDevice } from "@/lib/pos/location-devices";
 import { locationLifecycleStatus } from "./mode";
 import { finixAttemptIdempotencyId } from "./idempotency";
+import { settleSdkCardPresentTransfer } from "./finix";
 import {
   PAX_MSG,
   envBlock,
@@ -411,6 +413,31 @@ export async function finixConnectAuth(
   return { ok: false, error: probe.failure, ...trace };
 }
 
+/** Store the sale idempotency id on the chip Transfer. A captured close is not a second charge. */
+async function readerTransferId(input: {
+  status?: "authorized" | "captured";
+  transferId: string;
+  idempotencyId: string | null;
+  merchantId: string;
+  amountCents: number;
+  checkId: string;
+}): Promise<string> {
+  if (input.status !== "authorized" || !input.idempotencyId) return input.transferId;
+  try {
+    const settled = await settleSdkCardPresentTransfer({
+      mode: "sandbox",
+      sdkId: input.transferId,
+      idempotencyId: input.idempotencyId,
+      merchantId: input.merchantId,
+      amountCents: Math.max(0, Math.round(input.amountCents)),
+      checkId: input.checkId,
+    });
+    return settled.ok ? settled.transferId : input.transferId;
+  } catch {
+    return input.transferId;
+  }
+}
+
 export async function recordPaxSale(
   userId: string,
   input: {
@@ -443,6 +470,7 @@ export async function recordPaxSale(
     limit 1
   `;
   if (prior[0]?.processor_payment_id) {
+    let processorPaymentId = String(prior[0].processor_payment_id);
     if (idempotencyId) {
       await sql`
         update summex_payments
@@ -454,8 +482,38 @@ export async function recordPaxSale(
           and (idempotency_id is null or btrim(idempotency_id) = '')
       `;
     }
-    return { ok: true, duplicate: true, transferId: String(prior[0].processor_payment_id) };
+    if (input.status === "authorized" && idempotencyId) {
+      const settledId = await readerTransferId({
+        status: "authorized",
+        transferId,
+        idempotencyId,
+        merchantId: input.merchantId,
+        amountCents: input.amountCents,
+        checkId: input.checkId,
+      });
+      if (settledId && settledId !== processorPaymentId) {
+        await sql`
+          update summex_payments
+          set processor_payment_id = ${settledId}
+          where location_id = ${loc.id}
+            and check_id = ${input.checkId}
+            and method = ${"card"}
+            and status in (${"authorized"}, ${"captured"})
+            and processor_payment_id = ${processorPaymentId}
+        `;
+        processorPaymentId = settledId;
+      }
+    }
+    return { ok: true, duplicate: true, transferId: processorPaymentId };
   }
+  const processorPaymentId = await readerTransferId({
+    status: input.status,
+    transferId,
+    idempotencyId,
+    merchantId: input.merchantId,
+    amountCents: input.amountCents,
+    checkId: input.checkId,
+  });
   const id = newId("zpay");
   const last4 = input.last4 ? String(input.last4).replace(/\D/g, "").slice(-4) || null : null;
   await sql`
@@ -474,7 +532,7 @@ export async function recordPaxSale(
       ${"card"},
       ${last4},
       ${"quantum_payments"},
-      ${transferId},
+      ${processorPaymentId},
       ${"sandbox"},
       ${input.checkId},
       ${input.readerId},
@@ -482,5 +540,5 @@ export async function recordPaxSale(
       ${idempotencyId}
     )
   `;
-  return { ok: true, duplicate: false, transferId };
+  return { ok: true, duplicate: false, transferId: processorPaymentId };
 }
