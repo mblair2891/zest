@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_320_tokenize_test",
+    date: "2026-10-20",
+    title: "Online card test page",
+    summary: "Platform Payments has a sandbox tokenization test for an online card.",
+    body: "Platform Payments includes Online Tokenization Test. Sandbox tokenization form for Finix review. Simulates online order card entry. The card number, expiration, and CVV stay in the Finix form. A token shows on the screen. Summex creates a payment instrument from that token. The token is not stored.",
+    roles: ["platform_admin"],
+    surfaces: ["settings"],
+    audience: "platform",
+    topicId: "card-not-present",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_319_table_flash",
     date: "2026-10-20",
     title: "Table flash is the icon",

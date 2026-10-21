@@ -37,6 +37,7 @@ import {
   type TenantDetailModel,
 } from "@/lib/saas/tenant-detail";
 import { LocationDeviceRegistry } from "@/components/pos/LocationDeviceRegistry";
+import { OnlineTokenizationTest } from "@/components/payments/OnlineTokenizationTest";
 import { QuantumPaymentsSettings } from "@/components/pos/QuantumPaymentsSettings";
 import { GiftCardsAdminView } from "@/components/pos/GiftCardsAdminView";
 import { TenantUsersPanel } from "@/components/platform/TenantUsersPanel";
@@ -798,10 +799,13 @@ export function PlatformTenantVenue({
               )
             )}
             {ready && !error && tab === "payments" && tabIds.has("payments") && (
-              <QuantumPaymentsSettings
-                write={kind === "entity_owner" || kind === "host_owner" || kind === "venue_admin" || audience === "platform"}
-                onOpenGift={() => setTab("gift")}
-              />
+              <>
+                {audience === "platform" ? <OnlineTokenizationTest /> : null}
+                <QuantumPaymentsSettings
+                  write={kind === "entity_owner" || kind === "host_owner" || kind === "venue_admin" || audience === "platform"}
+                  onOpenGift={() => setTab("gift")}
+                />
+              </>
             )}
             {ready && !error && tab === "gift" && tabIds.has("gift") && (
               <GiftCardsAdminView

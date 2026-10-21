@@ -623,3 +623,37 @@ export const chargeStoredInstrumentFn = createServerFn({ method: "POST" })
       entityId: data.entityId,
     });
   });
+
+function sandboxTokenInput(d: { token?: string }) {
+  const raw = d as unknown as Record<string, unknown>;
+  for (const key of [
+    "number",
+    "cardNumber",
+    "securityCode",
+    "security_code",
+    "cvv",
+    "expiration",
+    "expirationMonth",
+    "expirationYear",
+  ]) {
+    if (raw[key] != null && String(raw[key]).trim() !== "") {
+      throw new Error("Card number, expiration, and CVV stay in the Finix form.");
+    }
+  }
+  return { token: String(d.token ?? "").trim().slice(0, 80) };
+}
+
+export const sandboxTokenFormConfigFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .handler(async ({ context }) => {
+    const { sandboxTokenizationFormConfig } = await import("./tokenize-test.server");
+    return sandboxTokenizationFormConfig(context.userId);
+  });
+
+export const sandboxExchangeTokenFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { token?: string }) => sandboxTokenInput(d))
+  .handler(async ({ context, data }) => {
+    const { sandboxTokenizationExchange } = await import("./tokenize-test.server");
+    return sandboxTokenizationExchange(context.userId, data);
+  });
