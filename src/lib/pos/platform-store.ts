@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
+import { cardNotPresentRejectsRawCard, parseFinixInstrumentId } from "@/lib/payments/finix-tokenize";
 import {
   BUILDINGS,
   CAMPAIGNS,
@@ -135,6 +136,8 @@ interface PlatformState {
     vehicleDescription?: string;
     vehicleColor?: string;
     notes?: string;
+    /** Payment instrument from the Finix card form. A card number is refused. */
+    paymentInstrumentId?: string;
   }) => { ok: boolean; error?: string; orderId?: string; claimCode?: string; number?: number };
   addToOnlineCart: (item: {
     menuItemId: string;
@@ -340,21 +343,29 @@ export const usePlatformStore = create<PlatformState>()(
       setOnlineGuestName: (n) => set({ onlineGuestName: n }),
       setOnlinePromo: (c) => set({ onlinePromo: c }),
 
-      placeOnlineOrder: ({
-        guestName,
-        type,
-        channel,
-        promoCode,
-        tableLabel,
-        tableId,
-        address,
-        guestPhone,
-        kitchenFireMode,
-        delayMinutes,
-        vehicleDescription,
-        vehicleColor,
-        notes,
-      }) => {
+      placeOnlineOrder: (opts) => {
+        const rejected = cardNotPresentRejectsRawCard(opts as unknown as Record<string, unknown>);
+        if (rejected) return { ok: false, error: rejected };
+        const {
+          guestName,
+          type,
+          channel,
+          promoCode,
+          tableLabel,
+          tableId,
+          address,
+          guestPhone,
+          kitchenFireMode,
+          delayMinutes,
+          vehicleDescription,
+          vehicleColor,
+          notes,
+          paymentInstrumentId,
+        } = opts;
+        const instrument = paymentInstrumentId ? parseFinixInstrumentId(paymentInstrumentId) : "";
+        if (paymentInstrumentId && !instrument) {
+          return { ok: false, error: "Online card pay needs a payment instrument from the card form." };
+        }
         const cart = get().onlineCart;
         if (cart.length === 0) return { ok: false, error: "Cart empty" };
         if (!guestName.trim()) return { ok: false, error: "Name required" };
@@ -424,6 +435,7 @@ export const usePlatformStore = create<PlatformState>()(
           promoCode: code || undefined,
           discountCents: discount,
           paymentStatus: "paid",
+          paymentInstrumentId: instrument || undefined,
           createdAt: now,
           promisedAt: now + 1000 * 60 * settings.defaultPromiseMinutes,
           claimCode: claim,

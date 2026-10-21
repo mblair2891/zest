@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { saveLocationSettingsFn } from "@/lib/access/api";
 import { getPaymentsStatusFn } from "@/lib/payments/api";
+import { CardNotPresentReview } from "@/components/payments/CardNotPresentReview";
 import {
   FinixMerchantIdFields,
   QuantumPaymentsOnboardPanel,
@@ -169,6 +170,9 @@ export function QuantumPaymentsSettings({
         Guests see Quantum Payments and one check. This venue uses one card processor.
         Cash and gift do not use that processor.
       </p>
+      {orgId && locId ? (
+        <CardNotPresentReview orgId={orgId} locationId={locId} entityId={entity?.id} />
+      ) : null}
       <div className="rounded-lg border border-border p-3" data-payments-receipts="">
         <p className="text-sm font-medium">Payments / Receipts</p>
         <label className="mt-2 flex items-center gap-2 text-sm">

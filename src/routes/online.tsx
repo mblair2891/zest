@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { CardNotPresentReview } from "@/components/payments/CardNotPresentReview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import { usePlatformStore } from "@/lib/pos/platform-store";
+import { useSaasStore } from "@/lib/pos/saas-store";
 import type {
   KitchenFireMode,
   OnlineOrderType,
@@ -72,6 +74,10 @@ function OnlineOrderingPage() {
   const [fireMode, setFireMode] = useState<KitchenFireMode | "">("");
   const [delayMin, setDelayMin] = useState(String(settings.defaultDelayMinutes));
   const [claimLookup, setClaimLookup] = useState("");
+  const [payByCard, setPayByCard] = useState(false);
+  const [instrumentId, setInstrumentId] = useState("");
+  const orgId = useSaasStore((s) => s.org.id);
+  const tenantLocationId = usePosStore((s) => s.tenantLocationId) || "";
 
   useEffect(() => {
     let left = 2;
@@ -227,13 +233,14 @@ function OnlineOrderingPage() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  setInstrumentId("");
                   add({
                     menuItemId: item.id,
                     name: item.name,
                     unitPriceCents: item.priceCents,
-                  })
-                }
+                  });
+                }}
                 className="rounded-xl border border-border bg-surface p-3 text-left hover:border-border-strong"
               >
                 <p className="text-sm font-medium">{item.name}</p>
@@ -339,9 +346,40 @@ function OnlineOrderingPage() {
           <p className="mb-3 text-lg font-semibold tabular">
             {formatCurrency(total)}
           </p>
+          <label className="mb-2 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              data-pay-by-card=""
+              className="h-4 w-4 rounded border-border"
+              checked={payByCard}
+              onChange={(event) => {
+                setPayByCard(event.target.checked);
+                if (!event.target.checked) setInstrumentId("");
+              }}
+            />
+            Pay by card
+          </label>
+          {payByCard && orgId && tenantLocationId ? (
+            <div className="mb-3">
+              <CardNotPresentReview
+                guest
+                orgId={orgId}
+                locationId={tenantLocationId}
+                amountCents={total}
+                customerRef={guestName || undefined}
+                submitLabel="Pay by card"
+                onInstrument={(row) => setInstrumentId(row.instrumentId)}
+              />
+            </div>
+          ) : payByCard ? (
+            <p className="mb-3 text-xs text-muted-foreground" data-online-card-note="">
+              Card pay uses the card form. This page does not take a card number.
+              Sign in, then open Settings, Payments, Online card.
+            </p>
+          ) : null}
           <Button
             className="w-full"
-            disabled={!cart.length}
+            disabled={!cart.length || (payByCard && !instrumentId)}
             onClick={() => {
               const res = place({
                 guestName,
@@ -355,6 +393,7 @@ function OnlineOrderingPage() {
                 delayMinutes: parseInt(delayMin, 10) || undefined,
                 vehicleDescription: vehicle || undefined,
                 vehicleColor: vehicleColor || undefined,
+                paymentInstrumentId: payByCard ? instrumentId : undefined,
               });
               if (res.ok && res.orderId) {
                 setStatus(

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_316_card_token",
+    date: "2026-10-20",
+    title: "Online card uses the Finix form",
+    summary: "An online card stays in the Finix form. The payment instrument is stored on the order.",
+    body: "An online or card-not-present charge uses the Finix card form. The card number, the expiration, and the CVV stay in that form. A successful form returns a token. Summex creates a payment instrument from that token and stores it on the order. A transfer uses that payment instrument. Sandbox and live use the saved keys for that environment. Enter card manually stays off when the location is live.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "card-not-present",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_315_reader_autoconnect",
     date: "2026-10-20",
     title: "Reader connects on its own",

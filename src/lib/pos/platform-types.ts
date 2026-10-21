@@ -164,6 +164,8 @@ export interface OnlineOrder {
   promoCode?: string;
   discountCents: number;
   paymentStatus: "paid" | "pending" | "refunded";
+  /** Payment instrument from the online card form. Not a card number. */
+  paymentInstrumentId?: string;
   createdAt: number;
   promisedAt?: number;
   address?: string;

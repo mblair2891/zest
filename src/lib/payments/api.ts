@@ -532,3 +532,94 @@ export const sendGuestReceiptSmsFn = createServerFn({ method: "POST" })
     }
     return { ok: false, error: "SMS is down. Email or print the receipt instead." };
   });
+
+function cardTokenInput(d: {
+  orgId?: string;
+  locationId?: string;
+  entityId?: string;
+  token?: string;
+  name?: string;
+  checkId?: string;
+  orderId?: string;
+  customerRef?: string;
+  amountCents?: number;
+  paymentId?: string;
+  kind?: string;
+}) {
+  const raw = d as unknown as Record<string, unknown>;
+  for (const key of [
+    "number",
+    "cardNumber",
+    "securityCode",
+    "security_code",
+    "cvv",
+    "expiration",
+    "expirationMonth",
+    "expirationYear",
+  ]) {
+    if (raw[key] != null && String(raw[key]).trim() !== "") {
+      throw new Error("Card number, expiration, and CVV stay in the Finix form.");
+    }
+  }
+  return {
+    orgId: String(d.orgId ?? "").trim().slice(0, 80),
+    locationId: loc(d.locationId),
+    entityId: d.entityId ? String(d.entityId).trim().slice(0, 80) : undefined,
+    token: String(d.token ?? "").trim().slice(0, 80),
+    name: d.name ? String(d.name).replace(/\s+/g, " ").trim().slice(0, 80) : undefined,
+    checkId: d.checkId ? String(d.checkId).trim().slice(0, 80) : undefined,
+    orderId: d.orderId ? String(d.orderId).trim().slice(0, 80) : undefined,
+    customerRef: d.customerRef ? String(d.customerRef).replace(/\s+/g, " ").trim().slice(0, 80) : undefined,
+    amountCents: Math.max(0, Math.round(Number(d.amountCents) || 0)),
+    paymentId: String(d.paymentId ?? "").trim().slice(0, 80),
+    kind: d.kind === "authorization" ? ("authorization" as const) : ("transfer" as const),
+  };
+}
+
+export const cardTokenFormConfigFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { orgId: string; locationId: string; entityId?: string }) => cardTokenInput(d))
+  .handler(async ({ context, data }) => {
+    const { cardTokenFormConfig } = await import("./card-not-present.server");
+    return cardTokenFormConfig(context.userId, data);
+  });
+
+export const exchangeCardTokenFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    orgId: string;
+    locationId: string;
+    token: string;
+    name?: string;
+    checkId?: string;
+    orderId?: string;
+    customerRef?: string;
+    entityId?: string;
+    amountCents?: number;
+  }) => cardTokenInput(d))
+  .handler(async ({ context, data }) => {
+    const { exchangeCardToken } = await import("./card-not-present.server");
+    return exchangeCardToken(context.userId, data);
+  });
+
+export const chargeStoredInstrumentFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    orgId: string;
+    locationId: string;
+    paymentId: string;
+    amountCents: number;
+    kind?: "transfer" | "authorization";
+    entityId?: string;
+  }) => cardTokenInput(d))
+  .handler(async ({ context, data }) => {
+    const { chargeStoredInstrument } = await import("./card-not-present.server");
+    return chargeStoredInstrument(context.userId, {
+      orgId: data.orgId,
+      locationId: data.locationId,
+      paymentId: data.paymentId,
+      amountCents: data.amountCents,
+      kind: data.kind,
+      entityId: data.entityId,
+    });
+  });

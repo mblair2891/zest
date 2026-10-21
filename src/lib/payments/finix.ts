@@ -22,6 +22,15 @@ import {
   redactCardText,
   type ManualCard,
 } from "./manual-card.ts";
+import {
+  buyerIdentityBody,
+  cardNotPresentRejectsRawCard,
+  instrumentChargeBody,
+  parseFinixIdentityId,
+  parseFinixInstrumentId,
+  parseFinixTokenId,
+  tokenInstrumentBody,
+} from "./finix-tokenize.ts";
 import { displayCardDecline } from "./card-decline.ts";
 import {
   TIP_CAPTURE_FAILED,
@@ -820,6 +829,112 @@ export async function chargeManualCardOnFinix(opts: {
   const transferId = typeof transfer.json.id === "string" ? transfer.json.id.trim() : "";
   if (!transferId) return { ok: false, error: "Card was not approved. The check stays open." };
   return { ok: true, transferId, last4 };
+}
+
+export type FinixTokenInstrument = {
+  ok: true;
+  tokenId: string;
+  identityId: string;
+  instrumentId: string;
+  last4: string | null;
+};
+
+/**
+ * Exchange a Finix.js token for a payment instrument.
+ * The body is type TOKEN, the token id, and the buyer identity.
+ * Card number, expiration, and CVV are not accepted.
+ */
+export async function exchangeFinixCardToken(opts: {
+  mode: FinixMode;
+  token: string;
+  name?: string;
+  checkId?: string;
+  orderId?: string;
+}): Promise<FinixTokenInstrument | { ok: false; error: string }> {
+  const rejected = cardNotPresentRejectsRawCard(opts as unknown as Record<string, unknown>);
+  if (rejected) return { ok: false, error: rejected };
+  const tokenId = parseFinixTokenId(opts.token);
+  if (!tokenId) return { ok: false, error: "The card form did not return a token." };
+  const creds = readFinixApiCreds(opts.mode);
+  if (!creds.ok) return { ok: false, error: missingFinixKeyMessage(creds.missing) };
+  const buyer = await finixFetch(
+    opts.mode,
+    "POST",
+    "/identities",
+    buyerIdentityBody({ name: opts.name, checkId: opts.checkId, orderId: opts.orderId }),
+    { requireWebhook: false },
+  );
+  const identityId = parseFinixIdentityId(buyer.json.id);
+  if (!buyer.ok || !identityId) {
+    return { ok: false, error: finixFailureText(buyer.json).slice(0, 200) };
+  }
+  const instrument = await finixFetch(
+    opts.mode,
+    "POST",
+    "/payment_instruments",
+    tokenInstrumentBody(tokenId, identityId),
+    { requireWebhook: false, application: false },
+  );
+  const instrumentId = parseFinixInstrumentId(instrument.json.id);
+  if (!instrument.ok || !instrumentId) {
+    const detail = finixFailureText(instrument.json).split(tokenId).join("a token").slice(0, 200);
+    return { ok: false, error: detail || "The payment instrument was not created." };
+  }
+  const last4raw = (instrument.json as { last_four?: unknown }).last_four;
+  const last4 = last4raw ? String(last4raw).replace(/\D/g, "").slice(-4) || null : null;
+  return { ok: true, tokenId, identityId, instrumentId, last4 };
+}
+
+/**
+ * Transfer or authorization whose source is a stored payment instrument.
+ * Sandbox and live use the keys for that mode.
+ */
+export async function chargeFinixPaymentInstrument(opts: {
+  mode: FinixMode;
+  locationLive: boolean;
+  instrumentId: string;
+  merchantId: string;
+  amountCents: number;
+  kind: "transfer" | "authorization";
+  checkId?: string;
+  orderId?: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const instrumentId = parseFinixInstrumentId(opts.instrumentId);
+  if (!instrumentId) return { ok: false, error: "The payment instrument is missing." };
+  const merchantId = opts.merchantId.trim();
+  if (!merchantId.startsWith("MU") || merchantId.toLowerCase().includes("sandbox")) {
+    return {
+      ok: false,
+      error: "This selling entity does not have a Quantum Payments merchant. Use cash or keep the check open.",
+    };
+  }
+  if (opts.amountCents <= 0) return { ok: false, error: "Invalid amount" };
+  if (opts.mode === "live") {
+    const gate = liveCardGate({ locationLive: opts.locationLive, merchantId });
+    if (!gate.ok) return { ok: false, error: gate.error };
+  }
+  const creds = readFinixApiCreds(opts.mode);
+  if (!creds.ok) return { ok: false, error: missingFinixKeyMessage(creds.missing) };
+  const path = opts.kind === "authorization" ? "/authorizations" : "/transfers";
+  const res = await finixFetch(
+    opts.mode,
+    "POST",
+    path,
+    instrumentChargeBody({
+      amountCents: opts.amountCents,
+      merchantId,
+      instrumentId,
+      checkId: opts.checkId,
+      orderId: opts.orderId,
+    }),
+    { requireWebhook: false },
+  );
+  if (!res.ok || !manualTransferApproved(res.json)) {
+    return { ok: false, error: finixFailureText(res.json).slice(0, 200) };
+  }
+  const id = typeof res.json.id === "string" ? res.json.id.trim() : "";
+  if (!id) return { ok: false, error: "The transfer was not created." };
+  return { ok: true, id };
 }
 
 /**
