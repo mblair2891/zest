@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_326_card_sale_id",
+    date: "2026-10-21",
+    title: "Card sale keeps its id",
+    summary: "If the charge cannot be stored with the sale id, the card is not charged.",
+    body: "A card on the station reader sends one idempotency id with that sale. If that charge cannot be stored with the sale id, the reader charge is released and the check stays open. The card was not charged.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_325_floor_fit",
     date: "2026-10-21",
     title: "Floor map shows the whole room",

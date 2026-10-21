@@ -582,6 +582,43 @@ test("a reader transfer with an empty idempotency id is replaced by one that sto
       install((method, url) => {
         if (method === "GET" && url.includes("/authorizations/")) return { status: 404, payload: {} };
         if (method === "GET" && url.includes("/transfers?")) return { status: 200, payload: { _embedded: { transfers: [] } } };
+        if (method === "GET" && url.includes("/transfers/TRlink")) {
+          return {
+            status: 200,
+            payload: {
+              id: "TRlink",
+              source: null,
+              merchant: "MUgrill",
+              amount: 1800,
+              idempotency_id: null,
+              _links: { source: { href: "https://finix.sandbox-payments-api.com/payment_instruments/PIlinked" } },
+            },
+          };
+        }
+        if (method === "POST" && url.includes("/reversals")) return { status: 201, payload: { id: "RVlink" } };
+        if (method === "POST" && url.includes("/transfers")) {
+          return { status: 201, payload: { id: "TRfromlink", idempotency_id: saleKey, amount: 1800 } };
+        }
+        return { status: 404, payload: {} };
+      });
+      const linked = await settleSdkCardPresentTransfer({
+        mode: "sandbox",
+        sdkId: "TRlink",
+        idempotencyId: saleKey,
+        merchantId: "MUgrill",
+        amountCents: 1800,
+        checkId: "chk_link",
+      });
+      assert.equal(linked.ok, true);
+      if (linked.ok) assert.equal(linked.transferId, "TRfromlink");
+      const linkedPost = posts();
+      assert.equal(linkedPost.length, 1);
+      assert.equal(linkedPost[0]?.body.source, "PIlinked");
+      assert.equal(linkedPost[0]?.body.idempotency_id, saleKey);
+
+      install((method, url) => {
+        if (method === "GET" && url.includes("/authorizations/")) return { status: 404, payload: {} };
+        if (method === "GET" && url.includes("/transfers?")) return { status: 200, payload: { _embedded: { transfers: [] } } };
         if (method === "GET" && url.includes("/transfers/TRsdk")) {
           return {
             status: 200,
@@ -602,8 +639,9 @@ test("a reader transfer with an empty idempotency id is replaced by one that sto
       });
       assert.equal(dropped.ok, false);
       if (!dropped.ok) assert.equal(dropped.transferId, "TRsdk");
-      assert.equal(reversals().length, 1);
+      assert.equal(reversals().length, 2);
       assert.match(reversals()[0]?.url ?? "", /\/transfers\/TRbad\/reversals$/);
+      assert.match(reversals()[1]?.url ?? "", /\/transfers\/TRsdk\/reversals$/);
 
       install((method) => {
         if (method === "GET") return { status: 404, payload: {} };

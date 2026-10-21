@@ -421,7 +421,7 @@ async function readerTransferId(input: {
   merchantId: string;
   amountCents: number;
   checkId: string;
-}): Promise<string> {
+}): Promise<string | null> {
   if (input.status !== "authorized" || !input.idempotencyId) return input.transferId;
   try {
     const settled = await settleSdkCardPresentTransfer({
@@ -432,9 +432,9 @@ async function readerTransferId(input: {
       amountCents: Math.max(0, Math.round(input.amountCents)),
       checkId: input.checkId,
     });
-    return settled.ok ? settled.transferId : input.transferId;
+    return settled.ok ? settled.transferId : null;
   } catch {
-    return input.transferId;
+    return null;
   }
 }
 
@@ -514,6 +514,7 @@ export async function recordPaxSale(
     amountCents: input.amountCents,
     checkId: input.checkId,
   });
+  if (!processorPaymentId) return { ok: false, error: PAX_MSG.notCharged };
   const id = newId("zpay");
   const last4 = input.last4 ? String(input.last4).replace(/\D/g, "").slice(-4) || null : null;
   await sql`

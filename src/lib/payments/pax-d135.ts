@@ -94,6 +94,8 @@ export const PAX_MSG = {
   saleNotStarted: "The sale could not start. No charge was sent.",
   /** Finix already accepted this sale id. A retry must not create another transfer. */
   alreadySent: "This sale was already sent. The check stays open.",
+  /** The reader charge was released because its Transfer had no idempotency id. */
+  notCharged: "The card was not charged. The check stays open.",
 } as const;
 
 const CARD_SALE_UUID =

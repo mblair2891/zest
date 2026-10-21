@@ -767,6 +767,26 @@ function blankReaderCharge(): ReaderCharge {
   };
 }
 
+/** Payment instrument id on a charge. A link href counts when source is empty. */
+function finixInstrumentId(json: Record<string, unknown>): string {
+  const source = json.source;
+  if (typeof source === "string" && source.trim().startsWith("PI")) return source.trim();
+  if (source && typeof source === "object") {
+    const id = (source as { id?: unknown }).id;
+    if (typeof id === "string" && id.trim().startsWith("PI")) return id.trim();
+  }
+  const links = json._links;
+  if (!links || typeof links !== "object") return "";
+  const record = links as Record<string, { href?: unknown } | undefined>;
+  for (const key of ["source", "payment_instrument", "payment_instruments"]) {
+    const href = record[key]?.href;
+    if (typeof href !== "string") continue;
+    const match = href.match(/\/(PI[A-Za-z0-9]+)/);
+    if (match?.[1]) return match[1];
+  }
+  return "";
+}
+
 function readerMoney(json: Record<string, unknown>): {
   sourceId: string;
   merchantId: string;
@@ -774,7 +794,7 @@ function readerMoney(json: Record<string, unknown>): {
 } {
   const amount = json.amount;
   return {
-    sourceId: typeof json.source === "string" ? json.source.trim() : "",
+    sourceId: finixInstrumentId(json),
     merchantId: typeof json.merchant === "string" ? json.merchant.trim() : "",
     amountCents: typeof amount === "number" && Number.isFinite(amount) ? Math.round(amount) : 0,
   };
@@ -834,6 +854,19 @@ async function findTransferByIdempotency(
   return { id };
 }
 
+/** Release a reader charge whose Transfer has no idempotency id. */
+async function releaseNullReaderCharge(mode: FinixMode, charge: ReaderCharge, amountCents: number): Promise<void> {
+  if (charge.transferIdempotencyId) return;
+  const amount = charge.amountCents > 0 ? charge.amountCents : amountCents;
+  if (charge.transferId) {
+    await reverseReaderTransfer(mode, charge.transferId, amount);
+    return;
+  }
+  if (charge.authorizationId) {
+    await voidAuthorization({ mode, authorizationId: charge.authorizationId });
+  }
+}
+
 async function reverseReaderTransfer(mode: FinixMode, transferId: string, amountCents: number): Promise<boolean> {
   const amount = Math.max(0, Math.round(amountCents));
   if (!transferId || amount <= 0) return false;
@@ -861,11 +894,19 @@ export async function settleSdkCardPresentTransfer(opts: {
   amountCents: number;
   checkId: string;
 }): Promise<{ ok: true; transferId: string } | { ok: false; transferId: string }> {
-  const mode = opts.mode ?? "sandbox";
+  let mode = opts.mode ?? "sandbox";
   const sdkId = opts.sdkId.trim();
   const idempotencyId = finixAttemptIdempotencyId(opts.idempotencyId);
   if (!sdkId || !idempotencyId) return { ok: false, transferId: sdkId };
-  const charge = await lookupSdkCharge(mode, sdkId);
+  let charge = await lookupSdkCharge(mode, sdkId);
+  if (!charge.authorizationId && !charge.transferId) {
+    const other: FinixMode = mode === "sandbox" ? "live" : "sandbox";
+    const again = await lookupSdkCharge(other, sdkId);
+    if (again.authorizationId || again.transferId) {
+      mode = other;
+      charge = again;
+    }
+  }
   if (!charge.authorizationId && !charge.transferId) return { ok: false, transferId: sdkId };
   if (charge.transferId && charge.transferIdempotencyId) {
     console.info(`pax sale transfer idempotency_id=${charge.transferIdempotencyId}`);
@@ -874,6 +915,7 @@ export async function settleSdkCardPresentTransfer(opts: {
   const merchant = charge.merchantId.startsWith("MU") ? charge.merchantId : opts.merchantId.trim();
   const amount = charge.amountCents > 0 ? charge.amountCents : Math.round(opts.amountCents);
   if (!charge.sourceId.startsWith("PI") || !merchant.startsWith("MU") || amount <= 0) {
+    await releaseNullReaderCharge(mode, charge, amount);
     return { ok: false, transferId: charge.transferId || sdkId };
   }
   const prior = await findTransferByIdempotency(mode, idempotencyId);
@@ -917,6 +959,7 @@ export async function settleSdkCardPresentTransfer(opts: {
     if (transferId && transferId !== charge.transferId && transferId !== sdkId) {
       await reverseReaderTransfer(mode, transferId, amount);
     }
+    await releaseNullReaderCharge(mode, charge, amount);
     return { ok: false, transferId: charge.transferId || sdkId };
   }
   const released = charge.transferId && charge.transferId !== transferId
