@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_328_elo_setup",
+    date: "2026-10-21",
+    title: "New tablet stays on pair",
+    summary: "A new Elo tablet stays on the pair screen when setup cannot be read.",
+    body: "A new Elo tablet that gets a bad setup response stays on the pair screen. It says the station could not read the setup response and to try pairing again.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "device-roles",
+    tags: ["devices"],
+  },
+  {
     id: "upd_2026_10_327_reader_entity",
     date: "2026-10-21",
     title: "Reader follows the check",

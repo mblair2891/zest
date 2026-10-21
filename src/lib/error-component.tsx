@@ -1,9 +1,28 @@
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
-import { staffSetupMessage } from "@/lib/pos/setup-response";
+import { StationPairScreen } from "@/components/pos/StationPairScreen";
+import { readStationPair } from "@/lib/pos/station-pair";
+import { staffSetupMessage, stationSetupNotice } from "@/lib/pos/setup-response";
+
+function unpairedStation(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.pathname.startsWith("/station") && !readStationPair();
+}
 
 export function AppErrorComponent({ error }: ErrorComponentProps) {
-  const raw = error instanceof Error ? error.message : "";
+  const raw = error instanceof Error ? error.message || String(error) : "";
+  if (unpairedStation()) {
+    return (
+      <StationPairScreen
+        notice={stationSetupNotice(raw)}
+        onPaired={(row) => {
+          const q = new URLSearchParams();
+          if (row.locationId) q.set("loc", row.locationId);
+          window.location.assign(`/station/${row.station}?${q.toString()}`);
+        }}
+      />
+    );
+  }
   const recovered = staffSetupMessage(raw);
   const message = recovered ?? (raw || "An unexpected error occurred. Try reloading the page.");
   return (

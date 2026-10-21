@@ -19,7 +19,7 @@ async function failureLog(response: Response): Promise<{
   const status = response.status;
   try {
     const text = await response.clone().text();
-    logSetupPayload("auth sign-in", status, text);
+    logSetupPayload("auth sign-in", status, text, response.headers.get("content-type") || "");
     const json = JSON.parse(text) as { code?: unknown; message?: unknown };
     const code = typeof json.code === "string" ? json.code : undefined;
     const message =
@@ -91,7 +91,7 @@ function rebuild(request: Request, text: string): Request {
 
 async function handle({ request }: { request: Request }) {
   if (rateLimit(clientKey(request, "auth"), 40, 60_000)) {
-    logSetupPayload("auth", 429, "Too many requests");
+    logSetupPayload("auth", 429, "Too many requests", "application/json");
     return authError(429, "Too many requests", "TOO_MANY_REQUESTS");
   }
   try {

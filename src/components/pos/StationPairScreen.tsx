@@ -45,9 +45,12 @@ function getBarcodeDetector(): BarcodeDetectorLike | null {
 
 export function StationPairScreen({
   initialCode = "",
+  notice = "",
   onPaired,
 }: {
   initialCode?: string;
+  /** Shown when setup could not be read. Never a parser message. */
+  notice?: string;
   onPaired: (row: StationPairRecord) => void;
 }) {
   const [scanOpen, setScanOpen] = useState(false);
@@ -127,6 +130,11 @@ export function StationPairScreen({
         SUMMEX STATION
       </p>
       <h1 className="mt-3 text-xl font-semibold tracking-tight">Pair this tablet</h1>
+      {notice ? (
+        <p className="mt-3 max-w-sm text-sm text-muted-foreground" data-setup-notice>
+          {notice}
+        </p>
+      ) : null}
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">
         Type the one-time pair code from Devices (for example K7VY5R). No scan required.
         After pair, this screen is PIN only.

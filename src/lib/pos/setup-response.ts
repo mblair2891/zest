@@ -14,8 +14,50 @@ export function setupLogSample(body: string): string {
     .slice(0, 240);
 }
 
-export function logSetupPayload(where: string, status: number, body: string): void {
-  console.error(`[setup] ${where} status=${status} body=${setupLogSample(body)}`);
+export function logSetupPayload(
+  where: string,
+  status: number,
+  body: string,
+  contentType = "",
+): void {
+  const type = contentType.trim() || "unknown";
+  console.error(`[setup] ${where} status=${status} type=${type} body=${setupLogSample(body)}`);
+}
+
+/** Starts and ends like one JSON value, and is not two values stuck together. */
+export function isProbablyOneJson(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (/}\s*[{[]/.test(trimmed) || /]\s*[{[]/.test(trimmed)) return false;
+  const start = trimmed[0];
+  const end = trimmed[trimmed.length - 1];
+  if (start === "{" && end === "}") return true;
+  if (start === "[" && end === "]") return true;
+  if (start === '"' && end === '"' && trimmed.length >= 2) return true;
+  if (trimmed === "null" || trimmed === "true" || trimmed === "false") return true;
+  return /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(trimmed);
+}
+
+/**
+ * One JSON value, or undefined. Logs status, content type, and the raw body
+ * before JSON.parse when the text is not one obvious JSON value.
+ */
+export function parseSetupJson(
+  text: string,
+  where: string,
+  status: number,
+  contentType: string,
+): unknown | undefined {
+  const trimmed = text.trim();
+  const logFirst = !isProbablyOneJson(trimmed);
+  if (logFirst) logSetupPayload(where, status, text, contentType);
+  if (!trimmed) return undefined;
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    if (!logFirst) logSetupPayload(where, status, text, contentType);
+    return undefined;
+  }
 }
 
 /** True when the whole string is one JSON value. Trailing junk is rejected. */
@@ -30,6 +72,35 @@ export function isSingleJsonValue(text: string): boolean {
   }
 }
 
+/** A JSON string whose contents are another JSON text (a bridge double-encode). */
+function nestedJsonText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const inner = value.trim();
+  if (!inner.startsWith("{") && !inner.startsWith("[")) return null;
+  return inner;
+}
+
+/**
+ * True when the body is one JSON value the tablet can parse.
+ * A string that itself holds more than one JSON value is rejected.
+ */
+export function setupJsonAccepts(
+  text: string,
+  where: string,
+  status: number,
+  contentType: string,
+): boolean {
+  const value = parseSetupJson(text, where, status, contentType);
+  if (value === undefined && text.trim() !== "") {
+    if (text.trim() === "null") return true;
+    return false;
+  }
+  if (!text.trim()) return false;
+  const inner = nestedJsonText(value);
+  if (!inner) return true;
+  return parseSetupJson(inner, `${where} inner`, status, contentType) !== undefined;
+}
+
 export function staffSetupMessage(message: string): string | null {
   const text = message.trim();
   if (!text) return null;
@@ -42,6 +113,18 @@ export function staffSetupMessage(message: string): string | null {
     return SETUP_READ_MESSAGE;
   }
   return null;
+}
+
+/** Sentence for an unpaired tablet. Never the parser's own words. */
+export function stationSetupNotice(message: string): string {
+  return staffSetupMessage(message) ?? SETUP_READ_MESSAGE;
+}
+
+export function signedOutSessionResponse(): Response {
+  return new Response(SESSION_SIGNED_OUT, {
+    status: 200,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+  });
 }
 
 export function setupFailureResponse(): Response {
@@ -114,7 +197,9 @@ export function framedJsonIsSingleValues(bytes: Uint8Array): { ok: boolean; samp
     if (type === 0) {
       jsonFrames += 1;
       const payload = decoder.decode(bytes.subarray(start, end));
-      if (!isSingleJsonValue(payload)) return { ok: false, sample: payload };
+      if (!isProbablyOneJson(payload) || !isSingleJsonValue(payload)) {
+        return { ok: false, sample: payload };
+      }
     }
     offset = end;
   }
@@ -131,9 +216,10 @@ async function sanitizeFramed(response: Response, where: string): Promise<Respon
       headers: copyHeaders(response),
     });
   }
+  const contentType = response.headers.get("content-type") || "";
   const checked = framedJsonIsSingleValues(bytes);
   if (!checked.ok) {
-    logSetupPayload(where, response.status, checked.sample);
+    logSetupPayload(where, response.status, checked.sample, contentType);
     return setupFailureResponse();
   }
   return new Response(bytes, {
@@ -155,7 +241,7 @@ export async function sanitizeFetchedResponse(response: Response, where: string)
   }
   const text = await response.text();
   if (looksLikeHtml(text, contentType)) {
-    logSetupPayload(where, response.status, text);
+    logSetupPayload(where, response.status, text, contentType);
     return setupFailureResponse();
   }
   const expectsJson =
@@ -163,11 +249,10 @@ export async function sanitizeFetchedResponse(response: Response, where: string)
     response.headers.get("x-tss-serialized") === "true" ||
     contentType === "";
   if (!expectsJson) return rebuildText(response, text);
-  if (!isSingleJsonValue(text)) {
-    logSetupPayload(where, response.status, text);
+  if (!setupJsonAccepts(text, where, response.status, contentType)) {
     return setupFailureResponse();
   }
-  if (!response.ok) logSetupPayload(where, response.status, text);
+  if (!response.ok) logSetupPayload(where, response.status, text, contentType);
   const headers = copyHeaders(response);
   if (!contentType.includes("json")) headers.set("content-type", "application/json; charset=utf-8");
   return rebuildText(response, text, headers);
@@ -176,23 +261,18 @@ export async function sanitizeFetchedResponse(response: Response, where: string)
 /** Auth responses, including get-session on an unpaired tablet. */
 export async function sanitizeAuthResponse(response: Response, url: string): Promise<Response> {
   const session = url.includes("/get-session");
+  const where = session ? "get-session" : "auth";
   const contentType = (response.headers.get("content-type") || "").toLowerCase();
   const text = await response.text();
-  if (contentType.includes("json") && isSingleJsonValue(text)) {
-    return rebuildText(response, text);
-  }
-  if (!contentType.includes("json") && isSingleJsonValue(text) && !looksLikeHtml(text, contentType)) {
+  if (looksLikeHtml(text, contentType)) {
+    logSetupPayload(where, response.status, text, contentType);
+  } else if (setupJsonAccepts(text, where, response.status, contentType)) {
+    if (contentType.includes("json")) return rebuildText(response, text);
     const headers = copyHeaders(response);
     headers.set("content-type", "application/json; charset=utf-8");
     return rebuildText(response, text, headers);
   }
-  logSetupPayload(session ? "get-session" : "auth", response.status, text);
-  if (session) {
-    return new Response(SESSION_SIGNED_OUT, {
-      status: 200,
-      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
-    });
-  }
+  if (session) return signedOutSessionResponse();
   const status = response.status >= 400 ? response.status : 502;
   const message = response.status === 429 ? "Too many requests" : SETUP_READ_MESSAGE;
   const code = response.status === 429 ? "TOO_MANY_REQUESTS" : "AUTH_RESPONSE";

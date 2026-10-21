@@ -1,6 +1,12 @@
 import { genericOAuthClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
-import { sanitizeAuthResponse } from "@/lib/pos/setup-response";
+import {
+  logSetupPayload,
+  sanitizeAuthResponse,
+  SETUP_READ_MESSAGE,
+  signedOutSessionResponse,
+  staffSetupMessage,
+} from "@/lib/pos/setup-response";
 import { GROK_PROVIDERS } from "./providers";
 
 function requestUrl(input: RequestInfo | URL): string {
@@ -11,8 +17,24 @@ function requestUrl(input: RequestInfo | URL): string {
 
 /** get-session and the rest of /api/auth. A non-JSON body never reaches JSON.parse. */
 const authFetch: typeof fetch = async (input, init) => {
-  const response = await fetch(input, init);
-  const url = response.url || requestUrl(input);
+  const requested = requestUrl(input);
+  const session = requested.includes("/get-session");
+  let response: Response;
+  try {
+    response = await fetch(input, init);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    logSetupPayload(session ? "get-session" : "auth", 0, msg, "");
+    if (session) return signedOutSessionResponse();
+    if (staffSetupMessage(msg)) {
+      return new Response(JSON.stringify({ message: SETUP_READ_MESSAGE, code: "AUTH_RESPONSE" }), {
+        status: 502,
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
+    throw err;
+  }
+  const url = response.url || requested;
   if (!url.includes("/api/auth/") && !url.includes("/get-session")) return response;
   return sanitizeAuthResponse(response, url);
 };

@@ -8,6 +8,7 @@ import {
   sanitizeAuthResponse,
   sanitizeFetchedResponse,
   staffSetupMessage,
+  stationSetupNotice,
 } from "../src/lib/pos/setup-response.ts";
 
 function frame(payload: string): Uint8Array {
@@ -86,8 +87,13 @@ test("server function JSON still parses and a bad body does not", async () => {
   );
   assert.equal(await empty.text(), SETUP_READ_MESSAGE);
   const src = readFileSync("src/lib/pos/setup-response.ts", "utf8");
-  assert.match(src, /logSetupPayload\(where, response\.status, text\)/);
-  assert.match(src, /logSetupPayload\(where, response\.status, checked\.sample\)/);
+  assert.match(src, /logSetupPayload\(where, response\.status, text, contentType\)/);
+  assert.match(src, /logSetupPayload\(where, response\.status, checked\.sample, contentType\)/);
+  assert.match(src, /type=\$\{type\}/);
+  assert.match(src, /if \(logFirst\) logSetupPayload\(where, status, text, contentType\)/);
+  const parseAt = src.indexOf("export function parseSetupJson");
+  const parseBody = src.slice(parseAt, src.indexOf("export function isSingleJsonValue"));
+  assert.ok(parseBody.indexOf("logSetupPayload") < parseBody.indexOf("JSON.parse"));
 });
 
 test("plain text errors stay intact", async () => {
@@ -149,7 +155,57 @@ test("get-session null stays null and a bad body is signed out", async () => {
   );
   assert.deepEqual(await limited.json(), { user: null, session: null });
   const src = readFileSync("src/lib/pos/setup-response.ts", "utf8");
-  assert.match(src, /logSetupPayload\(session \? "get-session" : "auth", response\.status, text\)/);
+  assert.match(src, /setupJsonAccepts\(text, where, response\.status, contentType\)/);
+  assert.match(src, /signedOutSessionResponse\(\)/);
+});
+
+test("a first-launch body is logged with status and content-type, then replaced", async () => {
+  const lines: string[] = [];
+  const orig = console.error;
+  console.error = (...args: unknown[]) => {
+    lines.push(args.map(String).join(" "));
+  };
+  try {
+    const bad = await sanitizeAuthResponse(
+      new Response('{"a":1}{"b":2}', {
+        status: 200,
+        headers: { "content-type": "application/json; charset=utf-8" },
+      }),
+      "https://app.summex.app/api/auth/get-session",
+    );
+    assert.equal(bad.status, 200);
+    assert.match(bad.headers.get("content-type") || "", /application\/json/);
+    assert.deepEqual(await bad.json(), { user: null, session: null });
+
+    const doubled = JSON.stringify('{"a":1}{"b":2}');
+    const bridged = await sanitizeFetchedResponse(
+      new Response(doubled, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+      "server-fn",
+    );
+    assert.equal(bridged.status, 502);
+    assert.equal(await bridged.text(), SETUP_READ_MESSAGE);
+
+    const html = await sanitizeFetchedResponse(
+      new Response("<html><body>{</body></html>", {
+        status: 502,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }),
+      "server-fn",
+    );
+    assert.equal(await html.text(), SETUP_READ_MESSAGE);
+  } finally {
+    console.error = orig;
+  }
+  const log = lines.join("\n");
+  assert.match(log, /\[setup\] get-session status=200 type=application\/json; charset=utf-8/);
+  assert.match(log, /\{"a":1\}/);
+  assert.match(log, /\[setup\] server-fn status=200 type=application\/json/);
+  assert.match(log, /\[setup\] server-fn status=502 type=text\/html/);
+  assert.equal(stationSetupNotice("Unexpected token '{'"), SETUP_READ_MESSAGE);
+  assert.doesNotMatch(stationSetupNotice("Unexpected token '{'"), /Unexpected token/);
 });
 
 test("auth rate limit and station shell refuse a non-JSON setup body", () => {
@@ -161,15 +217,24 @@ test("auth rate limit and station shell refuse a non-JSON setup body", () => {
   assert.match(start, /createCsrfMiddleware/);
   assert.match(start, /handlerType === "serverFn"/);
   assert.match(start, /sanitizeFetchedResponse/);
+  assert.match(start, /setupFailureResponse/);
   const sw = readFileSync("public/offline-sw.js", "utf8");
-  assert.match(sw, /summex-shell-v3/);
-  assert.match(sw, /summex-runtime-v3/);
+  assert.match(sw, /summex-shell-v4/);
+  assert.match(sw, /summex-runtime-v4/);
   assert.match(sw, /The station could not read the setup response/);
   assert.match(sw, /codeHeadOk/);
+  assert.match(sw, /probablyOneJson/);
+  assert.match(sw, /type=\$\{type\}/);
   assert.match(sw, /user: null, session: null/);
   const pair = readFileSync("src/components/pos/StationPairScreen.tsx", "utf8");
   assert.match(pair, /staffSetupMessage/);
+  assert.match(pair, /data-setup-notice/);
   const screen = readFileSync("src/lib/error-component.tsx", "utf8");
   assert.match(screen, /staffSetupMessage/);
+  assert.match(screen, /StationPairScreen/);
+  assert.match(screen, /stationSetupNotice/);
+  assert.match(screen, /readStationPair/);
   assert.doesNotMatch(screen, /Unexpected token/);
+  const client = readFileSync("src/lib/auth/client.ts", "utf8");
+  assert.match(client, /signedOutSessionResponse/);
 });

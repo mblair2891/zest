@@ -1,8 +1,8 @@
 /* Summex offline-first PWA. Cache app shell + last navigations.
    Location menu/floor/tickets live in IndexedDB / POS persist (primed online).
    A script or get-session body that is not one JSON / JavaScript value is not cached. */
-const SHELL = "summex-shell-v3";
-const RUNTIME = "summex-runtime-v3";
+const SHELL = "summex-shell-v4";
+const RUNTIME = "summex-runtime-v4";
 const SETUP_MSG = "The station could not read the setup response. Try pairing again.";
 
 const PRECACHE = [
@@ -96,8 +96,22 @@ function sample(text) {
   return String(text || "").replace(/\s+/g, " ").slice(0, 240);
 }
 
-function logSetup(where, status, body) {
-  console.error(`[setup] ${where} status=${status} body=${sample(body)}`);
+function logSetup(where, status, body, contentType) {
+  const type = String(contentType || "unknown");
+  console.error(`[setup] ${where} status=${status} type=${type} body=${sample(body)}`);
+}
+
+function probablyOneJson(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return false;
+  if (/}\s*[{[]/.test(trimmed) || /]\s*[{[]/.test(trimmed)) return false;
+  const start = trimmed[0];
+  const end = trimmed[trimmed.length - 1];
+  if (start === "{" && end === "}") return true;
+  if (start === "[" && end === "]") return true;
+  if (start === '"' && end === '"' && trimmed.length >= 2) return true;
+  if (trimmed === "null" || trimmed === "true" || trimmed === "false") return true;
+  return /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(trimmed);
 }
 
 function isSingleJson(text) {
@@ -285,13 +299,33 @@ async function sessionResponse(req) {
     const res = await fetch(req);
     const text = await res.text();
     const ct = (res.headers.get("content-type") || "").toLowerCase();
-    if (!ct.includes("json")) {
-      logSetup("get-session", res.status, text);
+    if (!ct.includes("json") || !probablyOneJson(text)) {
+      logSetup("get-session", res.status, text, ct);
       return sessionSignedOut();
     }
     if (!isSingleJson(text)) {
-      logSetup("get-session", res.status, text);
+      logSetup("get-session", res.status, text, ct);
       return sessionSignedOut();
+    }
+    let value;
+    try {
+      value = JSON.parse(String(text).trim());
+    } catch {
+      logSetup("get-session", res.status, text, ct);
+      return sessionSignedOut();
+    }
+    if (typeof value === "string") {
+      const inner = value.trim();
+      if (inner.startsWith("{") || inner.startsWith("[")) {
+        if (!probablyOneJson(inner)) {
+          logSetup("get-session inner", res.status, inner, ct);
+          return sessionSignedOut();
+        }
+        if (!isSingleJson(inner)) {
+          logSetup("get-session inner", res.status, inner, ct);
+          return sessionSignedOut();
+        }
+      }
     }
     const headers = new Headers(res.headers);
     headers.delete("content-length");
@@ -303,7 +337,7 @@ async function sessionResponse(req) {
     if (res.ok) cache.put(req, rebuilt.clone()).catch(() => undefined);
     return rebuilt;
   } catch {
-    logSetup("get-session", 0, "network failed");
+    logSetup("get-session", 0, "network failed", "");
     const hit = await cache.match(req);
     if (hit) {
       const text = await hit.clone().text();
