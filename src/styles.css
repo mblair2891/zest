@@ -212,6 +212,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #f4f5f7;
+  color: #1a1a1a;
 }
 
 .station-pin-body {
@@ -246,7 +248,56 @@
   justify-content: center;
 }
 
-/* 1–9, then Enter, 0, Clock in. Rows share leftover height. 48px when the cell allows it. */
+.station-pin-screen .station-pin-pad {
+  width: min(26rem, 100%);
+  margin-inline: auto;
+}
+
+.station-pin-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.station-pin-prompt {
+  margin: 0 0 0.85rem;
+  text-align: center;
+  font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #3a3a3a;
+}
+
+.station-pin-mark {
+  width: clamp(3.25rem, 10cqb, 4.75rem);
+  height: clamp(3.25rem, 10cqb, 4.75rem);
+}
+
+.station-pin-word {
+  font-size: clamp(1.35rem, 3vw, 1.85rem);
+  letter-spacing: 0.34em;
+}
+
+.station-pin-dots {
+  gap: 0.85rem;
+}
+
+.station-pin-clock {
+  align-self: center;
+  margin-top: 0.85rem;
+  min-height: 2.75rem;
+  min-width: 7.5rem;
+  border-radius: 999px;
+  border: 1px solid #d5d3ce;
+  background: transparent;
+  color: #5c5c5c;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* 1–9, then Clear, 0, Enter. Rows share leftover height. 48px when the cell allows it. */
 .station-pin-keys {
   display: grid;
   flex: 1 1 auto;
@@ -257,12 +308,12 @@
   min-width: 0;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(4, minmax(0, 1fr));
-  gap: clamp(0.35rem, 1.4cqmin, 0.85rem);
+  gap: clamp(0.45rem, 1.6cqmin, 0.9rem);
 }
 
 /* Slightly taller than wide (4 rows / 3 columns). Cap the side so a landscape station stays a pad. */
 .station-pin-screen .station-pin-keys {
-  --pin-side: min(28rem, 100cqi, calc(100cqb * 0.72));
+  --pin-side: min(24rem, 100cqi, calc(100cqb * 0.72));
   flex: 0 0 auto;
   align-self: center;
   width: var(--pin-side);
@@ -270,16 +321,13 @@
   aspect-ratio: 3 / 4;
   max-width: 100%;
   margin-inline: auto;
-  grid-template-rows: repeat(4, minmax(0, 1fr)) minmax(2.75rem, 0.72fr);
+  grid-template-rows: repeat(4, minmax(0, 1fr));
 }
 
-/* Under Enter, same column. Does not move Enter, 0, or Clock in. */
 .station-pin-keys [data-pin-key="backspace"] {
-  grid-column: 1;
-  grid-row: 5;
   flex-direction: column;
   white-space: normal;
-  font-size: clamp(0.72rem, 3.4cqh, 0.95rem);
+  font-size: clamp(0.85rem, 3.6cqh, 1.05rem);
   line-height: 1.05;
   gap: 0.1rem;
 }
@@ -290,13 +338,28 @@
   min-height: min(3rem, 100%);
   min-width: min(3rem, 100%);
   padding-inline: 0.35rem;
-  font-size: clamp(1rem, 8cqh, 1.85rem);
+  font-size: clamp(1.25rem, 8cqh, 2rem);
+  border-radius: 0.9rem;
 }
 
-.station-pin-keys [data-pin-key="enter"],
-.station-pin-keys [data-pin-key="clock-in"] {
-  font-size: clamp(0.9rem, 6cqh, 1.25rem);
+.station-pin-screen .station-pin-keys button {
+  border: 1px solid #e3e1db;
+  background: #ffffff;
+  color: #1a1a1a;
+  box-shadow: 0 1px 2px rgb(16 16 16 / 0.06);
+}
+
+.station-pin-screen .station-pin-keys [data-pin-key="enter"] {
+  border-color: #2c4a6e;
+  background: #2c4a6e;
+  color: #f7f6f3;
+  font-size: clamp(1rem, 5.5cqh, 1.35rem);
   line-height: 1.1;
+}
+
+.station-pin-screen .station-pin-keys [data-pin-key="backspace"] {
+  background: #eef0f3;
+  color: #3a3a3a;
 }
 
 [data-floor-fit="room"] {

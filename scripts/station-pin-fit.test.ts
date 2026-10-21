@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 
 test("station PIN pad scales inside the viewport and keeps Enter and Clock in", () => {
   const pad = readFileSync("src/components/pos/PinKeypad.tsx", "utf8");
-  const station = pad.slice(pad.indexOf("station ? ("), pad.indexOf(") : ("));
+  const stationAt = pad.indexOf("station ? (");
+  const station = pad.slice(stationAt, pad.indexOf(") : (", stationAt));
   assert.match(station, /data-pin-keys="12"/);
   assert.match(station, /data-pin-key="enter"/);
   assert.match(station, /data-pin-key="0"/);
@@ -16,7 +17,7 @@ test("station PIN pad scales inside the viewport and keeps Enter and Clock in", 
   const zeroAt = station.indexOf('data-pin-key="0"');
   const clockAt = station.indexOf('data-pin-key="clock-in"');
   const backAt = station.indexOf('data-pin-key="backspace"');
-  assert.ok(enterAt >= 0 && enterAt < zeroAt && zeroAt < clockAt && clockAt < backAt);
+  assert.ok(backAt >= 0 && backAt < zeroAt && zeroAt < enterAt && enterAt < clockAt);
   assert.match(station, /Clock in/);
   assert.equal(station.includes("h-20"), false);
   assert.equal(station.includes("min-h-20"), false);

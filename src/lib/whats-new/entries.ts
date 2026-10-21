@@ -6,6 +6,17 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_318_pin_pad",
+    date: "2026-10-20",
+    title: "Station PIN pad is Summex",
+    summary: "The station asks for a passcode. Clear, 0, and Enter sit on the bottom row.",
+    body: "The station PIN screen shows Please enter your passcode and the Summex wordmark. The keys are 1 through 9, then Clear, 0, and Enter. Clear removes the last digit. Enter opens the station. Clock in sits under the pad and only punches.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-pin-login",
+  },
+  {
     id: "upd_2026_10_317_paid_modal",
     date: "2026-10-20",
     title: "Payment complete fits on the tablet",

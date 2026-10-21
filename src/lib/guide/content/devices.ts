@@ -177,7 +177,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "The open check sits on the left third of the order screen and the menu fills the right two-thirds, in portrait and landscape. The printed guest check is a compact ticket strip. Cash and card sit on the same line, a blank line sits between items, and the pay QR prints at the bottom when the venue turns it on. Signing in on a station checks the receipt and order printers and refreshes the connection banner. Backspace on the station PIN pad removes the last digit. The station PIN pad sits in the center of the screen at a normal size in portrait and landscape. On a landscape station the whole pad shows, including Enter and Clock in, with no scroll. Turn the station and the pad refits. Clock out stays in Close out.",
-        "Enter is immediately left of 0. Clock in is immediately right of 0. Backspace sits under Enter and removes the last digit. The keys are 1 through 9, then that bottom row. Each key stays large enough to tap.",
+        "Enter is on the right of 0. Clear is on the left of 0 and removes the last digit. Clock in sits under the pad. The keys are 1 through 9, then that bottom row. Each key stays large enough to tap. The screen shows Please enter your passcode and the Summex wordmark.",
         "Floor, order, pay, and the kitchen order display fit the same station in landscape or portrait. Lists of menu items, check lines, and tickets still scroll inside the screen.",
         "On the order screen the open check sits on the left third and the menu fills the right two-thirds, in portrait and landscape. The check stays visible and scrolls on its own while items are added. Send, Print check, and Pay stay on the check. Tap targets are at least 48px.",
         "On a full-service floor, To-go and Bar tab (when the house has a rail) are named jobs on the short menu — not a dense toolbar, and not a dashboard of tiles.",
@@ -186,7 +186,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Counter: side menu + check + items. Manager back office on a phone scrolls. Fonts are not shrunk to fit ten columns.",
       ),
       steps(
-        "On the station PIN pad, confirm Enter, 0, and Clock in are all on screen. Backspace under Enter removes the last digit. Enter opens the floor. Clock in only punches. Clock out is in Close out.",
+        "On the station PIN pad, confirm Clear, 0, and Enter are all on screen. Clock in sits under the pad and only punches. Enter opens the floor. Clock out is in Close out.",
         "Turn the station. The pad, the floor, the order screen, and pay refit. Nothing on those screens sits past the edge.",
         "Hold the order tablet in portrait. Open a check. The check stays on the left third. Tap items on the menu at the right. Send, Print check, and Pay stay on the check.",
         "Rotate the tablet to landscape. The check stays on the left third and the menu stays on the right two-thirds.",

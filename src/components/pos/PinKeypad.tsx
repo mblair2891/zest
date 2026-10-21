@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Delete } from "lucide-react";
+import { SummexMark, SummexWordmark } from "@/components/brand/SummexMark";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -20,13 +21,15 @@ export function PinKeypad({
   onComplete: (pin: string) => void;
   onClearError?: () => void;
   /**
-   * Station pad: 1–9, Enter, 0, Clock in, then Backspace under Enter.
-   * Enter opens the session. Clock in punches and stays on the pad.
-   * Backspace removes the last digit. No clock-out key.
+   * Station pad: 1–9, then Clear, 0, and Enter.
+   * Enter opens the session. Clock in sits under the pad and only punches.
+   * Clear removes the last digit. No clock-out key.
+   * brand draws the Summex passcode screen (paired station).
    */
   station?: {
     onEnter: (pin: string) => void;
     onClockIn: (pin: string) => void;
+    brand?: boolean;
   };
 }) {
   const [pin, setPin] = useState("");
@@ -67,7 +70,17 @@ export function PinKeypad({
       data-demo="pin-keypad"
       data-pin-pad={station ? "station" : "confirm"}
     >
-      {title && <p className="mb-1 shrink-0 text-center text-sm font-semibold">{title}</p>}
+      {station?.brand ? (
+        <div className="station-pin-brand shrink-0" data-pin-brand="">
+          <p className="station-pin-prompt" data-pin-prompt="">
+            {title ?? "Please enter your passcode"}
+          </p>
+          <SummexMark className="station-pin-mark" />
+          <SummexWordmark className="station-pin-word" />
+        </div>
+      ) : (
+        title && <p className="mb-1 shrink-0 text-center text-sm font-semibold">{title}</p>
+      )}
       {hint && (
         <p className={cn("text-center text-xs text-muted-foreground", station ? "mb-1 shrink-0" : "mb-4")}>
           {hint}
@@ -75,7 +88,7 @@ export function PinKeypad({
       )}
       <button
         type="button"
-        className={cn("flex w-full shrink-0 justify-center gap-3", station ? "mb-2" : "mb-5")}
+        className={cn("station-pin-dots flex w-full shrink-0 justify-center", station ? "mb-2" : "mb-5 gap-3")}
         aria-label="Clear PIN"
         onClick={() => {
           onClearError?.();
@@ -86,7 +99,8 @@ export function PinKeypad({
           <div
             key={i}
             className={cn(
-              "h-4 w-4 rounded-full border-2 transition-colors",
+              "rounded-full border-2 transition-colors",
+              station ? "h-3.5 w-3.5" : "h-4 w-4",
               i < pin.length ? "border-primary bg-primary" : "border-border-strong bg-transparent",
             )}
           />
@@ -98,6 +112,7 @@ export function PinKeypad({
         </p>
       )}
       {station ? (
+        <>
         <div className="station-pin-fit">
           <div className="station-pin-keys" data-pin-keys="12">
             {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((key) => (
@@ -114,12 +129,17 @@ export function PinKeypad({
             ))}
             <Button
               type="button"
-              variant="default"
-              className="station-pin-key h-auto px-1 font-semibold leading-tight"
-              data-pin-key="enter"
-              onClick={() => runStation("enter")}
+              variant="outline"
+              className="station-pin-key station-pin-backspace h-auto px-1 font-semibold leading-tight"
+              data-pin-key="backspace"
+              aria-label="Backspace"
+              onClick={() => {
+                onClearError?.();
+                setPin((p) => p.slice(0, -1));
+              }}
             >
-              Enter
+              <Delete className="h-6 w-6" aria-hidden />
+              Clear
             </Button>
             <Button
               type="button"
@@ -132,29 +152,25 @@ export function PinKeypad({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="default"
               className="station-pin-key h-auto px-1 font-semibold leading-tight"
-              data-pin-key="clock-in"
-              onClick={() => runStation("clock_in")}
+              data-pin-key="enter"
+              onClick={() => runStation("enter")}
             >
-              Clock in
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="station-pin-key station-pin-backspace h-auto px-1 font-semibold leading-tight"
-              data-pin-key="backspace"
-              aria-label="Backspace"
-              onClick={() => {
-                onClearError?.();
-                setPin((p) => p.slice(0, -1));
-              }}
-            >
-              <Delete className="h-5 w-5" aria-hidden />
-              Backspace
+              Enter
             </Button>
           </div>
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          className="station-pin-clock"
+          data-pin-key="clock-in"
+          onClick={() => runStation("clock_in")}
+        >
+          Clock in
+        </Button>
+        </>
       ) : (
         <div className="grid grid-cols-3 gap-3">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => {

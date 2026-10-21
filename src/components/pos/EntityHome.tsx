@@ -51,12 +51,10 @@ import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import {
   DEVICE_ROLE_BLURB,
   DEVICE_ROLE_LABEL,
-  deviceRoleFromSessionMode,
   isStationPinPath,
   readStationDeviceRole,
 } from "@/lib/pos/device-roles";
 import { isNativeApp } from "@/lib/native-shell";
-import { readTenantPosContext } from "@/lib/saas/pos-context";
 import { readStationPair } from "@/lib/pos/station-pair";
 import { kickStationToPair } from "@/lib/pos/station-kick";
 import { verifyStationPinFn } from "@/lib/access/api";
@@ -181,8 +179,6 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   } | null>(null);
 
   const locId = usePosStore((s) => s.tenantLocationId);
-  const houseName = usePosStore((s) => s.settings?.name);
-  const stationKind = useStationSessionStore((s) => s.assignment.kind);
   const stationPad = isStationPinPath() || isNativeApp();
   useStationLayout();
   useEffect(() => {
@@ -399,47 +395,32 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </Link>
         )}
 
-        <div className={cn("text-center", stationPad ? "mb-1 shrink-0" : "mb-8")}>
-          <div
-            className={cn(
-              "mx-auto flex items-center justify-center rounded-2xl bg-primary text-primary-foreground",
-              stationPad ? "mb-1 h-9 w-9" : "mb-4 h-16 w-16 shadow-lg shadow-primary/25",
-            )}
-          >
-            <Icon className={stationPad ? "h-4 w-4" : "h-7 w-7"} />
+        {!stationPad && (
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
+            <Icon className="h-7 w-7" />
           </div>
-          <h1 className={cn("font-semibold tracking-tight text-foreground", stationPad ? "text-lg leading-tight" : "text-2xl")}>
-            {stationPad
-              ? houseName || readTenantPosContext()?.locationName || entity.venueName
-              : entity.venueName}
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            {entity.venueName}
           </h1>
-          {!stationPad && (
-            <>
-              <p className="mt-1.5 text-sm font-medium text-muted-foreground">
-                {entity.name}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
-            </>
-          )}
-          <p className={cn("font-medium", stationPad ? "mt-1 text-xs" : "mt-3 text-sm")}>4-digit PIN</p>
+          <p className="mt-1.5 text-sm font-medium text-muted-foreground">
+            {entity.name}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
+          <p className="mt-3 text-sm font-medium">4-digit PIN</p>
           {(() => {
             const paired = readStationDeviceRole();
-            const stationRole =
-              paired ??
-              (stationPad ? deviceRoleFromSessionMode(stationKind) : null);
-            if (!stationRole) return null;
+            if (!paired) return null;
             return (
-              <p className={cn("text-foreground", stationPad ? "mt-0.5 text-xs" : "mt-2 text-sm")}>
-                {DEVICE_ROLE_LABEL[stationRole]}
-                {stationPad ? null : (
-                  <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                    {DEVICE_ROLE_BLURB[stationRole]}
-                  </span>
-                )}
+              <p className="mt-2 text-sm text-foreground">
+                {DEVICE_ROLE_LABEL[paired]}
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                  {DEVICE_ROLE_BLURB[paired]}
+                </span>
               </p>
             );
           })()}
-          <p className={cn("text-xs text-muted-foreground", stationPad ? "mt-0.5" : "mt-1")}>
+          <p className="mt-1 text-xs text-muted-foreground">
             PIN signs you onto this station. Enter opens the floor. Clock in only punches.
           </p>
           {prospect && (
@@ -449,6 +430,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
             </p>
           )}
         </div>
+        )}
 
         {pendingForce && (
           <p className="mb-3 text-center text-sm text-amber-600">
@@ -462,17 +444,19 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           hint={
             pendingForce
               ? "Manager or owner PIN, then Clock in"
-              : prospect
-                ? `Universal demo PIN ${DEMO_STAFF_PIN}`
-                : employees.some((e) => isTrainingRosterId(e.id)) && locationIsTraining()
-                  ? TRAINING_PIN_HINT
-                  : "Enter opens the floor. Clock in only punches."
+              : stationPad
+                ? undefined
+                : prospect
+                  ? `Universal demo PIN ${DEMO_STAFF_PIN}`
+                  : employees.some((e) => isTrainingRosterId(e.id)) && locationIsTraining()
+                    ? TRAINING_PIN_HINT
+                    : "Enter opens the floor. Clock in only punches."
           }
           error={error}
           shakeToken={shake}
           onComplete={() => {}}
           onClearError={() => setError(null)}
-          station={{ onEnter: submitEnter, onClockIn: submitClockPin }}
+          station={{ onEnter: submitEnter, onClockIn: submitClockPin, brand: stationPad }}
         />
         {msg && (
           <p className="mt-3 text-center text-sm text-success" role="status">
