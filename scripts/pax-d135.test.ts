@@ -409,8 +409,10 @@ test("a card-present SDK sale includes a non-null idempotency_id", async () => {
   assert.equal((plugin.match(/\.startTransaction\s*\(/g) || []).length, 1);
   const sale = plugin.slice(plugin.indexOf("void saleOnWorker"), plugin.indexOf("void doScan"));
   const logAt = sale.indexOf('idempotency_id=" + idempotencyId');
+  const namedAt = sale.indexOf('idempotencyId=" + idempotencyId');
   const callAt = sale.indexOf("current.startTransaction(");
-  assert.ok(logAt >= 0 && callAt > logAt);
+  assert.ok(namedAt >= 0 && logAt > namedAt && callAt > logAt);
+  assert.match(sale, /does not create a second charge/);
   assert.match(sale, /PromptForSignature\.Never\.INSTANCE,\s*idempotencyId\s*\)/);
   assert.doesNotMatch(sale, /startTransaction\([\s\S]*?null\s*\)\s*;/);
   const saleMethod = plugin.slice(

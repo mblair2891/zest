@@ -598,14 +598,21 @@ public class PaxD135Plugin extends Plugin {
             // The check id is metadata. It is not a Finix buyer identity.
             HashMap<String, String> tags = new HashMap<>();
             if (checkId != null && !checkId.isEmpty()) tags.put("check", checkId);
-            // The key is set here, from the check's stored attempt id. It is the last
-            // startTransaction argument. SDK 3.8.0 writes it on the sale body as idempotency_id.
+            // The key is the check's stored attempt id. SDK 3.8.0 takes it as the last
+            // startTransaction argument (Kotlin name idempotencyId) and writes JSON
+            // idempotency_id on POST card_reader/authorizations. That response has no
+            // idempotency field and no payment instrument. Finix stores idempotency_id
+            // on POST /transfers, POST /authorizations, and reversals.
+            // This sale does not create a second charge. The SDK already creates the
+            // resource (created_via CARD_PRESENT_ANDROID_D135_SDK) and does not return
+            // a payment instrument to reuse.
             String saleRequest =
                 "SDK sale request amountCents=" + amount
                 + " transactionType=AUTHORIZATION"
                 + " buyerIdentityId=null"
                 + " tags.check=" + checkId
                 + " promptForSignature=Never"
+                + " idempotencyId=" + idempotencyId
                 + " idempotency_id=" + idempotencyId;
             Log.i("PaxD135", saleRequest);
             current.startTransaction(

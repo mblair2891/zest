@@ -1363,7 +1363,10 @@ export function classifyPaxError(
 /**
  * Parameters passed to the Finix Android SDK card-present sale.
  * The key is the check's stored attempt UUID. PaxD135Plugin.saleOnWorker logs this
- * same line, then passes idempotency_id as the last startTransaction argument.
+ * same line, then passes it as the last startTransaction argument (idempotencyId).
+ * SDK 3.8.0 writes that value on the card_reader body as idempotency_id.
+ * The card_reader response has no payment instrument, so the sale does not
+ * create a second transfer.
  */
 export type AndroidSdkSaleRequest = {
   amountCents: number;
@@ -1402,6 +1405,7 @@ export function androidSdkSaleRequestLog(request: AndroidSdkSaleRequest): string
     ` buyerIdentityId=null` +
     ` tags.check=${request.tags.check}` +
     ` promptForSignature=${request.promptForSignature}` +
+    ` idempotencyId=${request.idempotency_id}` +
     ` idempotency_id=${request.idempotency_id}`
   );
 }
