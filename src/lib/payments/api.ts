@@ -149,6 +149,17 @@ export const reassignPaxReaderFn = createServerFn({ method: "POST" })
     return reassignPaxReaderRecord(context.userId, data);
   });
 
+export const reenrollPaxReaderForLiveFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; id: string }) => ({
+    locationId: loc(d.locationId),
+    id: String(d.id ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { reenrollPaxReaderForLiveRecord } = await import("./pax-d135.server");
+    return reenrollPaxReaderForLiveRecord(context.userId, data);
+  });
+
 function stationReaderInput(d: {
   locationId: string;
   serial: string;

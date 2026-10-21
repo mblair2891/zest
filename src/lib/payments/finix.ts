@@ -1266,6 +1266,46 @@ export async function createPaxD135Device(opts: {
   return { ok: true, id: sandboxId("DV") };
 }
 
+/**
+ * Enroll a PAX D135 under the live merchant.
+ * A missing live key or a processor refusal returns the error.
+ * This does not invent a sandbox device id.
+ */
+export async function createLivePaxD135Device(opts: {
+  merchantId: string;
+  serial: string;
+  name: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const merchantId = opts.merchantId.trim();
+  if (!merchantId || merchantId.toLowerCase().includes("sandbox")) {
+    return { ok: false, error: "This selling entity does not have a live merchant yet." };
+  }
+  const creds = readFinixApiCreds("live");
+  if (!creds.ok) return { ok: false, error: missingFinixKeyMessage(creds.missing) };
+  const { paxDeviceRequest } = await import("./pax-d135.ts");
+  const body = paxDeviceRequest(opts.serial, opts.name);
+  const res = await finixFetch(
+    "live",
+    "POST",
+    `/merchants/${encodeURIComponent(merchantId)}/devices`,
+    body,
+    { requireWebhook: false, application: false },
+  );
+  const createdId = finixDeviceId(res.json);
+  if (res.ok && createdId) return { ok: true, id: createdId };
+  const existing = await finixFetch(
+    "live",
+    "GET",
+    `/devices?serial_number=${encodeURIComponent(opts.serial)}`,
+    undefined,
+    { requireWebhook: false },
+  );
+  const found = finixDeviceId(existing.json);
+  if (found) return { ok: true, id: found };
+  const error = res.error || finixFailureText(res.json) || "The reader was not enrolled for live.";
+  return { ok: false, error: error.slice(0, 200) };
+}
+
 function finixDeviceId(json: Record<string, unknown>): string {
   if (typeof json.id === "string" && json.id.startsWith("DV")) return json.id;
   const embedded = json._embedded;

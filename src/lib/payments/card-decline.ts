@@ -52,6 +52,8 @@ export function isOperationalCardError(text: string): boolean {
     t.includes("another selling entity") ||
     t.includes("finix merchants do not match") ||
     t.includes("choose reassign") ||
+    t.includes("re-enroll for live") ||
+    t.includes("connect the reader again") ||
     t.includes("the tablet stays paired") ||
     t.includes("not a selling entity") ||
     t.includes("not registered") ||

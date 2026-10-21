@@ -45,6 +45,12 @@ export type PaxReader = {
   env: PaxReaderEnv;
   /** Absent on older rows. Those stay on the Bluetooth path. */
   link?: PaxReaderLink;
+  /** Device id enrolled under the sandbox merchant. It is not sent while the location is live. */
+  sandboxDeviceId?: string;
+  /** Device id enrolled under the live merchant. It is not sent while the location is in sandbox. */
+  liveDeviceId?: string;
+  /** Set when this reader was enrolled in sandbox and the location is now live. */
+  needsLiveReenroll?: boolean;
 };
 
 export type PaxScanRow = {
@@ -80,6 +86,11 @@ export const PAX_MSG = {
   notConnected: "Scan for the reader, then pick the registered PAX D135.",
   unread: "The card could not be read. The check stays open.",
   liveRegister: "Live card readers are not available in this build.",
+  needsLiveReenroll:
+    "This reader needs re-enrollment for the live merchant. Open Devices and choose Re-enroll for live. Cash and gift still work.",
+  connectAgain:
+    "This reader was re-enrolled for the live merchant. Connect the reader again, then take the card. Cash and gift still work.",
+  liveDeviceSame: "That device id belongs to the sandbox merchant.",
   serialTaken: "This reader already belongs to another selling entity.",
   serialOnReader: "That serial is already on another reader.",
   serialRequired: "Enter the reader serial.",
@@ -272,6 +283,10 @@ export function parsePaxReaders(raw: unknown): PaxReader[] {
     const entityId = String(o.entityId ?? "").trim().slice(0, 80);
     const finixDeviceId = normalizeFinixDeviceId(String(o.finixDeviceId ?? ""));
     const finixMerchantId = String(o.finixMerchantId ?? "").trim().slice(0, 80);
+    const env: PaxReaderEnv = o.env === "live" ? "live" : "sandbox";
+    const activeId = finixDeviceId.startsWith("DV") ? finixDeviceId : "";
+    const sandboxDeviceId = storedDeviceId(o.sandboxDeviceId) || (env === "sandbox" ? activeId : "");
+    const liveDeviceId = storedDeviceId(o.liveDeviceId) || (env === "live" ? activeId : "");
     // A serial without a Finix device id stays listed until that id is saved.
     if (!serial || !entityId) continue;
     out.push({
@@ -280,11 +295,14 @@ export function parsePaxReaders(raw: unknown): PaxReader[] {
       serial,
       entityId,
       entityName: String(o.entityName ?? "").trim().slice(0, 80),
-      finixDeviceId: finixDeviceId.startsWith("DV") ? finixDeviceId : "",
+      finixDeviceId: activeId,
       finixMerchantId,
       model: PAX_MODEL,
-      env: o.env === "live" ? "live" : "sandbox",
+      env,
       link: normalizePaxLink(o.link),
+      ...(sandboxDeviceId ? { sandboxDeviceId } : {}),
+      ...(liveDeviceId ? { liveDeviceId } : {}),
+      ...(o.needsLiveReenroll === true ? { needsLiveReenroll: true } : {}),
     });
   }
   return out;
@@ -317,7 +335,7 @@ export function paxSdkDeviceId(stored?: string | null): string {
 
 /**
  * EnvEnum.SB when FINIX_ENVIRONMENT is sandbox or unset.
- * live / production maps to LIVE, which this build still refuses before connect.
+ * live / production maps to LIVE. A re-enrolled reader sends LIVE.
  */
 export function finixStationEnv(environment: string | null | undefined): "SB" | "LIVE" {
   const raw = String(environment ?? "").trim().toLowerCase();
@@ -454,6 +472,152 @@ export function envBlock(locationLive: boolean, readerEnv: PaxReaderEnv): string
   if (!locationLive && readerEnv === "live") return PAX_MSG.liveOnSandbox;
   if (locationLive) return PAX_MSG.liveBuild;
   return null;
+}
+
+function storedDeviceId(value: unknown): string {
+  const id = normalizeFinixDeviceId(String(value ?? ""));
+  return id.startsWith("DV") ? id : "";
+}
+
+/** Sandbox enrollment id. A live-only row has none. */
+export function readerSandboxDeviceId(reader: PaxReader): string {
+  return storedDeviceId(reader.sandboxDeviceId) || (reader.env !== "live" ? storedDeviceId(reader.finixDeviceId) : "");
+}
+
+/** Live enrollment id. A sandbox row has none until re-enrollment. */
+export function readerLiveDeviceId(reader: PaxReader): string {
+  return storedDeviceId(reader.liveDeviceId) || (reader.env === "live" ? storedDeviceId(reader.finixDeviceId) : "");
+}
+
+export function readerNeedsLiveReenroll(reader: PaxReader): boolean {
+  return reader.needsLiveReenroll === true;
+}
+
+/**
+ * A live card can run only after re-enrollment stored a live device id
+ * that is not the sandbox device id.
+ */
+export function readerReadyForLiveCard(reader: PaxReader): boolean {
+  if (reader.needsLiveReenroll) return false;
+  if (reader.env !== "live") return false;
+  const liveId = storedDeviceId(reader.liveDeviceId);
+  const sandboxId = storedDeviceId(reader.sandboxDeviceId);
+  if (!liveId || liveId === sandboxId) return false;
+  return storedDeviceId(reader.finixDeviceId) === liveId;
+}
+
+/** Pay and connect. A flagged reader asks for re-enrollment before any other environment line. */
+export function readerEnvironmentBlock(locationLive: boolean, reader: PaxReader): string | null {
+  if (reader.needsLiveReenroll) return PAX_MSG.needsLiveReenroll;
+  if (locationLive && readerReadyForLiveCard(reader)) return null;
+  return envBlock(locationLive, reader.env);
+}
+
+/** Keep a device slot only when it holds an id. A false re-enroll flag is omitted. */
+function readerWithSlots(
+  reader: PaxReader,
+  slots: {
+    sandboxDeviceId: string;
+    liveDeviceId: string;
+    finixDeviceId: string;
+    env: PaxReaderEnv;
+    needsLiveReenroll: boolean;
+    finixMerchantId?: string;
+  },
+): PaxReader {
+  const next: PaxReader = {
+    ...reader,
+    finixDeviceId: slots.finixDeviceId,
+    env: slots.env,
+    finixMerchantId: slots.finixMerchantId ?? reader.finixMerchantId,
+  };
+  delete next.sandboxDeviceId;
+  delete next.liveDeviceId;
+  delete next.needsLiveReenroll;
+  if (slots.sandboxDeviceId) next.sandboxDeviceId = slots.sandboxDeviceId;
+  if (slots.liveDeviceId) next.liveDeviceId = slots.liveDeviceId;
+  if (slots.needsLiveReenroll) next.needsLiveReenroll = true;
+  return next;
+}
+
+/**
+ * Location just became live, or live keys were activated.
+ * A sandbox device id stays in the sandbox slot. It is not copied into the live slot.
+ * A reader that already has its own live device id uses that id.
+ */
+export function markPaxReadersForLiveSwitch(readers: PaxReader[]): PaxReader[] {
+  return readers.map((reader) => {
+    const sandboxId = readerSandboxDeviceId(reader);
+    const liveId = storedDeviceId(reader.liveDeviceId);
+    const distinctLive = liveId && liveId !== sandboxId ? liveId : "";
+    if (distinctLive) {
+      return readerWithSlots(reader, {
+        sandboxDeviceId: sandboxId,
+        liveDeviceId: distinctLive,
+        finixDeviceId: distinctLive,
+        env: "live",
+        needsLiveReenroll: false,
+      });
+    }
+    const sandboxDeviceId = sandboxId || storedDeviceId(reader.finixDeviceId);
+    return readerWithSlots(reader, {
+      sandboxDeviceId,
+      liveDeviceId: "",
+      finixDeviceId: sandboxDeviceId,
+      env: "sandbox",
+      needsLiveReenroll: true,
+    });
+  });
+}
+
+/**
+ * Location left live. The live device id stays stored and is not sent.
+ * The sandbox device id becomes the active id.
+ */
+export function restorePaxReadersForSandbox(readers: PaxReader[]): PaxReader[] {
+  return readers.map((reader) => {
+    const sandboxId = storedDeviceId(reader.sandboxDeviceId);
+    const liveId =
+      reader.env === "live"
+        ? storedDeviceId(reader.liveDeviceId) || storedDeviceId(reader.finixDeviceId)
+        : storedDeviceId(reader.liveDeviceId);
+    return readerWithSlots(reader, {
+      sandboxDeviceId: sandboxId,
+      liveDeviceId: liveId,
+      finixDeviceId: sandboxId,
+      env: "sandbox",
+      needsLiveReenroll: false,
+    });
+  });
+}
+
+/** Store the live device id. The sandbox device id stays. */
+export function bindPaxReaderLiveEnrollment(input: {
+  readers: PaxReader[];
+  id: string;
+  deviceId: string;
+  merchantId: string;
+}): { ok: true; readers: PaxReader[]; reader: PaxReader } | { ok: false; message: string } {
+  const deviceId = storedDeviceId(input.deviceId);
+  if (!deviceId) return { ok: false, message: PAX_MSG.deviceIdRequired };
+  const current = input.readers.find((row) => row.id === input.id);
+  if (!current) return { ok: false, message: PAX_MSG.notRegistered };
+  const sandboxId = readerSandboxDeviceId(current);
+  if (sandboxId && deviceId === sandboxId) return { ok: false, message: PAX_MSG.liveDeviceSame };
+  const merchantId = input.merchantId.trim().slice(0, 80);
+  const reader = readerWithSlots(current, {
+    sandboxDeviceId: sandboxId,
+    liveDeviceId: deviceId,
+    finixDeviceId: deviceId,
+    env: "live",
+    needsLiveReenroll: false,
+    finixMerchantId: merchantId || current.finixMerchantId,
+  });
+  return {
+    ok: true,
+    readers: input.readers.map((row) => (row.id === current.id ? reader : row)),
+    reader,
+  };
 }
 
 /** Selling entities that own items on the check. The building is not one of them. */
@@ -732,7 +896,7 @@ export function decidePaxPick(input: {
   if (!input.row.registered || !reader) {
     return { ok: false, message: PAX_MSG.notRegistered };
   }
-  const blocked = envBlock(input.locationLive, reader.env);
+  const blocked = readerEnvironmentBlock(input.locationLive, reader);
   if (blocked) return { ok: false, message: blocked };
   const gate = cardSaleEntityAllowed({
     readerEntityId: reader.entityId,
@@ -761,7 +925,7 @@ export function decideStationReaderConnect(input: {
   if (!input.row.registered || !reader) {
     return { ok: false, message: PAX_MSG.notRegistered };
   }
-  const blocked = envBlock(input.locationLive, reader.env);
+  const blocked = readerEnvironmentBlock(input.locationLive, reader);
   if (blocked) return { ok: false, message: blocked };
   const slot = normalizePaxSerial(String(input.assignedSerial ?? ""));
   if (slot && slot !== reader.serial) {
@@ -1253,6 +1417,7 @@ export function placePaxReader(input: {
     entityId,
     entityName: input.entityName.trim().slice(0, 80),
     finixDeviceId: input.deviceId,
+    sandboxDeviceId: input.deviceId,
     finixMerchantId: input.merchantId,
     model: PAX_MODEL,
     env: "sandbox",
@@ -1296,6 +1461,8 @@ export function setPaxDeviceId(input: {
   const reader: PaxReader = {
     ...current,
     finixDeviceId: deviceId,
+    sandboxDeviceId: current.env === "live" ? current.sandboxDeviceId : deviceId,
+    liveDeviceId: current.env === "live" ? deviceId : current.liveDeviceId,
     serial: current.serial,
     name: current.name,
   };
@@ -1623,13 +1790,16 @@ export async function runAndroidPaxSale(input: {
   if (input.alreadyCaptured || checkCapturedLocally(input.checkId)) {
     return { ok: false, message: PAX_MSG.alreadyPaid, charged: false, keepIdempotency: true };
   }
-  if (input.locationLive) {
+  if (input.reader?.needsLiveReenroll) {
+    return { ok: false, message: PAX_MSG.needsLiveReenroll, charged: false, keepIdempotency: true };
+  }
+  if (input.locationLive && !(input.reader && readerReadyForLiveCard(input.reader))) {
     const message = input.reader
       ? envBlock(true, input.reader.env) || PAX_MSG.liveBuild
       : PAX_MSG.liveBuild;
     return { ok: false, message, charged: false, keepIdempotency: true };
   }
-  if (input.reader && input.reader.env === "live") {
+  if (!input.locationLive && input.reader && input.reader.env === "live") {
     return { ok: false, message: PAX_MSG.liveOnSandbox, charged: false, keepIdempotency: true };
   }
   const link = normalizePaxLink(input.link ?? input.reader?.link);

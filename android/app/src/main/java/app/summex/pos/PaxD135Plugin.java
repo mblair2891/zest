@@ -191,7 +191,7 @@ public class PaxD135Plugin extends Plugin {
     @PluginMethod
     public void connect(PluginCall call) {
         String env = call.getString("env", "");
-        if (!"SB".equals(env)) {
+        if (!"SB".equals(env) && !"LIVE".equals(env)) {
             JSObject ret = new JSObject();
             ret.put("ok", false);
             ret.put("message", MSG_LIVE);
@@ -217,7 +217,7 @@ public class PaxD135Plugin extends Plugin {
         final String mid = call.getString("mid", "");
         final String missing = missingMerchantField(merchantId, deviceId, userId, password, mid);
         if (!missing.isEmpty()) {
-            Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId, mid));
+            Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId, mid, env));
             Log.i("PaxD135", missing);
             resolveMessage(call, missing);
             return;
@@ -226,8 +226,8 @@ public class PaxD135Plugin extends Plugin {
             resolveMessage(call, "Connection failed: missing Bluetooth address.");
             return;
         }
-        final String diagnostic = finixConnectDiagnostic(merchantId, deviceId, userId, password);
-        Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId, mid));
+        final String diagnostic = finixConnectDiagnostic(merchantId, deviceId, userId, password, env);
+        Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId, mid, env));
         Log.i("PaxD135", diagnostic);
         restoreHeld();
         if (usb && heldUsb && usbReaderAttached() && reuseHeld(name, heldAddress)) {
@@ -260,10 +260,10 @@ public class PaxD135Plugin extends Plugin {
         heldSettingUp = false;
         emit("connecting", diagnostic, serialOf(name), null);
         if (usb) {
-            onWorker(() -> connectUsbOnWorker(call, name, merchantId, deviceId, userId, password, mid, diagnostic));
+            onWorker(() -> connectUsbOnWorker(call, name, merchantId, deviceId, userId, password, mid, env, diagnostic));
             return;
         }
-        onWorker(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password, mid, diagnostic));
+        onWorker(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password, mid, env, diagnostic));
     }
 
     /** Cable present or not. Does not read a card and does not open the printer. */
@@ -447,6 +447,7 @@ public class PaxD135Plugin extends Plugin {
         String userId,
         String password,
         String mid,
+        String env,
         String diagnostic
     ) {
         final AtomicBoolean settled = new AtomicBoolean(false);
@@ -457,7 +458,8 @@ public class PaxD135Plugin extends Plugin {
         final String passedPassword = password == null ? "" : password;
         final String passedMid = mid == null ? "" : mid.trim();
         final String prefix = usernamePrefix(passedUser);
-        final String merchantTrace = merchantDataTrace(passedMerchant, passedDevice, prefix, passedMid);
+        final String merchantTrace = merchantDataTrace(passedMerchant, passedDevice, prefix, passedMid, env);
+        final EnvEnum finixEnv = "LIVE".equals(env) ? EnvEnum.PROD : EnvEnum.SB;
         Log.i("PaxD135", merchantTrace);
         final Runnable timeout = () -> {
             if (!settled.compareAndSet(false, true)) return;
@@ -467,7 +469,7 @@ public class PaxD135Plugin extends Plugin {
             JSObject ret = new JSObject();
             ret.put("ok", false);
             ret.put("message", MSG_CONNECT_TIMEOUT);
-            putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_CONNECT_TIMEOUT, "timeout");
+            putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_CONNECT_TIMEOUT, "timeout", env);
             logSdkResult(merchantTrace, MSG_CONNECT_TIMEOUT, "timeout");
             call.resolve(ret);
         };
@@ -477,13 +479,13 @@ public class PaxD135Plugin extends Plugin {
                 return;
             }
             // ROLE_MERCHANT login, merchant, device, and mid come from the station call.
-            // EnvEnum.SB when that call sends SB (FINIX_ENVIRONMENT=sandbox).
+            // Environment SB when that call sends SB. LIVE uses EnvEnum.PROD.
             MerchantData data = new MerchantData(
                 passedMerchant,
                 passedMid,
                 passedDevice,
                 Currency.USD,
-                EnvEnum.SB,
+                finixEnv,
                 passedUser,
                 passedPassword
             );
@@ -495,7 +497,7 @@ public class PaxD135Plugin extends Plugin {
                 JSObject ret = new JSObject();
                 ret.put("ok", false);
                 ret.put("message", MSG_NO_D135);
-                putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_NO_D135, "missing");
+                putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_NO_D135, "missing", env);
                 call.resolve(ret);
                 emit("error", MSG_NO_D135, serialOf(name), null);
                 return;
@@ -542,7 +544,7 @@ public class PaxD135Plugin extends Plugin {
                     ret.put("ok", true);
                     ret.put("message", MSG_CONNECTED);
                     if (batteryPercent != null) ret.put("batteryPercent", batteryPercent);
-                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_CONNECTED, "none");
+                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_CONNECTED, "none", env);
                     logSdkResult(merchantTrace, MSG_CONNECTED, "none");
                     call.resolve(ret);
                     emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), batteryPercent);
@@ -562,7 +564,7 @@ public class PaxD135Plugin extends Plugin {
                     if (code.isEmpty()) code = "missing";
                     JSObject ret = new JSObject();
                     ret.put("ok", false);
-                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, safeError, code);
+                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, safeError, code, env);
                     logSdkResult(merchantTrace, safeError, code);
                     ret.put("message", safeError);
                     call.resolve(ret);
@@ -583,7 +585,7 @@ public class PaxD135Plugin extends Plugin {
             if (code.isEmpty()) code = "missing";
             JSObject ret = new JSObject();
             ret.put("ok", false);
-            putSdkTrace(ret, passedMerchant, passedDevice, prefix, safeDetail, code);
+            putSdkTrace(ret, passedMerchant, passedDevice, prefix, safeDetail, code, env);
             logSdkResult(merchantTrace, safeDetail, code);
             ret.put("message", safeDetail);
             call.resolve(ret);
@@ -1037,7 +1039,7 @@ public class PaxD135Plugin extends Plugin {
      * MerchantData values before connect.
      * The username is the prefix. mid is present or not. The password is not written.
      */
-    private static String merchantDataPreview(String merchantId, String deviceId, String userId, String mid) {
+    private static String merchantDataPreview(String merchantId, String deviceId, String userId, String mid, String env) {
         String merchant = merchantId == null || merchantId.trim().isEmpty() ? "missing" : merchantId.trim();
         String device = deviceId == null || deviceId.trim().isEmpty() ? "missing" : deviceId.trim();
         String preview = userIdPreview(userId);
@@ -1047,7 +1049,7 @@ public class PaxD135Plugin extends Plugin {
             + ". deviceId " + device
             + ". userId prefix " + user
             + ". mid present " + midPresent
-            + ". env SB.";
+            + ". env " + ("LIVE".equals(env) ? "LIVE" : "SB") + ".";
     }
 
     /**
@@ -1231,14 +1233,17 @@ public class PaxD135Plugin extends Plugin {
      * the username and password are present. The values themselves are not written.
      * The device id is the reader row. A blank id stays missing.
      */
-    private static String finixConnectDiagnostic(String merchantId, String deviceId, String userId, String password) {
+    private static String finixConnectDiagnostic(String merchantId, String deviceId, String userId, String password, String env) {
         String merchant = merchantId == null ? "" : merchantId.trim();
         if (merchant.isEmpty()) merchant = "missing";
         String device = deviceId == null ? "" : deviceId.trim();
         if (device.isEmpty()) device = "missing";
         boolean userPresent = userId != null && !userId.trim().isEmpty();
         boolean passPresent = password != null && !password.trim().isEmpty();
-        return "Environment SB. Username present " + (userPresent ? "yes" : "no")
+        String head = "LIVE".equals(env)
+            ? "Environment LIVE. Username present "
+            : "Environment SB. Username present ";
+        return head + (userPresent ? "yes" : "no")
             + ". Password present " + (passPresent ? "yes" : "no")
             + ". Merchant " + merchant
             + ". Device " + device
@@ -1268,10 +1273,10 @@ public class PaxD135Plugin extends Plugin {
     }
 
     /**
-     * MerchantData arguments passed to MPOSFinix. Environment stays SB.
+     * MerchantData arguments passed to MPOSFinix. Environment SB when the call sends SB.
      * The password is not part of this line. The username is the prefix only.
      */
-    private static String merchantDataTrace(String merchantId, String deviceId, String prefix, String mid) {
+    private static String merchantDataTrace(String merchantId, String deviceId, String prefix, String mid, String env) {
         String merchant = merchantId == null || merchantId.isEmpty() ? "missing" : merchantId;
         String device = deviceId == null || deviceId.isEmpty() ? "missing" : deviceId;
         String user = prefix == null || prefix.isEmpty() ? "missing" : prefix;
@@ -1280,7 +1285,7 @@ public class PaxD135Plugin extends Plugin {
             + ". deviceId " + device
             + ". username prefix " + user
             + ". mid present " + midPresent
-            + ". environment SB.";
+            + ". environment " + ("LIVE".equals(env) ? "LIVE" : "SB") + ".";
     }
 
     private static void putSdkTrace(
@@ -1289,12 +1294,13 @@ public class PaxD135Plugin extends Plugin {
         String device,
         String prefix,
         String sdkMessage,
-        String sdkCode
+        String sdkCode,
+        String env
     ) {
         ret.put("merchantId", merchant == null ? "" : merchant);
         ret.put("deviceId", device == null ? "" : device);
         ret.put("usernamePrefix", prefix == null ? "" : prefix);
-        ret.put("environment", "SB");
+        ret.put("environment", "LIVE".equals(env) ? "LIVE" : "SB");
         ret.put("sdkMessage", sdkMessage == null ? "" : sdkMessage);
         ret.put("sdkCode", sdkCode == null || sdkCode.isEmpty() ? "missing" : sdkCode);
     }
@@ -1435,6 +1441,7 @@ public class PaxD135Plugin extends Plugin {
         String userId,
         String password,
         String mid,
+        String env,
         String diagnostic
     ) {
         final AtomicBoolean settled = new AtomicBoolean(false);
@@ -1463,12 +1470,13 @@ public class PaxD135Plugin extends Plugin {
                     return;
                 }
             }
+            final EnvEnum finixEnv = "LIVE".equals(env) ? EnvEnum.PROD : EnvEnum.SB;
             MerchantData data = new MerchantData(
                 passedMerchant,
                 passedMid,
                 passedDevice,
                 Currency.USD,
-                EnvEnum.SB,
+                finixEnv,
                 passedUser,
                 passedPassword
             );
@@ -1505,7 +1513,7 @@ public class PaxD135Plugin extends Plugin {
                     JSObject ret = new JSObject();
                     ret.put("ok", true);
                     ret.put("message", MSG_CONNECTED);
-                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_CONNECTED, "none");
+                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_CONNECTED, "none", env);
                     call.resolve(ret);
                     emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), null);
                     watchUsb();

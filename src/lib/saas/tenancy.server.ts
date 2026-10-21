@@ -959,6 +959,14 @@ export async function updateLocationSetupForUser(
   if (next.paymentsMode === "live" && !jurisdictionIsReady(next.jurisdiction)) {
     next.paymentsMode = prev.paymentsMode === "live" ? "sandbox" : prev.paymentsMode ?? "inherit";
   }
+  const prevLife = locationLifecycleStatus(prev, loc.lifecycle_status);
+  if (life === "live") {
+    const { markPaxReadersForLiveSwitch, parsePaxReaders } = await import("@/lib/payments/pax-d135");
+    next.paxReaders = markPaxReadersForLiveSwitch(parsePaxReaders(next.paxReaders));
+  } else if (prevLife === "live") {
+    const { parsePaxReaders, restorePaxReadersForSandbox } = await import("@/lib/payments/pax-d135");
+    next.paxReaders = restorePaxReadersForSandbox(parsePaxReaders(next.paxReaders));
+  }
   await sql`
     update locations
     set setup = ${JSON.stringify(next)}::jsonb,

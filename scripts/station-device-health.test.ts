@@ -269,7 +269,7 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(pax, /published\.invoke\(finix, bluetoothLabel\(device\), bluetoothAddress\(device\), connectionCallback\)/);
   assert.doesNotMatch(pax, /finix\.connect\(deviceName, deviceAddress/);
   assert.match(pax, /EnvEnum\.SB/);
-  assert.doesNotMatch(pax, /EnvEnum\.PROD/);
+  assert.match(pax, /"LIVE"\.equals\(env\) \? EnvEnum\.PROD : EnvEnum\.SB/);
   assert.match(pax, /MSG_CONNECTED = "Connected"/);
   assert.match(pax, /callbackError\(errorMessage\)/);
   assert.doesNotMatch(pax, /DVt7ZpgavajgoPUHCX967Ser/);
@@ -289,7 +289,7 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(pax, /Environment SB/);
   assert.match(pax, /Log\.i\("PaxD135", diagnostic\)/);
   assert.match(pax, /Log\.i\("PaxD135", merchantTrace\)/);
-  assert.match(pax, /new MerchantData\(\s*passedMerchant,\s*passedMid,\s*passedDevice,\s*Currency\.USD,\s*EnvEnum\.SB,\s*passedUser,\s*passedPassword\s*\)/);
+  assert.match(pax, /new MerchantData\(\s*passedMerchant,\s*passedMid,\s*passedDevice,\s*Currency\.USD,\s*finixEnv,\s*passedUser,\s*passedPassword\s*\)/);
   const merchantTrace = pax.slice(pax.indexOf("String merchantDataTrace"), pax.indexOf("void putSdkTrace"));
   assert.match(merchantTrace, /username prefix/);
   assert.equal(merchantTrace.includes("password"), false);

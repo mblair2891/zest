@@ -1,13 +1,13 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.10.328";
+export const GUIDE_VERSION = "2026.10.329";
 export const GUIDE_EDITION = "Operators Guide · training week";
 export const GUIDE_TITLE = "Operators Guide";
 /** Short public revision line (date + what changed). Keep in lockstep with the white paper. */
 export const GUIDE_REVISION =
-  "21 Oct 2026 — New tablet stays on pair";
-/** Prior batch: Reader follows the check. Card sale keeps its id. Floor map shows the whole room. Station setup stays readable. Clearer floor map. Table flash follows the status. Transfer idempotency. Online card test page. Table flash is the icon. Station PIN pad is Summex. Payment complete fits on the tablet. Online card uses the Finix form. Reader connects on its own. Full-screen check. Card sale idempotency on the station reader. The check keeps that id. */
+  "21 Oct 2026 — Re-enroll readers for live";
+/** Prior batch: New tablet stays on pair. Reader follows the check. Card sale keeps its id. Floor map shows the whole room. Station setup stays readable. Clearer floor map. Table flash follows the status. Transfer idempotency. Online card test page. Table flash is the icon. Station PIN pad is Summex. Payment complete fits on the tablet. Online card uses the Finix form. Reader connects on its own. Full-screen check. Card sale idempotency on the station reader. The check keeps that id. */
 /**
  * Audience tabs in the guide. Distinct from POS PIN roles:
  * host_operator = food-hall / pod host (not the FOH host stand).

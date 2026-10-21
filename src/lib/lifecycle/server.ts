@@ -1,5 +1,10 @@
 import { getSql } from "@/lib/db";
 import { ForbiddenError } from "@/lib/saas/tenancy.server";
+import {
+  markPaxReadersForLiveSwitch,
+  parsePaxReaders,
+  restorePaxReadersForSandbox,
+} from "@/lib/payments/pax-d135";
 import type { KeepEraseMap } from "./types";
 
 export async function saveLifecycleForLocation(
@@ -27,6 +32,7 @@ export async function saveLifecycleForLocation(
     rows[0].setup && typeof rows[0].setup === "object"
       ? { ...(rows[0].setup as Record<string, unknown>) }
       : {};
+  const previous = String(setup.lifecycleStatus ?? "training");
   if (data.lifecycleStatus) setup.lifecycleStatus = data.lifecycleStatus;
   if (data.trainingTrackInventory !== undefined) {
     setup.trainingTrackInventory = data.trainingTrackInventory;
@@ -36,6 +42,11 @@ export async function saveLifecycleForLocation(
   if (data.goLiveChoices) setup.goLiveChoices = data.goLiveChoices;
 
   const life = data.lifecycleStatus ?? setup.lifecycleStatus ?? "training";
+  if (String(life) === "live") {
+    setup.paxReaders = markPaxReadersForLiveSwitch(parsePaxReaders(setup.paxReaders));
+  } else if (previous === "live") {
+    setup.paxReaders = restorePaxReadersForSandbox(parsePaxReaders(setup.paxReaders));
+  }
   const track = Boolean(
     data.trainingTrackInventory ?? setup.trainingTrackInventory,
   );

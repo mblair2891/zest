@@ -16,7 +16,9 @@ import { finixAttemptIdempotencyId } from "./idempotency";
 import { settleSdkCardPresentTransfer } from "./finix";
 import {
   PAX_MSG,
+  bindPaxReaderLiveEnrollment,
   envBlock,
+  markPaxReadersForLiveSwitch,
   normalizePaxSerial,
   normalizeFinixDeviceId,
   parsePaxReaders,
@@ -26,6 +28,8 @@ import {
   placePaxReader,
   readerForSerial,
   readerMerchantMismatchMessage,
+  readerNeedsLiveReenroll,
+  readerReadyForLiveCard,
   reassignPaxReader,
   removePaxReader,
   renamePaxReader,
@@ -64,7 +68,28 @@ async function loadLoc(locationId: string) {
 export async function listPaxReaders(userId: string, locationId: string): Promise<PaxReader[]> {
   const loc = await loadLoc(locationId);
   await requireMembership(userId, loc.org_id, undefined, locationId);
-  return parsePaxReaders(setupOf(loc.setup).paxReaders);
+  const setup = setupOf(loc.setup);
+  const readers = parsePaxReaders(setup.paxReaders);
+  const live = locationLifecycleStatus(setup, loc.lifecycle_status) === "live";
+  if (!live) return readers;
+  const marked = markPaxReadersForLiveSwitch(readers);
+  if (JSON.stringify(marked) === JSON.stringify(readers)) return readers;
+  const raw =
+    loc.setup && typeof loc.setup === "object"
+      ? { ...(loc.setup as Record<string, unknown>) }
+      : {};
+  raw.paxReaders = marked;
+  const sql = await getSql();
+  try {
+    await sql`
+      update locations
+      set setup = ${JSON.stringify(raw)}::jsonb
+      where id = ${locationId}
+    `;
+  } catch {
+    /* the list still returns the marked readers */
+  }
+  return marked;
 }
 
 export async function registerPaxReader(
@@ -353,7 +378,11 @@ async function paxReaderCredentials(
   if (loc.operating_model === "peer_venue" && paymentEntity === HOST_SCOPE) {
     return { ok: false, error: PAX_PEER_HOST };
   }
-  const blocked = envBlock(live, reader.env);
+  if (readerNeedsLiveReenroll(reader)) {
+    return { ok: false, error: PAX_MSG.needsLiveReenroll };
+  }
+  const liveReady = live && readerReadyForLiveCard(reader);
+  const blocked = liveReady ? null : envBlock(live, reader.env);
   if (blocked) return { ok: false, error: blocked };
   // Username and password stay on the server. Merchant id and MID are the saved
   // payment-account values for the check entity, not a stored reader merchant
@@ -380,6 +409,25 @@ async function paxReaderCredentials(
   }
   const account = paymentAccount;
   const merchantId = account.merchantId.startsWith("MU") ? account.merchantId : "";
+  if (liveReady) {
+    const liveUser = String(readServerEnv("FINIX_LIVE_USERNAME") ?? "");
+    const livePass = String(readServerEnv("FINIX_LIVE_PASSWORD") ?? "");
+    if (!liveUser || !livePass) {
+      return {
+        ok: false,
+        error: !liveUser ? "FINIX_LIVE_USERNAME is not set" : "FINIX_LIVE_PASSWORD is not set",
+      };
+    }
+    return {
+      ok: true,
+      merchantId,
+      deviceId: paxSdkDeviceId(reader.finixDeviceId),
+      userId: liveUser,
+      password: livePass,
+      mid: account.mid,
+      env: finixStationEnv("live"),
+    };
+  }
   return {
     ok: true,
     merchantId,
@@ -537,6 +585,56 @@ async function readerTransferId(input: {
   } catch {
     return null;
   }
+}
+
+/**
+ * Enroll a sandbox reader under the live merchant.
+ * The sandbox device id stays. The live device id is stored separately.
+ */
+export async function reenrollPaxReaderForLiveRecord(
+  userId: string,
+  input: { locationId: string; id: string },
+): Promise<{ ok: true; reader: PaxReader } | { ok: false; error: string }> {
+  const loc = await loadLoc(input.locationId);
+  await requireMembership(userId, loc.org_id, undefined, input.locationId);
+  const setup = setupOf(loc.setup);
+  const live = locationLifecycleStatus(setup, loc.lifecycle_status) === "live";
+  if (!live) return { ok: false, error: PAX_MSG.liveOnSandbox };
+  const readers = parsePaxReaders(setup.paxReaders);
+  const current = readers.find((row) => row.id === input.id);
+  if (!current) return { ok: false, error: PAX_MSG.notRegistered };
+  const { ensureEntityPaymentAccount } = await import("./onboarding.server");
+  const account = await ensureEntityPaymentAccount({
+    orgId: loc.org_id,
+    locationId: loc.id,
+    entityId: current.entityId,
+    displayName: current.entityName || current.entityId,
+  });
+  const merchantId = String(account.finix_merchant_id ?? "").trim();
+  if (!merchantId.startsWith("MU") || merchantId.toLowerCase().includes("sandbox")) {
+    return { ok: false, error: PAX_NO_MERCHANT };
+  }
+  const { createLivePaxD135Device } = await import("./finix");
+  const created = await createLivePaxD135Device({
+    merchantId,
+    serial: current.serial,
+    name: `${current.entityName || "Reader"} ${current.serial}`.trim(),
+  });
+  if (!created.ok) return { ok: false, error: created.error };
+  const bound = bindPaxReaderLiveEnrollment({
+    readers,
+    id: current.id,
+    deviceId: created.id,
+    merchantId,
+  });
+  if (!bound.ok) return { ok: false, error: bound.message };
+  const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+  await updateLocationSetupForUser(userId, {
+    orgId: loc.org_id,
+    locationId: loc.id,
+    setup: { ...setup, paxReaders: bound.readers },
+  });
+  return { ok: true, reader: bound.reader };
 }
 
 export async function recordPaxSale(

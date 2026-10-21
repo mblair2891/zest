@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_329_reader_reenroll",
+    date: "2026-10-21",
+    title: "Re-enroll readers for live",
+    summary: "A sandbox card reader needs re-enrollment after the location goes live.",
+    body: "After this location switches from sandbox to live, a card reader enrolled in sandbox needs re-enrollment. Open Devices and choose Re-enroll for live. That binds the reader to the live merchant. Cash and gift still work. Pay says to open Devices and choose Re-enroll for live.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "device-roles",
+    tags: ["devices"],
+  },
+  {
     id: "upd_2026_10_328_elo_setup",
     date: "2026-10-21",
     title: "New tablet stays on pair",

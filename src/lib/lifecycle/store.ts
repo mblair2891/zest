@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
 import { usePosStore } from "@/lib/pos/store";
+import { setPaxReaders } from "@/lib/pos/pax-station-link";
+import { markPaxReadersForLiveSwitch, restorePaxReadersForSandbox } from "@/lib/payments/pax-d135";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { erasePracticeData } from "./erase";
 import {
@@ -281,9 +283,20 @@ export const useLifecycleStore = create<LifecycleState>()(
 
 function syncPosLife(status: LocationLifecycle, track?: boolean) {
   try {
-    usePosStore.getState().updateSettings?.({
+    const pos = usePosStore.getState();
+    const previous = pos.settings.lifecycleStatus;
+    const current = pos.settings.paxReaders ?? [];
+    const paxReaders =
+      status === "live"
+        ? markPaxReadersForLiveSwitch(current)
+        : previous === "live"
+          ? restorePaxReadersForSandbox(current)
+          : null;
+    if (paxReaders) setPaxReaders(paxReaders);
+    pos.updateSettings?.({
       lifecycleStatus: status,
       ...(track != null ? { trainingTrackInventory: track } : {}),
+      ...(paxReaders ? { paxReaders } : {}),
     });
   } catch {
     /* */

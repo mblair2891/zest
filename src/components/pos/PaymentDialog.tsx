@@ -1343,13 +1343,35 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             peerVenue,
           });
           const lineIds = checkSellingEntityIds(order.lines);
-          let saleMerchantId = linkNow.reader?.finixMerchantId || "";
+          const heldReader = linkNow.reader;
+          const listedReader = heldReader
+            ? linkNow.readers.find(
+                (row) => row.serial.replace(/\s+/g, "") === heldReader.serial.replace(/\s+/g, ""),
+              )
+            : undefined;
+          const payReader = listedReader ?? heldReader;
+          if (payReader?.needsLiveReenroll) {
+            setError(PAX_MSG.needsLiveReenroll);
+            setBusy(false);
+            return;
+          }
+          if (
+            heldReader &&
+            payReader &&
+            payReader.env === "live" &&
+            heldReader.finixDeviceId !== payReader.finixDeviceId
+          ) {
+            setError(PAX_MSG.connectAgain);
+            setBusy(false);
+            return;
+          }
+          let saleMerchantId = payReader?.finixMerchantId || "";
           let paymentEntityId = checkSellingEntityId(order.lines);
-          if (linkNow.reader) {
+          if (payReader) {
             const names = posNow.vendors.map((vendor) => ({ id: vendor.id, name: vendor.name }));
             const gate = cardSaleEntityAllowed({
-              readerEntityId: linkNow.reader.entityId,
-              readerLabel: linkNow.reader.entityName || linkNow.reader.entityId,
+              readerEntityId: payReader.entityId,
+              readerLabel: payReader.entityName || payReader.entityId,
               checkLabel: sellingEntityLabel(paymentEntityId, names, posNow.settings.name),
               sellingEntityId: paymentEntityId,
               sellingEntityIds: lineIds,
@@ -1362,12 +1384,12 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               return;
             }
             paymentEntityId = gate.paymentEntityId;
-            if (linkNow.reader.entityId !== gate.paymentEntityId) {
+            if (payReader.entityId !== gate.paymentEntityId) {
               const checkEntity = sellingEntityLabel(gate.paymentEntityId, names, posNow.settings.name);
               const session = await paxReaderSessionFn({
                 data: paxReaderSessionData({
                   locationId,
-                  serial: linkNow.reader.serial,
+                  serial: payReader.serial,
                   entityId: gate.paymentEntityId,
                   entityName: checkEntity,
                 }),
@@ -1385,7 +1407,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             amountCents: tend,
             tipCents: 0,
             locationLive,
-            reader: linkNow.reader,
+            reader: payReader,
             sellingEntityId: paymentEntityId,
             sellingEntityIds: lineIds,
             locationEntityIds,
@@ -1416,7 +1438,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           finixTransferId = sale.transferId;
           authorizationId = sale.transferId;
           paxJournal = {
-            readerId: linkNow.reader?.finixDeviceId || "",
+            readerId: payReader?.finixDeviceId || "",
             merchantId: saleMerchantId,
             locationId,
             orgId,

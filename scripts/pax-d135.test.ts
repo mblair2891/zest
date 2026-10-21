@@ -12,8 +12,12 @@ import {
   checkEntityLabelForReader,
   checkSellingEntityIds,
   cardSaleEntityAllowed,
+  bindPaxReaderLiveEnrollment,
   decidePaxPick,
   envBlock,
+  markPaxReadersForLiveSwitch,
+  readerReadyForLiveCard,
+  restorePaxReadersForSandbox,
   payEntityStatusText,
   readerCheckEntityBanner,
   readerEntityLabel,
@@ -729,11 +733,12 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(plugin, /published\.invoke\(finix, bluetoothLabel\(device\), bluetoothAddress\(device\), connectionCallback\)/);
   assert.doesNotMatch(plugin, /finix\.connect\(deviceName, deviceAddress/);
   assert.match(plugin, /EnvEnum\.SB/);
+  assert.match(plugin, /"LIVE"\.equals\(env\) \? EnvEnum\.PROD : EnvEnum\.SB/);
   assert.match(plugin, /"Connected"/);
   assert.doesNotMatch(plugin, /DVt7ZpgavajgoPUHCX967Ser/);
   assert.doesNotMatch(plugin, /DVbAt1JESzPRXVN7MAoN4hHF/);
   assert.doesNotMatch(plugin, /MUdpkz77QV2XnH45t7fpURa1/);
-  assert.doesNotMatch(plugin, /EnvEnum\.PROD/);
+  assert.match(plugin, /EnvEnum\.PROD/);
   assert.match(plugin, /requestPermissionForAliases/);
   assert.match(plugin, /ACCESS_FINE_LOCATION/);
   assert.match(plugin, /BLUETOOTH_CONNECT/);
@@ -1336,5 +1341,203 @@ test("sandbox card reader add does not require the webhook secret", async () => 
     }
   } finally {
     restore();
+  }
+});
+
+test("a sandbox reader needs re-enrollment after the location goes live", async () => {
+  const marked = markPaxReadersForLiveSwitch([reader]);
+  assert.equal(marked.length, 1);
+  const flagged = marked[0]!;
+  assert.equal(flagged.needsLiveReenroll, true);
+  assert.equal(flagged.env, "sandbox");
+  assert.equal(flagged.sandboxDeviceId, "DVsandbox1");
+  assert.equal(flagged.liveDeviceId, undefined);
+  assert.equal(flagged.finixDeviceId, "DVsandbox1");
+  const roundTrip = parsePaxReaders(marked);
+  assert.equal(roundTrip[0]?.needsLiveReenroll, true);
+  assert.equal(roundTrip[0]?.sandboxDeviceId, "DVsandbox1");
+  assert.equal(roundTrip[0]?.liveDeviceId, undefined);
+  const again = markPaxReadersForLiveSwitch(roundTrip);
+  assert.equal(JSON.stringify(again), JSON.stringify(roundTrip));
+
+  const kept = markPaxReadersForLiveSwitch([
+    {
+      ...reader,
+      sandboxDeviceId: "DVsandbox1",
+      liveDeviceId: "DVlive1",
+      finixDeviceId: "DVsandbox1",
+      env: "sandbox",
+    },
+  ]);
+  assert.equal(kept[0]?.needsLiveReenroll, undefined);
+  assert.equal(kept[0]?.env, "live");
+  assert.equal(kept[0]?.finixDeviceId, "DVlive1");
+  assert.equal(kept[0]?.sandboxDeviceId, "DVsandbox1");
+  assert.equal(readerReadyForLiveCard(kept[0]!), true);
+
+  const restored = restorePaxReadersForSandbox(kept);
+  assert.equal(restored[0]?.env, "sandbox");
+  assert.equal(restored[0]?.finixDeviceId, "DVsandbox1");
+  assert.equal(restored[0]?.liveDeviceId, "DVlive1");
+  assert.equal(restored[0]?.needsLiveReenroll, undefined);
+  assert.notEqual(restored[0]?.finixDeviceId, "DVlive1");
+
+  const same = bindPaxReaderLiveEnrollment({
+    readers: marked,
+    id: reader.id,
+    deviceId: "DVsandbox1",
+    merchantId: "MUlive",
+  });
+  assert.equal(same.ok, false);
+  if (!same.ok) assert.equal(same.message, PAX_MSG.liveDeviceSame);
+
+  const bound = bindPaxReaderLiveEnrollment({
+    readers: marked,
+    id: reader.id,
+    deviceId: "DVlive9",
+    merchantId: "MUlive",
+  });
+  assert.equal(bound.ok, true);
+  if (!bound.ok) return;
+  assert.equal(bound.reader.env, "live");
+  assert.equal(bound.reader.needsLiveReenroll, undefined);
+  assert.equal(bound.reader.finixDeviceId, "DVlive9");
+  assert.equal(bound.reader.liveDeviceId, "DVlive9");
+  assert.equal(bound.reader.sandboxDeviceId, "DVsandbox1");
+  assert.equal(bound.reader.finixMerchantId, "MUlive");
+  assert.equal(readerReadyForLiveCard(bound.reader), true);
+
+  resetPaxSaleGuards();
+  const blockedSales = { n: 0 };
+  const blocked = await runAndroidPaxSale({
+    checkId: "chk_reenroll",
+    amountCents: 100,
+    locationLive: true,
+    reader: flagged,
+    sellingEntityId: "ent_bbq",
+    alreadyCaptured: false,
+    settingUp: false,
+    connected: true,
+    bridge: bridge(blockedSales, { ok: true, transferId: "TRno", last4: "4242" }),
+  });
+  assert.equal(blockedSales.n, 0);
+  assert.equal(blocked.ok, false);
+  if (!blocked.ok) {
+    assert.equal(blocked.message, PAX_MSG.needsLiveReenroll);
+    assert.match(blocked.message, /Re-enroll for live/);
+    assert.match(blocked.message, /Cash and gift still work/);
+    assert.doesNotMatch(blocked.message, /Finix merchants do not match/);
+    assert.equal(blocked.charged, false);
+  }
+
+  const liveSales = { n: 0 };
+  const liveSale = await runAndroidPaxSale({
+    checkId: "chk_live_ok",
+    amountCents: 100,
+    locationLive: true,
+    reader: bound.reader,
+    sellingEntityId: "ent_bbq",
+    alreadyCaptured: false,
+    settingUp: false,
+    connected: true,
+    bridge: bridge(liveSales, { ok: true, transferId: "TRlive", last4: "4242" }),
+  });
+  assert.equal(liveSales.n, 1);
+  assert.equal(liveSale.ok, true);
+  if (liveSale.ok) assert.equal(liveSale.transferId, "TRlive");
+
+  const store = readFileSync("src/lib/pos/store.ts", "utf8");
+  assert.doesNotMatch(store, /runAndroidPaxSale|needsLiveReenroll/);
+  const devices = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
+  assert.match(devices, /Re-enroll for live/);
+  assert.match(devices, /data-pax-reenroll-live=""/);
+  assert.match(devices, /Needs re-enrollment for live/);
+  const dialog = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
+  assert.match(dialog, /needsLiveReenroll/);
+  assert.match(dialog, /PAX_MSG\.connectAgain/);
+  const decline = readFileSync("src/lib/payments/card-decline.ts", "utf8");
+  assert.match(decline, /re-enroll for live/);
+  const guideDevices = readFileSync("src/lib/guide/content/devices.ts", "utf8");
+  const guidePay = readFileSync("src/lib/guide/content/payments.ts", "utf8");
+  assert.match(guideDevices, /Re-enroll for live/);
+  assert.match(guidePay, /Re-enroll for live/);
+  assert.match(guideDevices, /Sandbox and live device ids stay separate/);
+  assert.match(guidePay, /Cash and gift still work/);
+});
+
+test("live device enrollment does not invent a sandbox id", async () => {
+  const { createLivePaxD135Device } = await import("../src/lib/payments/finix.ts");
+  const prevFetch = globalThis.fetch;
+  const keys = [
+    "FINIX_LIVE_USERNAME",
+    "FINIX_LIVE_PASSWORD",
+    "FINIX_LIVE_APPLICATION_ID",
+    "FINIX_LIVE_WEBHOOK_SECRET",
+  ];
+  const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  for (const key of keys) delete process.env[key];
+  try {
+    const missing = await createLivePaxD135Device({
+      merchantId: "MU_live",
+      serial: "ABC123",
+      name: "Bar 1",
+    });
+    assert.equal(missing.ok, false);
+    if (!missing.ok) {
+      assert.equal(missing.error, "FINIX_LIVE_USERNAME is not set");
+      assert.doesNotMatch(missing.error, /^DV/);
+    }
+
+    process.env.FINIX_LIVE_USERNAME = "live-user";
+    process.env.FINIX_LIVE_PASSWORD = "live-pass";
+    process.env.FINIX_LIVE_APPLICATION_ID = "AP_live";
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls += 1;
+      throw new Error("fetch");
+    };
+    const sandboxMerchant = await createLivePaxD135Device({
+      merchantId: "MU_sandbox_demo",
+      serial: "ABC123",
+      name: "Bar 1",
+    });
+    assert.equal(sandboxMerchant.ok, false);
+    if (!sandboxMerchant.ok) assert.doesNotMatch(sandboxMerchant.error, /^DV/);
+    assert.equal(calls, 0);
+
+    globalThis.fetch = async () => {
+      calls += 1;
+      return new Response(JSON.stringify({ message: "no" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const failed = await createLivePaxD135Device({
+      merchantId: "MU_live",
+      serial: "ABC123",
+      name: "Bar 1",
+    });
+    assert.equal(failed.ok, false);
+    if (!failed.ok) assert.doesNotMatch(failed.error, /^DV/);
+    assert.equal(calls > 0, true);
+
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ id: "DVliveposted" }), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      });
+    const created = await createLivePaxD135Device({
+      merchantId: "MU_live",
+      serial: "ABC123",
+      name: "Bar 1",
+    });
+    assert.equal(created.ok, true);
+    if (created.ok) assert.equal(created.id, "DVliveposted");
+  } finally {
+    globalThis.fetch = prevFetch;
+    for (const key of keys) {
+      if (saved[key] == null) delete process.env[key];
+      else process.env[key] = saved[key];
+    }
   }
 });

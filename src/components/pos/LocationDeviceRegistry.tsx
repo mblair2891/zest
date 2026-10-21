@@ -112,6 +112,7 @@ import { SquareTerminalPanel } from "@/components/pos/SquareTerminalPanel";
 import {
   listPaxReadersFn,
   reassignPaxReaderFn,
+  reenrollPaxReaderForLiveFn,
   registerPaxReaderFn,
   removePaxReaderFn,
   renamePaxReaderFn,
@@ -1425,8 +1426,7 @@ export function LocationDeviceRegistry({
             <div>
               <p className="text-sm font-medium">Card readers</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Add a PAX D135 for a selling entity at this location. Reassign moves it to another entity here and keeps the tablet. The station app connects in sandbox.
-                Live card readers are not available in this build. Cash still works with no reader.
+                Add a PAX D135 for a selling entity at this location. Reassign moves it to another entity here and keeps the tablet. After this location switches from sandbox to live, choose Re-enroll for live. Cash still works with no reader.
               </p>
             </div>
             <GuideLearnLink topicId="pax-card-reader">Learn</GuideLearnLink>
@@ -1486,6 +1486,9 @@ export function LocationDeviceRegistry({
                       <span className="text-muted-foreground" data-pax-reader-entity={reader.entityId}>
                         · {reader.entityName || reader.entityId}
                       </span>
+                      {reader.needsLiveReenroll ? (
+                        <span className="text-xs font-medium text-amber-800">Needs re-enrollment for live</span>
+                      ) : null}
                       <label className="text-xs text-muted-foreground">
                         Connection
                         <select
@@ -1588,6 +1591,43 @@ export function LocationDeviceRegistry({
                       >
                         Reassign
                       </Button>
+                      {reader.needsLiveReenroll ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          data-pax-reenroll-live=""
+                          disabled={busy}
+                          onClick={() => {
+                            void (async () => {
+                              if (!resolvedLocId) return;
+                              setBusy(true);
+                              setPaxMsg(null);
+                              try {
+                                const res = await reenrollPaxReaderForLiveFn({
+                                  data: { locationId: resolvedLocId, id: reader.id },
+                                });
+                                if (!res.ok) {
+                                  setPaxMsg(res.error);
+                                  return;
+                                }
+                                setCardReaders((rows) =>
+                                  rows.map((row) => (row.id === res.reader.id ? res.reader : row)),
+                                );
+                                setPaxMsg(
+                                  `${res.reader.name} is enrolled for the live merchant. Connect the reader again.`,
+                                );
+                                await load({ silent: true });
+                              } catch (e) {
+                                setPaxMsg(e instanceof Error ? e.message : "The reader was not re-enrolled.");
+                              } finally {
+                                setBusy(false);
+                              }
+                            })();
+                          }}
+                        >
+                          Re-enroll for live
+                        </Button>
+                      ) : null}
                       <Button
                         size="sm"
                         variant="ghost"
