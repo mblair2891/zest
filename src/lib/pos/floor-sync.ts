@@ -32,6 +32,7 @@ import {
   upsertTableStatusFn,
 } from "./floor-api";
 import { applyItem86Overlay, parseItem86 } from "./item-86";
+import { normalizeTableStatus, statusClockMs } from "./floor-status";
 import { quantumPaidServerNotice } from "@/lib/payments/finix-events";
 import { useNotifyStore } from "./notify-store";
 import {
@@ -287,7 +288,8 @@ function tablePayload(table: Table | undefined): FloorTableStatus | undefined {
     serverId: table.serverId ?? null,
     guestCount: table.guestCount ?? null,
     seatedAt: table.seatedAt ?? null,
-    statusSince: table.statusSince ?? Date.now(),
+    statusSince:
+      typeof table.statusSince === "number" && table.statusSince > 0 ? table.statusSince : 0,
   };
 }
 
@@ -307,6 +309,34 @@ export function applyOpenFloor(floor: OpenFloor): void {
     const st = floor.tables.find((x) => x.tableId === tb.id);
     if (heldTables.has(tb.id) && st && st.checkId && st.status !== "empty") return tb;
     if (!st) return tb;
+    const incoming = normalizeTableStatus(st.status);
+    const local = normalizeTableStatus(tb.status);
+    const seatedAt = st.seatedAt ?? tb.seatedAt;
+    let statusSince = tb.statusSince;
+    let flashNotified = tb.flashNotified;
+    if (incoming !== local) {
+      const trusted = statusClockMs(
+        { status: incoming, statusSince: st.statusSince, seatedAt },
+        now,
+      );
+      statusSince = trusted ?? now;
+      flashNotified = false;
+    } else {
+      const localClock = statusClockMs({ ...tb, status: incoming }, now);
+      const serverClock = statusClockMs(
+        { status: incoming, statusSince: st.statusSince, seatedAt },
+        now,
+      );
+      const serverCheck = st.checkId
+        ? serverOrders.find((o) => o.id === st.checkId)
+        : undefined;
+      const checkClosed = !serverCheck || serverCheck.status !== "open";
+      if (localClock != null && serverClock != null) {
+        const serverReset = checkClosed && serverClock > localClock + 1000;
+        statusSince = serverReset ? serverClock : Math.min(localClock, serverClock);
+        if (serverReset) flashNotified = false;
+      } else statusSince = localClock ?? serverClock ?? tb.statusSince;
+    }
     return {
       ...tb,
       status: st.status,
@@ -314,7 +344,8 @@ export function applyOpenFloor(floor: OpenFloor): void {
       serverId: st.serverId ?? undefined,
       guestCount: st.guestCount ?? undefined,
       seatedAt: st.seatedAt ?? undefined,
-      statusSince: st.statusSince,
+      statusSince,
+      flashNotified,
     };
   });
 

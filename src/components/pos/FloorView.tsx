@@ -569,7 +569,7 @@ export function FloorView({
           ink: contrastInk(fill),
           status: st,
           hollow: st === "empty",
-          flashing: tableFlash(t, floorCfg, clock || Date.now()),
+          flashing: tableFlash(t, floorCfg, clock || Date.now(), st),
           dim,
           joined: clusterNumbers(tables, t.id).joined,
         };
@@ -865,7 +865,7 @@ export function FloorView({
                 (foodUpUntil[t.label.replace(/^T/i, "").trim().toLowerCase()] ??
                   0) > clock ||
                 (foodUpUntil[t.label.trim().toLowerCase()] ?? 0) > clock;
-              const flashing = tableFlash(t, floorCfg, clock || Date.now());
+              const flashing = tableFlash(t, floorCfg, clock || Date.now(), st);
               const secColor = sectionColorForTable(t, floorSections);
               const orderAcc = tableAccess(t.id, "order");
               const seatAcc = tableAccess(t.id, "seat");
@@ -1248,7 +1248,12 @@ export function FloorView({
                     if (!o) return null;
                     const tot = computeTotals(o, settings);
                     const color = sectionColorForTable(t, floorSections);
-                    const flashing = tableFlash(t, floorCfg, clock || Date.now());
+                    const flashing = tableFlash(
+                      t,
+                      floorCfg,
+                      clock || Date.now(),
+                      effectiveTablePipeline(t, orders, tickets, floorCfg),
+                    );
                     return (
                       <button
                         key={t.id}
@@ -2192,7 +2197,7 @@ function TableDetailBody({
   const dirty = !hasOpen && stored === "closed_not_cleaned";
   const occupiedNoCheck =
     !hasOpen && !empty && stored !== "reserved" && stored !== "closed_not_cleaned";
-  const flashing = tableFlash(table, floorCfg, clock || Date.now());
+  const flashing = tableFlash(table, floorCfg, clock || Date.now(), stored);
   const enabled = FLOOR_PIPELINE.filter((s) => floorCfg.enabled[s] !== false);
   const headerServer =
     serverName ||

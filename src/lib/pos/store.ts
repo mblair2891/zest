@@ -336,6 +336,7 @@ import {
   FLOOR_STATUS_LABEL,
   isEmptyTable,
   nextAutoTableStatus,
+  alignTableFlashClock,
   normalizeTableStatus,
   paidTableStatus,
   parseFloorStatusConfig,
@@ -354,6 +355,7 @@ import {
   buildNightlyIntegrityPack,
   CHECK_HOLD_LABEL,
   isCheckHoldKind,
+  openCheckOnTable,
   openChecksOnTable,
   tableIsVacant,
 } from "./check-integrity";
@@ -1467,21 +1469,27 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	tick: () => {
 		const now = Date.now();
 		const cfg = floorCfg();
+		const orders = get().orders;
+		const kitchen = get().tickets;
 		const tables = get().tables.map((t: any) => {
-			if (t.flashNotified) return t;
-			if (!tableFlash(t, cfg, now)) return t;
+			const open = openChecksOnTable(t, orders);
+			const linked = t.orderId ? orders.find((o: any) => o.id === t.orderId) : undefined;
+			const derived = open.length ? deriveTableStatus(openCheckOnTable(t, orders), kitchen, cfg) : null;
+			const row = alignTableFlashClock(t, { now, cfg, openOrders: open, linked, derived });
+			if (row.flashNotified) return row;
+			if (!tableFlash(row, cfg, now)) return row;
 			try {
-				const st = normalizeTableStatus(t.status);
+				const st = normalizeTableStatus(row.status);
 				useNotifyStore.getState().pushNotice({
 					kind: "sla_alert",
-					title: `SLA · Table ${t.label}`,
+					title: `SLA · Table ${row.label}`,
 					body: `${st === "reserved" ? "Reserved" : FLOOR_STATUS_LABEL[st]} over the flash threshold`,
-					tableLabel: t.label,
+					tableLabel: row.label,
 				});
 			} catch {
 				/* notify optional */
 			}
-			return { ...t, flashNotified: true };
+			return { ...row, flashNotified: true };
 		});
 		set({
 			clock: now,
@@ -2160,6 +2168,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			...t,
 			status: "empty",
 			statusSince: Date.now(),
+			flashNotified: false,
 			orderId: void 0,
 			serverId: void 0,
 			guestCount: void 0,
@@ -2197,6 +2206,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					...t,
 					status: "closed_not_cleaned",
 					statusSince: Date.now(),
+					flashNotified: false,
 					orderId: void 0,
 					serverId: void 0,
 					guestCount: void 0,
@@ -2241,6 +2251,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				if (t.id === toId) return {
 					...t,
 					status: tableStatusFromOrder(get().orders.find((o: any) => o.id === orderId)),
+					statusSince: Date.now(),
+					flashNotified: false,
 					orderId,
 					serverId: from.serverId,
 					guestCount: from.guestCount,
@@ -3785,12 +3797,14 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 						orderId: primary.id,
 						status: tableStatusFromOrder(primary),
 						statusSince: Date.now(),
+						flashNotified: false,
 					} : t);
 				} else {
 					tables = tables.map((t: any) => t.id === order.tableId || childIds.includes(t.id) ? {
 						...t,
 						status: paidTableStatus(floorCfg()),
 						statusSince: Date.now(),
+						flashNotified: false,
 					} : t);
 					try {
 						const tb = get().tables.find((x: any) => x.id === order.tableId);
@@ -3803,10 +3817,16 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					} catch { /* optional */ }
 				}
 			}
-		} else if (order.tableId) tables = tables.map((t: any) => t.orderId === order.id ? {
-			...t,
-			status: tableStatusFromOrder(updated)
-		} : t);
+		} else if (order.tableId) tables = tables.map((t: any) => {
+			if (t.orderId !== order.id) return t;
+			const next = tableStatusFromOrder(updated);
+			const same = normalizeTableStatus(t.status) === normalizeTableStatus(next);
+			return {
+				...t,
+				status: next,
+				...(same ? {} : { statusSince: Date.now(), flashNotified: false }),
+			};
+		});
 		const ids = {
 			orgId: get().tenantLocationId ? `org:${get().tenantLocationId}` : "org_local",
 			locationId: get().tenantLocationId || get().settlementConfig.locationId || "loc_local",
@@ -5014,7 +5034,12 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const root = groupRootId(get().tables, tableId);
 		const members = groupMembers(get().tables, root).map((t: any) => t.id);
 		set({
-			tables: get().tables.map((t: any) => members.includes(t.id) ? { ...t, status: next, statusSince: Date.now() } : t),
+			tables: get().tables.map((t: any) => members.includes(t.id) ? {
+				...t,
+				status: next,
+				statusSince: Date.now(),
+				flashNotified: false,
+			} : t),
 		});
 		get().audit("floor", `Table status ${next}`);
 		floorSync("table", root);
@@ -6324,7 +6349,10 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			tables: (p.tables || current.tables || []).map((t: any) => ({
 				...t,
 				status: normalizeTableStatus(t.status),
-				statusSince: t.statusSince || t.seatedAt || Date.now(),
+				statusSince:
+					typeof t.statusSince === "number" && Number.isFinite(t.statusSince) && t.statusSince > 0
+						? t.statusSince
+						: undefined,
 				qrToken:
 					t.qrToken && qrTokenMatchesLocation(t.qrToken, locKey)
 						? t.qrToken

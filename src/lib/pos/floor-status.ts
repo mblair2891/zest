@@ -196,17 +196,110 @@ export function contrastInk(hex: string): string {
   return l > 0.62 ? "#0a0a0a" : "#f7f6f3";
 }
 
+/**
+ * When the current status began. A missing clock does not flash.
+ * Seat time counts only for Sat · no order. A later status that still
+ * carries that stamp has not started its own clock.
+ */
+export function statusClockMs(
+  table: { status?: string | null; statusSince?: number | null; seatedAt?: number | null },
+  now = Date.now(),
+): number | null {
+  const st = normalizeTableStatus(table.status);
+  if (st === "reserved") return null;
+  const since = table.statusSince;
+  if (typeof since !== "number" || !Number.isFinite(since) || since <= 0) return null;
+  if (since > now + 5_000) return null;
+  const seated = table.seatedAt;
+  if (st !== "sat_no_order" && typeof seated === "number" && seated > 0 && since <= seated) return null;
+  return since;
+}
+
 export function tableFlash(
-  table: Pick<Table, "status" | "statusSince">,
+  table: Pick<Table, "status" | "statusSince" | "seatedAt">,
   cfg: FloorStatusConfig,
   now = Date.now(),
+  painted?: FloorPipelineStatus | "reserved",
 ): boolean {
-  const st = normalizeTableStatus(table.status);
-  if (st === "reserved" || st === "empty") return false;
+  const stored = normalizeTableStatus(table.status);
+  const st = painted && painted !== "reserved" ? painted : stored;
+  if (st === "reserved") return false;
   const mins = cfg.flashMinutes[st];
   if (mins == null || mins <= 0) return false;
-  const since = table.statusSince ?? now;
+  if (st !== stored) {
+    if (st !== "sat_no_order") return false;
+    const seated = table.seatedAt;
+    if (typeof seated !== "number" || !Number.isFinite(seated) || seated <= 0) return false;
+    return now - seated >= mins * 60_000;
+  }
+  const since = statusClockMs(table, now);
+  if (since == null) return false;
   return now - since >= mins * 60_000;
+}
+
+/**
+ * Move a table onto the status it is actually in and restart a bad clock.
+ * Paid, closed, and cleaned tables stop flashing until that status's own minutes elapse.
+ */
+export function alignTableFlashClock<T extends {
+  status: string;
+  statusSince?: number;
+  seatedAt?: number;
+  orderId?: string;
+  flashNotified?: boolean;
+}>(
+  table: T,
+  opts: {
+    now: number;
+    cfg: FloorStatusConfig;
+    openOrders: { createdAt?: number }[];
+    linked?: { status?: string } | null;
+    derived?: FloorPipelineStatus | "reserved" | null;
+  },
+): T {
+  const now = opts.now;
+  let row = table;
+  const stored = () => normalizeTableStatus(row.status);
+  const linkedStatus = opts.linked?.status;
+  if (!opts.openOrders.length && linkedStatus && linkedStatus !== "open") {
+    const next: FloorPipelineStatus =
+      linkedStatus === "voided" || linkedStatus === "cancelled" ? "empty" : paidTableStatus(opts.cfg);
+    if (stored() !== next) {
+      row = {
+        ...row,
+        status: next,
+        statusSince: now,
+        flashNotified: false,
+        seatedAt: next === "empty" ? undefined : row.seatedAt,
+        orderId: next === "empty" ? undefined : row.orderId,
+      };
+    }
+  } else if (opts.openOrders.length && opts.derived && opts.derived !== "reserved") {
+    const next = nextAutoTableStatus({
+      current: row.status,
+      derived: opts.derived,
+      cfg: opts.cfg,
+    });
+    if (stored() !== next) {
+      const since =
+        next === "sat_no_order" ? (row.seatedAt || opts.openOrders[0]?.createdAt || now) : now;
+      row = { ...row, status: next, statusSince: since, flashNotified: false };
+    }
+  }
+  const since = row.statusSince;
+  const missing = typeof since !== "number" || !Number.isFinite(since) || since <= 0;
+  if (stored() !== "reserved" && missing) {
+    row = { ...row, statusSince: now, flashNotified: false };
+  } else if (
+    stored() !== "sat_no_order" &&
+    stored() !== "reserved" &&
+    typeof since === "number" &&
+    since > 0 &&
+    statusClockMs(row, now) == null
+  ) {
+    row = { ...row, statusSince: now, flashNotified: false };
+  }
+  return row;
 }
 
 export const PIPELINE_RANK: Record<FloorPipelineStatus, number> = {

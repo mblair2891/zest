@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_322_table_sla",
+    date: "2026-10-20",
+    title: "Table flash follows the status",
+    summary: "A paid table stops flashing. A status flashes after its own minutes.",
+    body: "A paid table stops flashing when the check closes. The clock starts over for that status. Empty and Closed · needs bus flash only after their own minutes. Marking the table cleaned stops the flash.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_321_transfer_idempotency",
     date: "2026-10-20",
     title: "Transfer idempotency",

@@ -254,7 +254,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Open checks paint the table from the check, not stored Empty. CHECK OPEN is the check screen heading — the map does not print it on the block. Back to floor leaves that table highlighted.",
         "Deleting an item or voiding an open check takes it off the open check and the floor map. An item that has not been sent is removed. A sent item is voided and that station gets a cancel ticket. Void check clears the open check and the table goes empty. Paid checks stay frozen. Refresh and the other stations keep it gone.",
         "Bar stools use those same colors. Empty is a solid block. Sat, drinks, food, delivered, dining unpaid, and closed · needs bus fill the stool the same way. Picking one section, such as Bar, shows only that section and sizes the seats to the screen. The choice is per person and does not change the published floor.",
-        "When minutes are exceeded the table shape flashes red. No square outline and no SLA label on the map. A staff notice still fires. A status change clears the flash.",
+        "Flash uses the current status and how long the table has been in that status. A paid table stops flashing when the check closes. The clock starts over for Closed · needs bus, or for Empty when that step is off. Those statuses flash only after the minutes set for them. Zero or blank is off. Marking the table cleaned, or clearing it, stops the flash. The table shape flashes red. No square outline and no SLA label on the map. A staff notice still fires. A status change clears the flash.",
       ),
       steps(
         "Settings → Floor statuses, flash & QR.",

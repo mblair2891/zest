@@ -798,7 +798,15 @@ async function upsertTableRow(
       server_id = excluded.server_id,
       guest_count = excluded.guest_count,
       seated_at_ms = excluded.seated_at_ms,
-      status_since_ms = excluded.status_since_ms,
+      status_since_ms = case
+        when pos_table_status.status is distinct from excluded.status then ${now}
+        when excluded.status <> 'sat_no_order'
+          and excluded.status <> 'reserved'
+          and pos_table_status.seated_at_ms is not null
+          and pos_table_status.status_since_ms <= pos_table_status.seated_at_ms
+          then ${now}
+        else pos_table_status.status_since_ms
+      end,
       updated_at_ms = excluded.updated_at_ms
   `;
 }
@@ -1297,7 +1305,23 @@ export async function recordPayment(
       updated_at_ms = ${now}
     where id = ${input.checkId} and location_id = ${ctx.locationId}
   `;
-  if (input.table) await upsertTableRow(sql, ctx, input.table, now);
+  if (input.table) {
+    let table = input.table;
+    if (status === "closed") {
+      const paid = table.status === "empty" ? "empty" : "closed_not_cleaned";
+      table = { ...table, status: paid, statusSince: now };
+    }
+    await upsertTableRow(sql, ctx, table, now);
+    if (status === "closed") {
+      await sql`
+        update pos_table_status set
+          status = ${table.status},
+          status_since_ms = ${now},
+          updated_at_ms = ${now}
+        where location_id = ${ctx.locationId} and table_id = ${table.tableId}
+      `;
+    }
+  }
   return { ok: true };
 }
 
@@ -1355,7 +1379,7 @@ export async function listOpenFloor(
       serverId: t.server_id,
       guestCount: t.guest_count == null ? null : n(t.guest_count),
       seatedAt: t.seated_at_ms == null ? null : n(t.seated_at_ms),
-      statusSince: n(t.status_since_ms, now),
+      statusSince: n(t.status_since_ms),
     }));
 
   const events = await sql<{

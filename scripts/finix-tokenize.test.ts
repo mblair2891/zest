@@ -95,7 +95,7 @@ test("the card form, the token exchange, and the guide stay on the hosted form",
   assert.match(charge, /\/authorizations/);
   assert.match(guide, /id: "card-not-present"/);
   assert.match(guide, /Settings → Payments/);
-  assert.match(guide, /matches Guide v2026\.10\.321/);
+  assert.match(guide, /matches Guide v2026\.10\.322/);
   assert.match(migration, /payment_instrument_id/);
   assert.doesNotMatch(migration, /token_id/);
 });
