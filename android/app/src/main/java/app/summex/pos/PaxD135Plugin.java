@@ -402,6 +402,7 @@ public class PaxD135Plugin extends Plugin {
             call.resolve(ret);
             return;
         }
+        // Key for this attempt. The check stores the UUID. A retry sends the same value.
         final String idempotencyId = call.getString("idempotencyId", "");
         if (!isSaleIdempotencyId(idempotencyId)) {
             JSObject ret = new JSObject();
@@ -597,7 +598,16 @@ public class PaxD135Plugin extends Plugin {
             // The check id is metadata. It is not a Finix buyer identity.
             HashMap<String, String> tags = new HashMap<>();
             if (checkId != null && !checkId.isEmpty()) tags.put("check", checkId);
-            Log.i("PaxD135", "SDK sale start cents " + amount + " idempotency " + idempotencyId);
+            // The key is set here, from the check's stored attempt id. It is the last
+            // startTransaction argument. SDK 3.8.0 writes it on the sale body as idempotency_id.
+            String saleRequest =
+                "SDK sale request amountCents=" + amount
+                + " transactionType=AUTHORIZATION"
+                + " buyerIdentityId=null"
+                + " tags.check=" + checkId
+                + " promptForSignature=Never"
+                + " idempotency_id=" + idempotencyId;
+            Log.i("PaxD135", saleRequest);
             current.startTransaction(
                 amount,
                 TransactionType.AUTHORIZATION,

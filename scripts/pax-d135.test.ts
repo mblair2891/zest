@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import {
   PAX_MODEL,
   PAX_MSG,
+  androidSdkSaleRequest,
+  androidSdkSaleRequestLog,
   checkAlreadyCaptured,
   classifyPaxError,
   checkEntityBannerLabel,
@@ -308,6 +310,118 @@ test("a reader sale reuses one idempotency id until the card is declined", async
     assert.equal(duplicate.keepIdempotency, true);
     assert.doesNotMatch(duplicate.message, /Card declined/);
   }
+});
+
+test("a card-present SDK sale includes a non-null idempotency_id", async () => {
+  resetPaxSaleGuards();
+  const saved = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const lines: string[] = [];
+  const prevInfo = console.info;
+  console.info = (...args: unknown[]) => {
+    lines.push(args.map((part) => String(part)).join(" "));
+  };
+  const base = {
+    amountCents: 4800,
+    locationLive: false,
+    reader,
+    sellingEntityId: "ent_bbq",
+    alreadyCaptured: false,
+    settingUp: false,
+    connected: true,
+  };
+  try {
+    let forwarded: string | null = null;
+    await runAndroidPaxSale({
+      ...base,
+      checkId: "chk_sdk_key",
+      idempotencyId: saved,
+      bridge: {
+        sale: async (input) => {
+          const request = androidSdkSaleRequest({
+            amountCents: input.amountCents,
+            checkId: input.checkId,
+            idempotencyId: input.idempotencyId,
+          });
+          forwarded = request.idempotency_id;
+          assert.equal(request.transactionType, "AUTHORIZATION");
+          assert.equal(request.buyerIdentityId, null);
+          assert.equal(request.tags.check, "chk_sdk_key");
+          assert.equal(request.promptForSignature, "Never");
+          assert.equal(request.idempotency_id, saved);
+          assert.ok(request.idempotency_id);
+          return { ok: false, code: "timeout", message: "timed out" };
+        },
+      },
+    });
+    assert.equal(forwarded, saved);
+
+    let minted: string | null = null;
+    await runAndroidPaxSale({
+      ...base,
+      checkId: "chk_sdk_mint",
+      idempotencyId: null,
+      bridge: {
+        sale: async (input) => {
+          const request = androidSdkSaleRequest({
+            amountCents: input.amountCents,
+            checkId: input.checkId,
+            idempotencyId: input.idempotencyId,
+          });
+          minted = request.idempotency_id;
+          assert.match(request.idempotency_id, uuid);
+          assert.notEqual(request.idempotency_id, "null");
+          return { ok: false, code: "timeout", message: "timed out" };
+        },
+      },
+    });
+    assert.match(minted ?? "", uuid);
+  } finally {
+    console.info = prevInfo;
+  }
+
+  const storedLine = lines.find((line) => line.includes("tags.check=chk_sdk_key"));
+  const mintedLine = lines.find((line) => line.includes("tags.check=chk_sdk_mint"));
+  assert.ok(storedLine);
+  assert.ok(mintedLine);
+  assert.equal(storedLine, androidSdkSaleRequestLog(androidSdkSaleRequest({
+    amountCents: 4800,
+    checkId: "chk_sdk_key",
+    idempotencyId: saved,
+  })));
+  assert.match(storedLine, /idempotency_id=aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/);
+  assert.doesNotMatch(storedLine, /idempotency_id=null|idempotency_id=\s/);
+  assert.match(mintedLine ?? "", /idempotency_id=[0-9a-f-]{36}/i);
+  assert.doesNotMatch(mintedLine ?? "", /idempotency_id=null/);
+  console.log(storedLine);
+  console.log(mintedLine);
+
+  assert.throws(
+    () => androidSdkSaleRequest({ amountCents: 100, checkId: "chk", idempotencyId: "" }),
+    /missing idempotency_id/,
+  );
+  assert.throws(
+    () => androidSdkSaleRequest({ amountCents: 100, checkId: "chk", idempotencyId: "null" }),
+    /missing idempotency_id/,
+  );
+
+  const plugin = readFileSync("android/app/src/main/java/app/summex/pos/PaxD135Plugin.java", "utf8");
+  assert.equal((plugin.match(/\.startTransaction\s*\(/g) || []).length, 1);
+  const sale = plugin.slice(plugin.indexOf("void saleOnWorker"), plugin.indexOf("void doScan"));
+  const logAt = sale.indexOf('idempotency_id=" + idempotencyId');
+  const callAt = sale.indexOf("current.startTransaction(");
+  assert.ok(logAt >= 0 && callAt > logAt);
+  assert.match(sale, /PromptForSignature\.Never\.INSTANCE,\s*idempotencyId\s*\)/);
+  assert.doesNotMatch(sale, /startTransaction\([\s\S]*?null\s*\)\s*;/);
+  const saleMethod = plugin.slice(
+    plugin.indexOf("public void sale(PluginCall call)"),
+    plugin.indexOf("private static boolean isSaleIdempotencyId"),
+  );
+  assert.match(saleMethod, /if \(!isSaleIdempotencyId\(idempotencyId\)\)[\s\S]*return;[\s\S]*saleOnWorker\(/);
+  const bridge = readFileSync("src/lib/payments/pax-d135-native.ts", "utf8");
+  assert.match(bridge, /sale: \(input\) => PaxD135\.sale\(input\)/);
+  const dialog = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
+  assert.match(dialog, /idempotencyId,\s*bridge: androidPaxBridge\(\)/);
 });
 
 test("decline leaves the check open", async () => {

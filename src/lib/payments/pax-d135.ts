@@ -111,6 +111,7 @@ export function reuseCardSaleIdempotencyId(existing: string | null | undefined):
 /**
  * Id for this check's in-flight reader sale.
  * A caller-supplied UUID wins. Otherwise the id from the last attempt on this check is reused.
+ * The station stores that UUID on the check. runAndroidPaxSale sends it as idempotency_id.
  */
 export function cardSaleIdempotencyFor(checkId: string, existing?: string | null): string {
   const given = String(existing ?? "").trim();
@@ -1359,6 +1360,52 @@ export function classifyPaxError(
   return { message: DECLINE_GENERIC, leaveOpen: true };
 }
 
+/**
+ * Parameters passed to the Finix Android SDK card-present sale.
+ * The key is the check's stored attempt UUID. PaxD135Plugin.saleOnWorker logs this
+ * same line, then passes idempotency_id as the last startTransaction argument.
+ */
+export type AndroidSdkSaleRequest = {
+  amountCents: number;
+  transactionType: "AUTHORIZATION";
+  buyerIdentityId: null;
+  tags: { check: string };
+  promptForSignature: "Never";
+  idempotency_id: string;
+};
+
+/** Refuse a sale payload whose idempotency_id is missing or not a UUID v4. */
+export function androidSdkSaleRequest(input: {
+  amountCents: number;
+  checkId: string;
+  idempotencyId: string;
+}): AndroidSdkSaleRequest {
+  const idempotency_id = String(input.idempotencyId ?? "").trim();
+  if (!CARD_SALE_UUID.test(idempotency_id)) {
+    throw new Error("SDK sale request missing idempotency_id");
+  }
+  return {
+    amountCents: input.amountCents,
+    transactionType: "AUTHORIZATION",
+    buyerIdentityId: null,
+    tags: { check: input.checkId },
+    promptForSignature: "Never",
+    idempotency_id,
+  };
+}
+
+/** Log line for the SDK sale parameters. No card number, password, or merchant id. */
+export function androidSdkSaleRequestLog(request: AndroidSdkSaleRequest): string {
+  return (
+    `SDK sale request amountCents=${request.amountCents}` +
+    ` transactionType=${request.transactionType}` +
+    ` buyerIdentityId=null` +
+    ` tags.check=${request.tags.check}` +
+    ` promptForSignature=${request.promptForSignature}` +
+    ` idempotency_id=${request.idempotency_id}`
+  );
+}
+
 export type PaxBridge = {
   sale: (input: {
     amountCents: number;
@@ -1455,11 +1502,17 @@ export async function runAndroidPaxSale(input: {
     };
   }
   const idempotencyId = cardSaleIdempotencyFor(input.checkId, input.idempotencyId);
-  const result = await input.bridge.sale({
+  const request = androidSdkSaleRequest({
     amountCents: input.amountCents,
     checkId: input.checkId,
-    tipCents: input.tipCents ?? 0,
     idempotencyId,
+  });
+  console.info(androidSdkSaleRequestLog(request));
+  const result = await input.bridge.sale({
+    amountCents: request.amountCents,
+    checkId: request.tags.check,
+    tipCents: input.tipCents ?? 0,
+    idempotencyId: request.idempotency_id,
   });
   if (!result.ok || !result.transferId) {
     const raw = `${result.code || ""} ${result.message || ""}`;
