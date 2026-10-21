@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import type { Table } from "@/lib/pos/types";
 import { asBoothKind } from "@/lib/pos/floor-booth";
 import { uprightCounterDeg } from "@/lib/pos/floor-architecture";
+import { joinedNumberLine } from "@/lib/pos/floor-fit";
 import { diningTableOutline, railStoolCenters, seatingScale } from "@/lib/pos/floor-seating";
 import { BoothNumber, FloorBoothGlyph, FloorBoothMark } from "@/components/pos/FloorBoothMark";
 import { FloorCouchGlyph, FloorCouchMark } from "@/components/pos/FloorCouchMark";
@@ -23,6 +24,7 @@ export function FloorFixtureArt({
   hollow = false,
   ink,
   hairline = false,
+  marked = false,
 }: {
   table: Pick<Table, "kind" | "shape" | "w" | "h" | "seats" | "rotation">;
   tableFill: string;
@@ -42,6 +44,8 @@ export function FloorFixtureArt({
   ink?: string;
   /** Editor stool tiles. The live floor paints stools as solid status blocks. */
   hairline?: boolean;
+  /** Open check or combine target. A heavier edge on the shape, not a square ring. */
+  marked?: boolean;
 }) {
   const booth = asBoothKind(table.kind, table.shape);
   const couch = table.kind === "couch";
@@ -60,6 +64,7 @@ export function FloorFixtureArt({
         className={className}
         hollow={hollow}
         ink={ink}
+        marked={marked}
         w={table.w}
         h={table.h}
       >
@@ -174,6 +179,7 @@ function StatusFixture({
   children,
   hollow = false,
   ink,
+  marked = false,
   w,
   h,
 }: {
@@ -189,6 +195,7 @@ function StatusFixture({
   children?: ReactNode;
   hollow?: boolean;
   ink?: string;
+  marked?: boolean;
   w: number;
   h: number;
 }) {
@@ -196,8 +203,18 @@ function StatusFixture({
   const paint = tableFill && tableFill !== "none" && tableFill !== "transparent" ? tableFill : "#f7f4ee";
   const number = ink || "#1c1917";
   const shape = couch ? "couch" : booth ? "booth" : bar ? "stool" : round ? "round" : "rect";
-  const mark = diningTableOutline(round);
+  const raw = diningTableOutline(round);
+  const mark = raw.round
+    ? { ...raw, rx: raw.rx * 0.9, ry: raw.ry * 0.9 }
+    : {
+        ...raw,
+        x: raw.x + 4,
+        y: raw.y + 4,
+        width: raw.width - 8,
+        height: raw.height - 8,
+      };
   const tableRect = !couch && !booth && !bar && !round;
+  const party = joinedNumberLine(joined);
   return (
     <div
       className={cn("relative h-full w-full", className)}
@@ -251,6 +268,31 @@ function StatusFixture({
             vectorEffect="non-scaling-stroke"
           />
         ) : null}
+        {marked && round && mark.round ? (
+          <ellipse
+            cx={mark.cx}
+            cy={mark.cy}
+            rx={mark.rx}
+            ry={mark.ry}
+            fill="none"
+            stroke={edge}
+            strokeWidth={4}
+            vectorEffect="non-scaling-stroke"
+          />
+        ) : null}
+        {marked && !mark.round && !booth && !couch && !bar ? (
+          <rect
+            x={mark.x}
+            y={mark.y}
+            width={mark.width}
+            height={mark.height}
+            rx={mark.rx}
+            fill="none"
+            stroke={edge}
+            strokeWidth={4}
+            vectorEffect="non-scaling-stroke"
+          />
+        ) : null}
       </svg>
       {label && booth ? (
         <BoothNumber
@@ -279,7 +321,7 @@ function StatusFixture({
               className="mt-[3%] font-semibold leading-tight"
               style={{ fontSize: "22cqmin", fontWeight: 700 }}
             >
-              {joined.join(" · ")}
+              {party}
             </span>
           ) : null}
         </span>

@@ -6,7 +6,6 @@ import {
   Plus,
   Combine,
   Split,
-  Lock,
   QrCode,
   Pencil,
   Handshake,
@@ -24,7 +23,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePosStore } from "@/lib/pos/store";
-import { useNotifyStore } from "@/lib/pos/notify-store";
 import { usePlatformStore } from "@/lib/pos/platform-store";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import type { Employee, Order, RestaurantSettings, Table } from "@/lib/pos/types";
@@ -97,7 +95,6 @@ import {
   CHECK_HOLDS,
   effectiveTablePipeline,
   openChecksOnTable,
-  tableEmptyWithOpenCheck,
   tableIsVacant,
   type CheckHoldKind,
 } from "@/lib/pos/check-integrity";
@@ -172,7 +169,6 @@ export function FloorView({
     const id = s.activeLocationId;
     return s.locations.find((l) => l.id === id) ?? null;
   });
-  const foodUpUntil = useNotifyStore((s) => s.foodUpUntil);
   const clock = usePosStore((s) => s.clock);
   const locId = usePosStore((s) => s.tenantLocationId);
   const logout = usePosStore((s) => s.logout);
@@ -516,7 +512,7 @@ export function FloorView({
             viewW: Math.max(1, liveView.w),
             viewH: Math.max(1, liveView.h),
             marginPx: ROOM_FIT_MARGIN_PX,
-            minTapPx: 72,
+            minTapPx: 88,
           })
         : fitRoomToView({
             room: floorRoom ?? DEFAULT_ROOM,
@@ -579,53 +575,27 @@ export function FloorView({
   return (
     <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden" data-demo="floor" data-checklist-focus="floor" tabIndex={-1}>
       {!mapOnly && (
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
-        <h2 className="mr-2 text-sm font-semibold">
+      <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-surface px-3 py-1.5" data-floor-chrome="top">
+        <h2 className="shrink-0 text-sm font-semibold">
           Floor · {saasLoc?.code ?? loc?.code ?? settings.name}
         </h2>
         <ClockedInChip />
-        <NoSaleControl size={mapOnly ? "lg" : "sm"} className={mapOnly ? "h-12" : undefined} />
-        {!mapOnly && (
+        <NoSaleControl size="sm" />
         <GuideLearnLink topicId="floor-tables" compact>
           Learn
         </GuideLearnLink>
-        )}
-        {!barPick && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex shrink-0 gap-1" data-floor-sections="">
           <Button
-            size={mapOnly ? "lg" : "sm"}
-            className={mapOnly ? "station-touch h-12" : undefined}
-            variant={floorScope === "entire" ? "default" : "outline"}
+            size="sm"
+            variant={effectiveSection === "All" ? "default" : "outline"}
+            data-floor-section="All"
             onClick={() => rememberSection("All")}
           >
-            Entire location
+            All
           </Button>
-          <Button
-            size={mapOnly ? "lg" : "sm"}
-            className={mapOnly ? "station-touch h-12" : undefined}
-            variant={floorScope === "section" ? "default" : "outline"}
-            onClick={() => rememberSection(sectionTabs[0]?.name ?? "All")}
-          >
-            By section
-          </Button>
-        </div>
-        )}
-        <div className="flex flex-wrap gap-1" data-floor-sections="">
-          {floorScope === "entire" && (
+          {showMine && (
             <Button
-              size={mapOnly ? "lg" : "sm"}
-              className={mapOnly ? "station-touch h-12" : undefined}
-              variant={effectiveSection === "All" ? "default" : "outline"}
-              data-floor-section="All"
-              onClick={() => rememberSection("All")}
-            >
-              All
-            </Button>
-          )}
-          {floorScope === "entire" && showMine && (
-            <Button
-              size={mapOnly ? "lg" : "sm"}
-              className={mapOnly ? "station-touch h-12" : undefined}
+              size="sm"
               variant={effectiveSection === "Mine" ? "default" : "outline"}
               data-floor-section="Mine"
               onClick={() => rememberSection("Mine")}
@@ -636,11 +606,11 @@ export function FloorView({
           {sectionTabs.map((s) => (
             <Button
               key={s.id}
-              size={mapOnly ? "lg" : "sm"}
+              size="sm"
               variant={effectiveSection === s.name ? "default" : "outline"}
               data-floor-section={s.name}
               onClick={() => rememberSection(s.name)}
-              className={mapOnly ? "station-touch h-12 gap-1.5" : "gap-1.5"}
+              className="gap-1.5"
             >
               <span
                 className="h-2 w-2 rounded-full"
@@ -650,12 +620,12 @@ export function FloorView({
             </Button>
           ))}
         </div>
-        <div className="ml-auto flex flex-wrap gap-1.5">
+        <div className="ml-auto flex shrink-0 gap-1">
           {FLOOR_PIPELINE.filter((st) => floorCfg.enabled[st] !== false).map((st) => (
             <Badge
               key={st}
               variant="secondary"
-              className="tabular"
+              className="tabular px-1.5 py-0 text-[10px]"
               style={{
                 background: floorCfg.colors[st],
                 color: contrastInk(floorCfg.colors[st]),
@@ -665,7 +635,7 @@ export function FloorView({
             </Badge>
           ))}
           {(counts.check_open ?? 0) > 0 && (
-            <Badge variant="secondary" className="tabular bg-amber-700 text-white">
+            <Badge variant="secondary" className="tabular bg-amber-700 px-1.5 py-0 text-[10px] text-white">
               CHECK OPEN {counts.check_open}
             </Badge>
           )}
@@ -720,18 +690,57 @@ export function FloorView({
         )}
       >
         {mapOnly ? (
-          <div className="relative min-h-0 min-w-0 flex-1" data-floor-house="venue" data-floor-paint={painted.length}>
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-2">
-              <div className="pointer-events-auto min-w-0 rounded-xl bg-black/35 px-2 py-1 text-white">
-                <p className="truncate text-sm font-semibold leading-tight">{emp?.name ?? "Station"}</p>
-                <p className="text-[11px] tabular leading-tight">{formatTime(clock || Date.now(), settings.timezone)}</p>
-                <ClockedInChip className="text-[10px] text-white/80" />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#e4dfd4]" data-floor-house="venue" data-floor-paint={painted.length}>
+            <header className="flex shrink-0 items-center gap-2 border-b border-black/10 px-2 py-1.5" data-floor-chrome="top">
+              <div className="min-w-0 shrink-0">
+                <p className="truncate text-sm font-semibold leading-tight text-[#1c1917]">{emp?.name ?? "Station"}</p>
+                <p className="text-[11px] tabular leading-tight text-[#1c1917]/70">{formatTime(clock || Date.now(), settings.timezone)}</p>
               </div>
-              <div className="pointer-events-auto flex items-center gap-1 rounded-xl bg-black/35 p-1 text-white">
+              <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto" data-floor-sections="">
+                <button
+                  type="button"
+                  data-floor-section="All"
+                  className={cn(
+                    "station-touch shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold",
+                    effectiveSection === "All" ? "bg-[#1c1917] text-white" : "bg-white/80 text-[#1c1917]",
+                  )}
+                  onClick={() => rememberSection("All")}
+                >
+                  All
+                </button>
+                {showMine && (
+                  <button
+                    type="button"
+                    data-floor-section="Mine"
+                    className={cn(
+                      "station-touch shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold",
+                      effectiveSection === "Mine" ? "bg-[#1c1917] text-white" : "bg-white/80 text-[#1c1917]",
+                    )}
+                    onClick={() => rememberSection("Mine")}
+                  >
+                    Mine
+                  </button>
+                )}
+                {sectionTabs.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    data-floor-section={s.name}
+                    className={cn(
+                      "station-touch shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold",
+                      effectiveSection === s.name ? "bg-[#1c1917] text-white" : "bg-white/80 text-[#1c1917]",
+                    )}
+                    onClick={() => rememberSection(s.name)}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+              <div className="flex shrink-0 items-center gap-0.5 text-[#1c1917]">
                 <NotificationBell />
                 <button
                   type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full"
                   aria-label="Print"
                   onClick={() => {
                     const btn = document.querySelector<HTMLButtonElement>("[data-print-check]");
@@ -742,88 +751,74 @@ export function FloorView({
                 </button>
                 <button
                   type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full"
                   aria-label="Switch user"
                   onClick={() => logout()}
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
               </div>
-            </div>
+            </header>
             {draftBanner && (
               <p
-                className="pointer-events-none absolute left-1/2 top-28 z-20 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white"
+                className="shrink-0 bg-[#1c1917] px-3 py-1 text-center text-xs font-medium text-white"
                 data-floor-draft-banner
               >
                 {FLOOR_DRAFT_BANNER}
               </p>
             )}
-            <div
-              className="pointer-events-auto absolute inset-x-2 top-20 z-30 flex gap-1 overflow-x-auto"
-              data-floor-sections=""
-            >
-              <button
-                type="button"
-                data-floor-section="All"
-                className={cn(
-                  "shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold",
-                  effectiveSection === "All" ? "bg-white text-black" : "bg-black/45 text-white",
-                )}
-                onClick={() => rememberSection("All")}
-              >
-                All
-              </button>
-              {sectionTabs.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  data-floor-section={s.name}
-                  className={cn(
-                    "shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold",
-                    effectiveSection === s.name ? "bg-white text-black" : "bg-black/45 text-white",
-                  )}
-                  onClick={() => rememberSection(s.name)}
-                >
-                  {s.name}
-                </button>
-              ))}
+            <div className="relative min-h-0 flex-1">
+              <FloorMapCanvas
+                items={mapItems}
+                focusSection={namedSection}
+                selectedId={floorFocusTableId}
+                onTableClick={onTableClick}
+                onCombine={(draggedId, ontoId) => {
+                  withManager((pin) => joinParty(draggedId, ontoId, pin));
+                }}
+              />
             </div>
-            <FloorMapCanvas
-              items={mapItems}
-              focusSection={namedSection}
-              selectedId={floorFocusTableId}
-              onTableClick={onTableClick}
-              onCombine={(draggedId, ontoId) => {
-                withManager((pin) => joinParty(draggedId, ontoId, pin));
-              }}
-            />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-2 p-2">
-              <div className="pointer-events-auto flex overflow-hidden rounded-xl bg-black/45 text-sm font-semibold text-white">
-                <button type="button" className="px-3 py-2" onClick={() => { setTicketQuery(""); clearFloorIntent(); }}>
+            <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-black/10 px-2 py-1.5" data-floor-chrome="bottom">
+              <div className="flex overflow-hidden rounded-full bg-white text-sm font-semibold text-[#1c1917]">
+                <button type="button" className="station-touch px-4 py-2" onClick={() => { setTicketQuery(""); clearFloorIntent(); }}>
                   Dine in
                 </button>
                 <button
                   type="button"
-                  className="border-l border-white/20 px-3 py-2"
+                  className="station-touch border-l border-black/10 px-4 py-2"
                   onClick={() => useStationSessionStore.getState().setStationJob("togo")}
                 >
                   To go
                 </button>
               </div>
-              <label className="pointer-events-auto flex items-center gap-1 rounded-xl bg-black/45 px-2 py-1 text-white">
+              <label className="flex min-w-0 items-center gap-1 rounded-full bg-white px-3 py-1 text-[#1c1917]">
                 <span className="text-[11px] font-medium">Tickets</span>
                 <input
                   value={ticketQuery}
                   onChange={(e) => setTicketQuery(e.target.value)}
                   placeholder="Search"
                   aria-label="Tickets search"
-                  className="h-8 w-24 bg-transparent text-sm outline-none placeholder:text-white/60"
+                  className="h-8 w-28 bg-transparent text-sm outline-none placeholder:text-[#1c1917]/40"
                   data-floor-ticket-search
                 />
               </label>
-            </div>
+            </footer>
           </div>
         ) : (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {(selectMode || mergeMode || transferMode) && (
+            <p className="shrink-0 border-b border-black/10 bg-[#e4dfd4] px-3 py-1.5 text-center text-xs font-medium text-[#1c1917]">
+              {selectMode
+                ? "Tap the party table first, then the tables that join it."
+                : mergeMode
+                  ? mergePrimary
+                    ? "Tap the table that joins this party"
+                    : "Tap the party table, then the table that joins it"
+                  : transferFrom
+                    ? "Tap the destination table"
+                    : "Tap the table with the check"}
+            </p>
+          )}
         <div
           ref={liveViewRef}
           className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-[#e4dfd4]"
@@ -840,33 +835,15 @@ export function FloorView({
               transform: `translate(${liveFit.originX}px, ${liveFit.originY}px)`,
             }}
           >
-            <div className="pointer-events-none absolute inset-x-4 top-3 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-              <span>{effectiveSection === "All" || effectiveSection === "Mine" ? "Dining room" : effectiveSection}</span>
-              <span>Bar →</span>
-            </div>
             {visible.map((t) => {
-              const checks = openChecksOnTable(t, orders);
-              const order = checks[0] ?? orders.find((o) => o.id === t.orderId);
-              const totals = order ? computeTotals(order, settings) : null;
-              const server = employees.find((e) => e.id === t.serverId);
               const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
-              const checkOpen = checks.length > 0;
-              const integrityWarn = tableEmptyWithOpenCheck(t, orders);
               const fill =
                 st === "reserved"
                   ? "#e8e6e1"
                   : floorCfg.colors[st] ?? "#ffffff";
               const ink = contrastInk(fill);
-              const merged =
-                (t.mergedChildIds?.length ?? 0) > 0
-                  ? `+${t.mergedChildIds!.length}`
-                  : "";
-              const foodUp =
-                (foodUpUntil[t.label.replace(/^T/i, "").trim().toLowerCase()] ??
-                  0) > clock ||
-                (foodUpUntil[t.label.trim().toLowerCase()] ?? 0) > clock;
+              const cluster = clusterNumbers(tables, t.id);
               const flashing = tableFlash(t, floorCfg, clock || Date.now(), st);
-              const secColor = sectionColorForTable(t, floorSections);
               const orderAcc = tableAccess(t.id, "order");
               const seatAcc = tableAccess(t.id, "seat");
               const outOfSection =
@@ -874,8 +851,13 @@ export function FloorView({
                 !orderAcc.ok &&
                 orderAcc.code !== "view_only" &&
                 !seatAcc.ok;
-              const grant =
-                emp && activeGrantForTable(extraTableGrants, emp.id, t.id);
+              const marked =
+                detailLive?.id === t.id ||
+                floorFocusTableId === t.id ||
+                transferFrom === t.id ||
+                mergePrimary === t.id ||
+                picked.includes(t.id) ||
+                dropId === t.id;
               if (isArchitectureKind(t.kind)) {
                 return (
                   <div
@@ -939,16 +921,8 @@ export function FloorView({
                     color: ink,
                   }}
                   className={cn(
-                    "absolute border-0 bg-transparent p-0 text-center transition hover:brightness-110 active:scale-[0.98]",
-                    (transferFrom === t.id ||
-                      mergePrimary === t.id ||
-                      picked.includes(t.id) ||
-                      dropId === t.id) &&
-                      "ring-2 ring-primary",
-                    (t.mergedChildIds?.length ?? 0) > 0 && "ring-1 ring-info/60",
-                    foodUp && "ring-2 ring-primary animate-pulse",
+                    "absolute border-0 bg-transparent p-0 text-center",
                     flashing && "table-sla-flash",
-                    integrityWarn && "ring-2 ring-amber-600",
                     outOfSection && "opacity-55",
                     (barPick || layout.handheld) &&
                       isBarRailSeat(t) &&
@@ -959,55 +933,14 @@ export function FloorView({
                     table={t}
                     tableFill={fill}
                     outline={fill}
-                    sectionColor={secColor}
-                    label={`${t.label}${merged}`}
+                    label={cluster.primary}
+                    joined={cluster.joined}
                     rotation={t.rotation ?? 0}
                     mode="status"
                     hollow={st === "empty"}
                     ink={ink}
+                    marked={marked}
                   />
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0.5 z-10 flex flex-col items-center">
-                  {foodUp && (
-                    <span className="mt-0.5 rounded bg-primary px-1 text-[9px] font-bold uppercase tracking-wide text-primary-foreground">
-                      Up
-                    </span>
-                  )}
-                  {flashing && (
-                    <span className="mt-0.5 rounded bg-danger px-1 text-[9px] font-bold uppercase tracking-wide text-danger-foreground">
-                      SLA
-                    </span>
-                  )}
-                  {checkOpen && (
-                    <span className="mt-0.5 rounded bg-amber-700 px-1 text-[9px] font-bold uppercase tracking-wide text-white">
-                      CHECK OPEN
-                    </span>
-                  )}
-                  {grant && (
-                    <span className="mt-0.5 rounded bg-info px-1 text-[9px] font-bold uppercase tracking-wide text-info-foreground">
-                      Grant
-                    </span>
-                  )}
-                  {t.releasedAt && (
-                    <span className="mt-0.5 rounded bg-amber-600 px-1 text-[9px] font-bold uppercase tracking-wide text-white">
-                      Open
-                    </span>
-                  )}
-                  {outOfSection && tableIsVacant(t, orders) && (
-                    <Lock className="mt-0.5 h-3 w-3 text-muted-foreground" />
-                  )}
-                  {totals && (
-                    <span className="mt-0.5 text-[10px] font-medium tabular">
-                      {formatCurrency(totals.balanceCents || totals.totalCents)}
-                    </span>
-                  )}
-                  {server && (
-                    <span
-                      className="mt-1 h-1.5 w-1.5 rounded-full"
-                      style={{ background: server.color }}
-                      title={server.name}
-                    />
-                  )}
-                  </div>
                 </button>
               );
             })}
@@ -1017,25 +950,7 @@ export function FloorView({
               </p>
             )}
           </div>
-          <p className="pointer-events-none absolute inset-x-2 bottom-2 z-10 text-center text-xs text-muted-foreground">
-            {selectMode
-              ? "Tap the party table first, then the tables that join it."
-              : mergeMode
-              ? mergePrimary
-                ? "Tap the table that joins this party"
-                : "Tap the party table, then the table that joins it"
-              : transferMode
-                ? transferFrom
-                  ? "Tap destination table"
-                  : "Tap table with a check to move"
-                : barPick
-                  ? "Tap a stool — empty opens a tab, occupied attaches the check"
-                : mapOnly
-                  ? "Tap a table · color fill = status"
-                : locked
-                  ? "Color fill = status · top bar = section · locked tables need a grant"
-                  : "Tap a table · drag one table onto another to join its party"}
-          </p>
+        </div>
         </div>
         )}
 
@@ -1045,14 +960,14 @@ export function FloorView({
             "min-h-0 w-full shrink-0 overflow-y-auto border-border bg-surface",
             layout.twoCol
               ? "w-72 border-l"
-              : "max-h-[42vh] border-t",
+              : "max-h-[32vh] border-t",
           )}
         >
           <div className="space-y-2 p-2">
             {isHostStand && !hostStand && (
               <Button
                 className="w-full"
-                size="lg"
+                size={layout.twoCol ? "lg" : "sm"}
                 onClick={() => setView("waitlist")}
               >
                 <Users className="h-4 w-4" />
@@ -1062,7 +977,7 @@ export function FloorView({
             {!chromeActions && !barPick && showHostBarTab && (
             <Button
               className="w-full"
-              size="lg"
+              size={layout.twoCol ? "lg" : "sm"}
               onClick={() => beginBarTabPick()}
             >
               <Plus className="h-4 w-4" />
@@ -1073,7 +988,7 @@ export function FloorView({
             <Button
               className="w-full"
               variant="outline"
-              size="lg"
+              size={layout.twoCol ? "lg" : "sm"}
               onClick={() => {
                 clearFloorIntent();
                 setView("takeout");
@@ -1085,7 +1000,7 @@ export function FloorView({
             <Button
               className="w-full"
               variant={transferMode ? "default" : "outline"}
-              size="lg"
+              size={layout.twoCol ? "lg" : "sm"}
               onClick={() => {
                 setMergeMode(false);
                 setMergePrimary(null);
@@ -1099,7 +1014,7 @@ export function FloorView({
             <Button
               className="w-full"
               variant={mergeMode || selectMode ? "default" : "outline"}
-              size="lg"
+              size={layout.twoCol ? "lg" : "sm"}
               onClick={() => {
                 setTransferMode(false);
                 setTransferFrom(null);
@@ -1131,7 +1046,7 @@ export function FloorView({
             <Button
               className="w-full"
               variant={mergeMode ? "default" : "outline"}
-              size="lg"
+              size={layout.twoCol ? "lg" : "sm"}
               onClick={() => {
                 setTransferMode(false);
                 setTransferFrom(null);
@@ -1146,7 +1061,7 @@ export function FloorView({
             <Button
               className="w-full"
               variant="outline"
-              size="lg"
+              size={layout.twoCol ? "lg" : "sm"}
               onClick={() => {
                 const merged = tables.find(
                   (t) => (t.mergedChildIds?.length ?? 0) > 0,
@@ -1175,6 +1090,7 @@ export function FloorView({
               </Button>
             )}
 
+            {layout.twoCol && (
             <div className="rounded-xl border border-border bg-bg p-3">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 QR · {qrPolicySummary(qrPolicy)}
@@ -1193,7 +1109,9 @@ export function FloorView({
                 </Button>
               )}
             </div>
+            )}
 
+            {layout.twoCol && (
             <div className="rounded-xl border border-border bg-bg p-3">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Sections
@@ -1235,6 +1153,7 @@ export function FloorView({
                 </p>
               )}
             </div>
+            )}
 
             <div className="rounded-xl border border-border bg-bg p-3">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -1248,12 +1167,6 @@ export function FloorView({
                     if (!o) return null;
                     const tot = computeTotals(o, settings);
                     const color = sectionColorForTable(t, floorSections);
-                    const flashing = tableFlash(
-                      t,
-                      floorCfg,
-                      clock || Date.now(),
-                      effectiveTablePipeline(t, orders, tickets, floorCfg),
-                    );
                     return (
                       <button
                         key={t.id}
@@ -1268,11 +1181,6 @@ export function FloorView({
                               style={{ background: color }}
                             />
                             T{t.label}
-                            {flashing && (
-                              <span className="text-[10px] font-bold uppercase text-danger">
-                                SLA
-                              </span>
-                            )}
                           </span>
                           {(t.mergedChildIds?.length ?? 0) > 0 && (
                             <span className="ml-1 text-[10px] text-info">
@@ -1298,6 +1206,7 @@ export function FloorView({
               </div>
             </div>
 
+            {layout.twoCol && (
             <div className="flex items-start gap-2 rounded-xl border border-border bg-bg p-3 text-xs text-muted-foreground">
               <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <p>
@@ -1307,6 +1216,7 @@ export function FloorView({
                 {settings.autoGratPartySize}+.
               </p>
             </div>
+            )}
           </div>
         </aside>
         )}

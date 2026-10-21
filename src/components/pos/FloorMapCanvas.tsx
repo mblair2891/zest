@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Table } from "@/lib/pos/types";
 import { floorMapNumber } from "@/lib/pos/floor-fit";
-import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomFocus, fitRoomToView, fixturePixelBox } from "@/lib/pos/floor-dimensions";
+import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomFocus, fitRoomForTap, fixturePixelBox } from "@/lib/pos/floor-dimensions";
 import { usePosStore } from "@/lib/pos/store";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
@@ -137,14 +137,17 @@ export function FloorMapCanvas({
         viewW: view.w,
         viewH: view.h,
         marginPx: ROOM_FIT_MARGIN_PX,
-        minTapPx: 72,
+        minTapPx: 88,
       });
     }
-    return fitRoomToView({
+    return fitRoomForTap({
       room,
+      fixtures: seats.map((item) => item.table),
       viewW: view.w,
       viewH: view.h,
       marginPx: ROOM_FIT_MARGIN_PX,
+      minTapPx: 84,
+      growCap: 2.25,
     });
   }, [focusSection, items, room, view.w, view.h]);
 
@@ -296,10 +299,8 @@ export function FloorMapCanvas({
                 item.table.kind === "bar_top" && "pointer-events-none",
                 stool && "z-[2]",
                 item.flashing && "table-sla-flash-thin",
-                item.dim && "ring-2 ring-black/30",
-                !arch &&
-                  selectedId === item.table.id &&
-                  "z-20 ring-4 ring-[#1c1917] ring-offset-2 ring-offset-[#e4dfd4]",
+                item.dim && "opacity-40",
+                !arch && selectedId === item.table.id && "z-20",
               )}
               data-floor-selected={!arch && selectedId === item.table.id ? "1" : undefined}
             >
@@ -332,6 +333,7 @@ export function FloorMapCanvas({
                   mode="status"
                   hollow={Boolean(item.hollow)}
                   ink={item.ink}
+                  marked={!arch && selectedId === item.table.id}
                   className="h-full w-full"
                 />
               )}

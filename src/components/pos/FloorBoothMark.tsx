@@ -1,6 +1,7 @@
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { boothTableBox, type BoothKind } from "@/lib/pos/floor-booth";
+import { joinedNumberLine } from "@/lib/pos/floor-fit";
 import { seatingScale } from "@/lib/pos/floor-seating";
 
 const BENCH = "#4a3a34";
@@ -60,7 +61,7 @@ export function BoothNumber({
       </span>
       {live && joined && joined.length > 0 ? (
         <span data-floor-joined className="font-semibold leading-tight" style={{ fontSize: "22cqmin", fontWeight: 700 }}>
-          {joined.join(" · ")}
+          {joinedNumberLine(joined)}
         </span>
       ) : null}
     </span>

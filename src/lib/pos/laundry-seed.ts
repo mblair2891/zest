@@ -89,12 +89,12 @@ export const LAUNDRY_SETTINGS: RestaurantSettings = {
     },
     colors: {
       empty: "#ffffff",
-      sat_no_order: "#dbeafe",
-      ordered_drinks: "#fef3c7",
-      ordered_food: "#d1fae5",
-      food_delivered: "#ccfbf1",
-      food_completed: "#ede9fe",
-      closed_not_cleaned: "#fee2e2",
+      sat_no_order: "#93c5fd",
+      ordered_drinks: "#fcd34d",
+      ordered_food: "#6ee7b7",
+      food_delivered: "#5eead4",
+      food_completed: "#c4b5fd",
+      closed_not_cleaned: "#fda4af",
     },
     flashMinutes: {
       empty: null,

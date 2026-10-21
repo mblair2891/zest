@@ -183,7 +183,7 @@ export function fitRoomFocus(opts: {
   let right = Math.max(...boxes.map((box) => box.right));
   let bottom = Math.max(...boxes.map((box) => box.bottom));
   const span = Math.max(12, Math.min(right - left, bottom - top));
-  const pad = Math.max(8, span * 0.08);
+  const pad = Math.max(12, span * 0.14);
   left = Math.max(0, left - pad);
   top = Math.max(0, top - pad);
   right = Math.min(opts.room.widthIn, right + pad);
@@ -279,6 +279,45 @@ export function twoFingerCamera(
     s,
     x: now.mx - (start.mx - start.x) * k,
     y: now.my - (start.my - start.y) * k,
+  };
+}
+
+/**
+ * Fit the room, then grow it until the smallest seat is easy to tap.
+ * Growth stays within growCap times the fit-to-room scale so a phone can still pan the room.
+ */
+export function fitRoomForTap(opts: {
+  room: FloorRoom;
+  fixtures: Array<{ x: number; y: number; w: number; h: number }>;
+  viewW: number;
+  viewH: number;
+  marginPx?: number;
+  minTapPx?: number;
+  growCap?: number;
+}): { pxPerIn: number; worldW: number; worldH: number; originX: number; originY: number } {
+  const fitted = fitRoomToView(opts);
+  const minTap = opts.minTapPx ?? 0;
+  if (!opts.fixtures.length || minTap <= 0) return fitted;
+  let minIn = Infinity;
+  for (const item of opts.fixtures) {
+    const wIn = Math.max(1, (item.w / 100) * opts.room.widthIn);
+    const hIn = Math.max(1, (item.h / 100) * opts.room.depthIn);
+    minIn = Math.min(minIn, wIn, hIn);
+  }
+  if (!Number.isFinite(minIn) || minIn <= 0) return fitted;
+  const cap = fitted.pxPerIn * (opts.growCap ?? 2.25);
+  const pxPerIn = Math.min(Math.max(fitted.pxPerIn, minTap / minIn), Math.max(fitted.pxPerIn, cap));
+  if (pxPerIn === fitted.pxPerIn) return fitted;
+  const worldW = opts.room.widthIn * pxPerIn;
+  const worldH = opts.room.depthIn * pxPerIn;
+  const fullW = Math.max(1, opts.viewW);
+  const fullH = Math.max(1, opts.viewH);
+  return {
+    pxPerIn,
+    worldW,
+    worldH,
+    originX: (fullW - worldW) / 2,
+    originY: (fullH - worldH) / 2,
   };
 }
 

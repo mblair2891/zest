@@ -78,7 +78,7 @@ test("a 4 foot table draws larger than a 3 foot table on a 40 by 30 room", () =>
   assert.match(editor, /data-floor-dim/);
   assert.match(editor, /data-floor-object-size/);
   const live = readFileSync("src/components/pos/FloorMapCanvas.tsx", "utf8");
-  assert.match(live, /fitRoomToView/);
+  assert.match(live, /fitRoomForTap/);
   assert.match(live, /marginPx: ROOM_FIT_MARGIN_PX/);
   assert.doesNotMatch(live, /data-floor-dim/);
 

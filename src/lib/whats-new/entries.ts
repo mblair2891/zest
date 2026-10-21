@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_323_floor_map",
+    date: "2026-10-20",
+    title: "Clearer floor map",
+    summary: "Larger tables, more space, and one color for each status.",
+    body: "The floor map uses larger shapes, with space between them, and one clear color for each status. Section chips sit off the map. A combined party is one shape with the other numbers under the main number. A paid table stops flashing when the check closes. The clock starts over for that status.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_322_table_sla",
     date: "2026-10-20",
     title: "Table flash follows the status",

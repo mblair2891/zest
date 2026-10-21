@@ -16,6 +16,15 @@ export type FloorFit = {
   box: { x: number; y: number; w: number; h: number };
 };
 
+/** Joined table numbers under the primary. A long party stays on one short line. */
+export function joinedNumberLine(joined: string[] | undefined): string {
+  if (!joined?.length) return "";
+  const shown = joined.slice(0, 4);
+  const extra = joined.length - shown.length;
+  const line = shown.join(" · ");
+  return extra > 0 ? `${line} +${extra}` : line;
+}
+
 export function floorMapNumber(label: string): string {
   const s = String(label ?? "")
     .trim()
