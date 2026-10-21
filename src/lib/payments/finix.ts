@@ -38,6 +38,11 @@ import {
   finixEmbeddedMessage,
   logTipAdjust,
 } from "./tip-capture.ts";
+import {
+  finixAttemptIdempotencyId,
+  finixRetryKeepsIdempotencyId,
+  mintFinixAttemptIdempotencyId,
+} from "./idempotency.ts";
 
 export type PaymentsProvider = "finix" | "sandbox";
 export type PaymentsOnboardingStatus =
@@ -265,14 +270,20 @@ async function finixFetch(
   };
   const bare = path.split("?")[0] ?? path;
   if (payload && method === "POST" && finixPostsIdempotencyId(path)) {
-    const idempotencyId = crypto.randomUUID();
+    const idempotencyId =
+      finixAttemptIdempotencyId(opts?.idempotencyId) ??
+      finixAttemptIdempotencyId(payload.idempotency_id) ??
+      mintFinixAttemptIdempotencyId();
     payload.idempotency_id = idempotencyId;
     headers["Idempotency-Key"] = idempotencyId;
     rememberFinixIdempotency({ method, path: bare, idempotencyId });
-  } else if (payload && opts?.idempotencyId) {
-    payload.idempotency_id = opts.idempotencyId;
-    headers["Idempotency-Key"] = opts.idempotencyId;
-    rememberFinixIdempotency({ method, path: bare, idempotencyId: opts.idempotencyId });
+  } else if (payload) {
+    const idempotencyId = finixAttemptIdempotencyId(opts?.idempotencyId);
+    if (idempotencyId) {
+      payload.idempotency_id = idempotencyId;
+      headers["Idempotency-Key"] = idempotencyId;
+      rememberFinixIdempotency({ method, path: bare, idempotencyId });
+    }
   }
   const res = await fetch(`${finixOrigin(mode)}${path}`, {
     method,
@@ -456,6 +467,7 @@ export async function createTransfer(opts: {
   amountCents: number;
   currency?: string;
   mode?: FinixMode;
+  idempotencyId?: string;
 }): Promise<FinixTransferResult> {
   const mode = opts.mode ?? "sandbox";
   if (opts.amountCents <= 0) {
@@ -469,11 +481,17 @@ export async function createTransfer(opts: {
     const gate = liveCardGate({ locationLive: true, merchantId: opts.merchantId });
     if (!gate.ok) return { ok: false, sandbox: false, error: gate.error };
   }
-  const res = await finixFetch(mode, "POST", "/transfers", {
-    merchant: opts.merchantId,
-    amount: opts.amountCents,
-    currency: (opts.currency || "USD").toLowerCase(),
-  });
+  const res = await finixFetch(
+    mode,
+    "POST",
+    "/transfers",
+    {
+      merchant: opts.merchantId,
+      amount: opts.amountCents,
+      currency: (opts.currency || "USD").toLowerCase(),
+    },
+    { idempotencyId: opts.idempotencyId },
+  );
   if (!res.ok) {
     return { ok: false, sandbox: mode === "sandbox", error: transferError(res, "Transfer failed") };
   }
@@ -496,7 +514,14 @@ export async function authorizeCardPresent(opts: {
   splits?: Array<{ merchantId: string; amountCents: number }>;
   mode?: FinixMode;
   locationLive?: boolean;
-}): Promise<{ ok: boolean; id?: string; last4?: string | null; error?: string; sandbox: boolean }> {
+}): Promise<{
+  ok: boolean;
+  id?: string;
+  last4?: string | null;
+  error?: string;
+  sandbox: boolean;
+  keepIdempotency?: boolean;
+}> {
   const mode: FinixMode = opts.mode ?? (opts.locationLive ? "live" : "sandbox");
   const sandbox = mode === "sandbox";
   const merchantId = opts.merchantId.trim();
@@ -536,7 +561,9 @@ export async function authorizeCardPresent(opts: {
       amount: s.amountCents,
     }));
   }
-  const res = await finixFetch(mode, "POST", "/authorizations", body);
+  const res = await finixFetch(mode, "POST", "/authorizations", body, {
+    idempotencyId: opts.idempotencyId,
+  });
   if (!res.ok) {
     const extracted = finixFailureText(res.json);
     const detail =
@@ -550,7 +577,12 @@ export async function authorizeCardPresent(opts: {
       amountCents: opts.amountCents,
       training: mode !== "live",
     });
-    return { ok: false, sandbox, error: short ?? detail };
+    return {
+      ok: false,
+      sandbox,
+      error: short ?? detail,
+      keepIdempotency: finixRetryKeepsIdempotencyId(res.status, detail),
+    };
   }
   const id = typeof res.json.id === "string" ? res.json.id : "";
   if (!id) {
@@ -722,6 +754,7 @@ export async function createSplitTransfer(opts: {
   splits: Array<{ merchantId: string; amountCents: number }>;
   currency?: string;
   mode?: FinixMode;
+  idempotencyId?: string;
 }): Promise<FinixTransferResult> {
   const mode = opts.mode ?? "sandbox";
   const total = Math.max(0, opts.amountCents);
@@ -749,7 +782,9 @@ export async function createSplitTransfer(opts: {
       amount: s.amountCents,
     }));
   }
-  const res = await finixFetch(mode, "POST", "/transfers", body);
+  const res = await finixFetch(mode, "POST", "/transfers", body, {
+    idempotencyId: opts.idempotencyId,
+  });
   if (!res.ok) {
     return { ok: false, sandbox: mode === "sandbox", error: transferError(res, "Split transfer failed") };
   }
@@ -769,7 +804,10 @@ export async function chargeManualCardOnFinix(opts: {
   merchantId: string;
   checkId?: string;
   splits?: Array<{ merchantId: string; amountCents: number }>;
-}): Promise<{ ok: true; transferId: string; last4: string } | { ok: false; error: string }> {
+  idempotencyId?: string;
+}): Promise<
+  { ok: true; transferId: string; last4: string } | { ok: false; error: string; keepIdempotency?: boolean }
+> {
   const secrets = [opts.card.number, opts.card.securityCode];
   const fail = (json: Record<string, unknown>, fallback: string, applyAmount = false) => {
     const extracted = finixFailureText(json);
@@ -822,9 +860,15 @@ export async function chargeManualCardOnFinix(opts: {
   });
   const transfer = await finixFetch("sandbox", "POST", "/authorizations", authBody, {
     requireWebhook: false,
+    idempotencyId: opts.idempotencyId,
   });
   if (!transfer.ok || !manualTransferApproved(transfer.json)) {
-    return { ok: false, error: fail(transfer.json, "Card was not approved. The check stays open.", true) };
+    const error = fail(transfer.json, "Card was not approved. The check stays open.", true);
+    return {
+      ok: false,
+      error,
+      keepIdempotency: finixRetryKeepsIdempotencyId(transfer.status, error),
+    };
   }
   const transferId = typeof transfer.json.id === "string" ? transfer.json.id.trim() : "";
   if (!transferId) return { ok: false, error: "Card was not approved. The check stays open." };
@@ -898,7 +942,8 @@ export async function chargeFinixPaymentInstrument(opts: {
   kind: "transfer" | "authorization";
   checkId?: string;
   orderId?: string;
-}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  idempotencyId?: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string; keepIdempotency?: boolean }> {
   const instrumentId = parseFinixInstrumentId(opts.instrumentId);
   if (!instrumentId) return { ok: false, error: "The payment instrument is missing." };
   const merchantId = opts.merchantId.trim();
@@ -927,10 +972,11 @@ export async function chargeFinixPaymentInstrument(opts: {
       checkId: opts.checkId,
       orderId: opts.orderId,
     }),
-    { requireWebhook: false },
+    { requireWebhook: false, idempotencyId: opts.idempotencyId },
   );
   if (!res.ok || !manualTransferApproved(res.json)) {
-    return { ok: false, error: finixFailureText(res.json).slice(0, 200) };
+    const error = finixFailureText(res.json).slice(0, 200);
+    return { ok: false, error, keepIdempotency: finixRetryKeepsIdempotencyId(res.status, error) };
   }
   const id = typeof res.json.id === "string" ? res.json.id.trim() : "";
   if (!id) return { ok: false, error: "The transfer was not created." };

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_321_transfer_idempotency",
+    date: "2026-10-20",
+    title: "Transfer idempotency",
+    summary: "A card charge keeps one idempotency id. Trying it again sends the same id.",
+    body: "A card charge sends one idempotency id with that transfer or authorization. The payment keeps that id. Trying that charge again sends the same id. A reader sale still keeps its id on the check. Tip close still uses its own key.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_320_tokenize_test",
     date: "2026-10-20",
     title: "Online card test page",

@@ -4,12 +4,14 @@ import test from "node:test";
 import {
   authorizeCardPresent,
   captureAuthorization,
+  chargeFinixPaymentInstrument,
   createTransfer,
   finixIdempotencyLogEntries,
   resetFinixIdempotencyLog,
   reverseTransfer,
   voidAuthorization,
 } from "../src/lib/payments/finix.ts";
+import { finixAttemptIdempotencyId } from "../src/lib/payments/idempotency.ts";
 import { tipCaptureOutcome } from "../src/lib/payments/tip-capture.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -152,6 +154,111 @@ test("a card swipe authorizes the base amount and the tip captures that authoriz
         logged.map((row) => row.idempotencyId),
         ids,
       );
+    } finally {
+      globalThis.fetch = prev;
+    }
+  });
+});
+
+test("a stored idempotency id is sent again and null is not", async () => {
+  await withKeys(async () => {
+    resetFinixIdempotencyLog();
+    const stored = crypto.randomUUID();
+    const calls: { url: string; body: Record<string, unknown>; headers: Record<string, string> }[] = [];
+    const prev = globalThis.fetch;
+    globalThis.fetch = async (input, init) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      const rawHeaders = init?.headers;
+      const headers: Record<string, string> = {};
+      if (rawHeaders && typeof rawHeaders === "object" && !Array.isArray(rawHeaders) && !(rawHeaders instanceof Headers)) {
+        for (const [key, value] of Object.entries(rawHeaders)) headers[key] = String(value);
+      }
+      calls.push({ url: String(input), body, headers });
+      const path = String(input);
+      const id = path.includes("/transfers") ? "TR_same" : "AU_same";
+      return new Response(JSON.stringify({ id, state: "SUCCEEDED", last_four: "4242" }), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    try {
+      const first = await authorizeCardPresent({
+        mode: "sandbox",
+        locationLive: false,
+        merchantId: "MUgrill",
+        amountCents: 1800,
+        readerId: "DVreader",
+        checkId: "chk_same",
+        idempotencyId: stored,
+      });
+      const second = await authorizeCardPresent({
+        mode: "sandbox",
+        locationLive: false,
+        merchantId: "MUgrill",
+        amountCents: 1800,
+        readerId: "DVreader",
+        checkId: "chk_same",
+        idempotencyId: stored,
+      });
+      assert.equal(first.ok, true);
+      assert.equal(second.ok, true);
+      assert.equal(calls[0]?.body.idempotency_id, stored);
+      assert.equal(calls[1]?.body.idempotency_id, stored);
+      assert.equal(calls[0]?.headers["Idempotency-Key"], stored);
+      assert.equal(calls[1]?.headers["Idempotency-Key"], stored);
+
+      const transferId = crypto.randomUUID();
+      const transfer = await chargeFinixPaymentInstrument({
+        mode: "sandbox",
+        locationLive: false,
+        instrumentId: "PIinstrument1",
+        merchantId: "MUgrill",
+        amountCents: 100,
+        kind: "transfer",
+        idempotencyId: transferId,
+      });
+      const transferAgain = await chargeFinixPaymentInstrument({
+        mode: "sandbox",
+        locationLive: false,
+        instrumentId: "PIinstrument1",
+        merchantId: "MUgrill",
+        amountCents: 100,
+        kind: "transfer",
+        idempotencyId: transferId,
+      });
+      assert.equal(transfer.ok, true);
+      assert.equal(transferAgain.ok, true);
+      const transferCalls = calls.filter((call) => call.url.endsWith("/transfers"));
+      assert.equal(transferCalls.length, 2);
+      assert.equal(transferCalls[0]?.body.idempotency_id, transferId);
+      assert.equal(transferCalls[1]?.body.idempotency_id, transferId);
+      assert.equal(transferCalls[0]?.headers["Idempotency-Key"], transferId);
+      assert.equal(transferCalls[0]?.body.source, "PIinstrument1");
+
+      const blank = await authorizeCardPresent({
+        mode: "sandbox",
+        locationLive: false,
+        merchantId: "MUgrill",
+        amountCents: 500,
+        idempotencyId: "null",
+      });
+      assert.equal(blank.ok, true);
+      const blankCall = calls.at(-1)!;
+      assert.match(String(blankCall.body.idempotency_id), UUID);
+      assert.notEqual(blankCall.body.idempotency_id, "null");
+      assert.notEqual(blankCall.body.idempotency_id, null);
+      assert.equal(blankCall.headers["Idempotency-Key"], blankCall.body.idempotency_id);
+
+      const fresh = await createTransfer({ merchantId: "MUgrill", amountCents: 250, mode: "sandbox" });
+      assert.equal(fresh.ok, true);
+      const freshCall = calls.at(-1)!;
+      assert.match(String(freshCall.body.idempotency_id), UUID);
+      assert.notEqual(freshCall.body.idempotency_id, blankCall.body.idempotency_id);
+
+      assert.equal(finixAttemptIdempotencyId(null), null);
+      assert.equal(finixAttemptIdempotencyId(""), null);
+      assert.equal(finixAttemptIdempotencyId("null"), null);
+      assert.equal(finixAttemptIdempotencyId(stored), stored);
     } finally {
       globalThis.fetch = prev;
     }
@@ -380,4 +487,25 @@ test("the pay screen stores the authorization and captures it with the tip", () 
   const guide = readFileSync("src/lib/guide/content/payments.ts", "utf8");
   assert.match(guide, /own idempotency id/);
   assert.match(guide, /voids the authorization/);
+  assert.match(guide, /Trying that charge again sends the same id/);
+
+  const cnp = readFileSync("src/lib/payments/card-not-present.server.ts", "utf8");
+  const claimAt = cnp.indexOf("claimPaymentIdempotencyId");
+  const chargeAt = cnp.indexOf("chargeFinixPaymentInstrument({");
+  assert.ok(claimAt > 0 && chargeAt > claimAt);
+  assert.match(cnp, /idempotencyId,/);
+  const card = readFileSync("src/lib/payments/finix-card.server.ts", "utf8");
+  assert.ok(card.indexOf("beginCardPresentAttempt") < card.indexOf("authorizeCardPresent({"));
+  assert.match(card, /idempotencyId: attempt\.idempotencyId/);
+  const pax = readFileSync("src/lib/payments/pax-d135.server.ts", "utf8");
+  assert.match(pax, /idempotency_id/);
+  assert.match(pax, /pax sale record idempotency_id=/);
+  const dialog = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
+  assert.match(dialog, /idempotencyId: saleIdempotencyId/);
+  assert.match(dialog, /order\.cardSaleIdempotencyId \?\? saleIdempotencyId/);
+  const migration = readFileSync("migrations/0066_payment_idempotency.sql", "utf8");
+  assert.match(migration, /add column if not exists idempotency_id text/);
+  assert.match(finix, /finixAttemptIdempotencyId\(opts\?\.idempotencyId\)/);
+  assert.doesNotMatch(finix, /payload\.idempotency_id = null/);
+  assert.doesNotMatch(finix, /idempotency_id: null/);
 });

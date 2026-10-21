@@ -8,6 +8,7 @@ import {
   type StationActivityPresence,
 } from "./station-activity-log";
 import type { CardPresentResult, PaymentsStatus } from "./types";
+import { finixAttemptIdempotencyId } from "./idempotency";
 
 function activityPresence(raw: unknown): StationActivityPresence {
   const value = String(raw ?? "").trim().toLowerCase();
@@ -232,6 +233,7 @@ export const recordPaxSaleFn = createServerFn({ method: "POST" })
     readerId: string;
     merchantId: string;
     status?: "authorized" | "captured";
+    idempotencyId?: string | null;
   }) => ({
     locationId: loc(d.locationId),
     orgId: String(d.orgId ?? "").trim().slice(0, 80),
@@ -242,6 +244,7 @@ export const recordPaxSaleFn = createServerFn({ method: "POST" })
     readerId: String(d.readerId ?? "").trim().slice(0, 80),
     merchantId: String(d.merchantId ?? "").trim().slice(0, 80),
     status: d.status === "authorized" ? ("authorized" as const) : ("captured" as const),
+    idempotencyId: finixAttemptIdempotencyId(d.idempotencyId),
   }))
   .handler(async ({ context, data }) => {
     const { recordPaxSale } = await import("./pax-d135.server");

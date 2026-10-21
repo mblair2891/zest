@@ -11,6 +11,7 @@ import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLocationDevices, type LocationDevice } from "@/lib/pos/location-devices";
 import { locationLifecycleStatus } from "./mode";
+import { finixAttemptIdempotencyId } from "./idempotency";
 import {
   PAX_MSG,
   envBlock,
@@ -422,6 +423,7 @@ export async function recordPaxSale(
     readerId: string;
     merchantId: string;
     status?: "authorized" | "captured";
+    idempotencyId?: string | null;
   },
 ): Promise<{ ok: true; duplicate: boolean; transferId: string } | { ok: false; error: string }> {
   const loc = await loadLoc(input.locationId);
@@ -429,6 +431,8 @@ export async function recordPaxSale(
   await requireMembership(userId, loc.org_id, undefined, input.locationId);
   const transferId = input.transferId.trim();
   if (!transferId) return { ok: false, error: PAX_MSG.unread };
+  const idempotencyId = finixAttemptIdempotencyId(input.idempotencyId);
+  if (idempotencyId) console.info(`pax sale record idempotency_id=${idempotencyId}`);
   const sql = await getSql();
   const prior = await sql<{ processor_payment_id: string | null }>`
     select processor_payment_id from summex_payments
@@ -439,6 +443,17 @@ export async function recordPaxSale(
     limit 1
   `;
   if (prior[0]?.processor_payment_id) {
+    if (idempotencyId) {
+      await sql`
+        update summex_payments
+        set idempotency_id = ${idempotencyId}
+        where location_id = ${loc.id}
+          and check_id = ${input.checkId}
+          and method = ${"card"}
+          and status in (${"authorized"}, ${"captured"})
+          and (idempotency_id is null or btrim(idempotency_id) = '')
+      `;
+    }
     return { ok: true, duplicate: true, transferId: String(prior[0].processor_payment_id) };
   }
   const id = newId("zpay");
@@ -446,7 +461,8 @@ export async function recordPaxSale(
   await sql`
     insert into summex_payments (
       id, org_id, location_id, merchant_id, amount_cents, currency, status, method, last4,
-      processor, processor_payment_id, capture_mode, check_id, reader_id, client_mutation_id
+      processor, processor_payment_id, capture_mode, check_id, reader_id, client_mutation_id,
+      idempotency_id
     ) values (
       ${id},
       ${loc.org_id},
@@ -462,7 +478,8 @@ export async function recordPaxSale(
       ${"sandbox"},
       ${input.checkId},
       ${input.readerId},
-      ${`pax:${input.checkId}`.slice(0, 80)}
+      ${`pax:${input.checkId}`.slice(0, 80)},
+      ${idempotencyId}
     )
   `;
   return { ok: true, duplicate: false, transferId };

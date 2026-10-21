@@ -1076,6 +1076,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     let authorizationId: string | undefined;
     let quantumPaymentId: string | undefined;
     let paxJournal: { readerId: string; merchantId: string; locationId: string; orgId: string } | null = null;
+    let saleIdempotencyId: string | null = null;
     const held =
       method === "card" ? (order?.cardAuth ?? readSessionCardAuth(order?.id) ?? null) : null;
     const trainingCard = cardCloseSimulatesTip({
@@ -1318,6 +1319,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           const currentOrder =
             usePosStore.getState().orders.find((row) => row.id === order.id) ?? order;
           const idempotencyId = reuseCardSaleIdempotencyId(currentOrder.cardSaleIdempotencyId);
+          saleIdempotencyId = idempotencyId;
           if (currentOrder.cardSaleIdempotencyId !== idempotencyId) {
             usePosStore.getState().setCardSaleIdempotencyId(order.id, idempotencyId);
           }
@@ -1458,6 +1460,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               readerId: paxJournal.readerId,
               merchantId: paxJournal.merchantId,
               status: "authorized",
+              idempotencyId: saleIdempotencyId,
             },
           });
         } catch {
@@ -1714,6 +1717,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             amountCents: Math.min(amountCents, balance) + payTip,
             readerId: paxJournal.readerId,
             merchantId: paxJournal.merchantId,
+            idempotencyId: order.cardSaleIdempotencyId ?? saleIdempotencyId,
           },
         });
       } catch {

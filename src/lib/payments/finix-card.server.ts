@@ -9,12 +9,104 @@ import { newId } from "@/lib/saas/ids";
 import { ForbiddenError, requireMembership } from "@/lib/saas/tenancy.server";
 import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
 import { authorizeCardPresent, captureAuthorization, voidAuthorization } from "./finix";
+import { mintFinixAttemptIdempotencyId } from "./idempotency";
+import { claimPaymentIdempotencyId } from "./payment-idempotency.server";
 import { TIP_CAPTURE_FAILED, logTipAdjust, tipCaptureOutcome } from "./tip-capture";
 import { missingFinixKeyMessage, readFinixCreds, type FinixMode } from "./finix-keys";
 import { liveCardGate } from "./finix-events";
 import { envPaymentsDefault, locationLifecycleStatus, parseLocationPaymentsMode, resolvePaymentsMode } from "./mode";
 import { finixCaptureRoute } from "./training-rail";
 import type { CardPresentInput, CardPresentResult } from "./types";
+
+type PaymentAttemptRow = {
+  id: string;
+  last4: string | null;
+  status: string;
+  idempotency_id: string | null;
+};
+
+async function beginCardPresentAttempt(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  opts: {
+    input: CardPresentInput;
+    merchantId: string;
+    readerId: string | null;
+    sandbox: boolean;
+  },
+): Promise<
+  | { done: true; paymentId: string; status: "authorized" | "captured"; last4: string | null }
+  | { done: false; paymentId: string; idempotencyId: string }
+> {
+  const mutationId = String(opts.input.clientMutationId ?? "").trim();
+  const load = async () => {
+    if (!mutationId) return undefined;
+    const rows = await sql<PaymentAttemptRow>`
+      select id, last4, status, idempotency_id from summex_payments
+      where location_id = ${opts.input.locationId}
+        and client_mutation_id = ${mutationId}
+      limit 1
+    `;
+    return rows[0];
+  };
+  const finish = async (
+    row: PaymentAttemptRow,
+  ): Promise<
+    | { done: true; paymentId: string; status: "authorized" | "captured"; last4: string | null }
+    | { done: false; paymentId: string; idempotencyId: string }
+  > => {
+    if (row.status === "authorized" || row.status === "captured") {
+      return {
+        done: true,
+        paymentId: row.id,
+        status: row.status,
+        last4: row.last4,
+      };
+    }
+    const idempotencyId = await claimPaymentIdempotencyId({
+      paymentId: row.id,
+      locationId: opts.input.locationId,
+      existing: row.idempotency_id,
+    });
+    return { done: false as const, paymentId: row.id, idempotencyId };
+  };
+  const existing = await load();
+  if (existing) return finish(existing);
+
+  const paymentId = newId("zpay");
+  const idempotencyId = mintFinixAttemptIdempotencyId();
+  try {
+    await sql`
+      insert into summex_payments (
+        id, org_id, location_id, merchant_id, amount_cents, currency, status, method, last4,
+        processor, processor_payment_id, capture_mode, check_id, reader_id, host_brand,
+        client_mutation_id, idempotency_id
+      ) values (
+        ${paymentId},
+        ${opts.input.orgId},
+        ${opts.input.locationId},
+        ${opts.merchantId},
+        ${opts.input.amountCents},
+        ${"usd"},
+        ${"pending"},
+        ${"card"},
+        ${null},
+        ${"quantum_payments"},
+        ${null},
+        ${opts.sandbox ? "sandbox" : "live"},
+        ${opts.input.checkId ?? null},
+        ${opts.readerId},
+        ${opts.input.hostBrand ?? null},
+        ${mutationId || null},
+        ${idempotencyId}
+      )
+    `;
+    return { done: false, paymentId, idempotencyId };
+  } catch (err) {
+    const raced = await load();
+    if (raced) return finish(raced);
+    throw err;
+  }
+}
 
 export async function captureFinixCardPresent(opts: {
   input: CardPresentInput;
@@ -60,23 +152,21 @@ export async function captureFinixCardPresent(opts: {
   }
 
   const sql = await getSql();
-  if (opts.input.clientMutationId) {
-    const dup = await sql<{ id: string; last4: string | null; status: string }>`
-      select id, last4, status from summex_payments
-      where location_id = ${opts.input.locationId}
-        and client_mutation_id = ${opts.input.clientMutationId}
-      limit 1
-    `;
-    if (dup[0]?.status === "authorized" || dup[0]?.status === "captured") {
-      return {
-        ok: true,
-        status: dup[0].status === "captured" ? "captured" : "authorized",
-        sandbox,
-        paymentId: dup[0].id,
-        last4: dup[0].last4,
-        hostBrand: opts.input.hostBrand ?? undefined,
-      };
-    }
+  const attempt = await beginCardPresentAttempt(sql, {
+    input: opts.input,
+    merchantId,
+    readerId: opts.readerId,
+    sandbox,
+  });
+  if (attempt.done) {
+    return {
+      ok: true,
+      status: attempt.status,
+      sandbox,
+      paymentId: attempt.paymentId,
+      last4: attempt.last4,
+      hostBrand: opts.input.hostBrand ?? undefined,
+    };
   }
 
   const authorized = await authorizeCardPresent({
@@ -87,8 +177,18 @@ export async function captureFinixCardPresent(opts: {
     readerId: opts.readerId,
     checkId: opts.input.checkId,
     splits: opts.splits,
+    idempotencyId: attempt.idempotencyId,
   });
   if (!authorized.ok || !authorized.id) {
+    if (authorized.keepIdempotency === false) {
+      await sql`
+        update summex_payments
+        set idempotency_id = null
+        where id = ${attempt.paymentId}
+          and location_id = ${opts.input.locationId}
+          and processor_payment_id is null
+      `;
+    }
     return {
       ok: false,
       status: "unavailable",
@@ -97,36 +197,24 @@ export async function captureFinixCardPresent(opts: {
     };
   }
 
-  const id = newId("zpay");
   await sql`
-    insert into summex_payments (
-      id, org_id, location_id, merchant_id, amount_cents, currency, status, method, last4,
-      processor, processor_payment_id, capture_mode, check_id, reader_id, host_brand,
-      client_mutation_id
-    ) values (
-      ${id},
-      ${opts.input.orgId},
-      ${opts.input.locationId},
-      ${merchantId},
-      ${opts.input.amountCents},
-      ${"usd"},
-      ${"authorized"},
-      ${"card"},
-      ${authorized.last4},
-      ${"quantum_payments"},
-      ${authorized.id},
-      ${sandbox ? "sandbox" : "live"},
-      ${opts.input.checkId ?? null},
-      ${opts.readerId},
-      ${opts.input.hostBrand ?? null},
-      ${opts.input.clientMutationId ?? null}
-    )
+    update summex_payments
+    set status = ${"authorized"},
+        processor_payment_id = ${authorized.id},
+        last4 = ${authorized.last4},
+        merchant_id = ${merchantId},
+        amount_cents = ${opts.input.amountCents},
+        reader_id = ${opts.readerId},
+        idempotency_id = ${attempt.idempotencyId},
+        capture_mode = ${sandbox ? "sandbox" : "live"}
+    where id = ${attempt.paymentId}
+      and location_id = ${opts.input.locationId}
   `;
   return {
     ok: true,
     status: "authorized",
     sandbox,
-    paymentId: id,
+    paymentId: attempt.paymentId,
     authorizationId: authorized.id,
     last4: authorized.last4,
     hostBrand: opts.input.hostBrand ?? undefined,

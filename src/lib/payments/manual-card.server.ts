@@ -10,6 +10,8 @@ import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
 import { parseCardProcessor } from "./adapter";
 import { parentMerchantForCapture } from "./finix-events";
 import { chargeManualCardOnFinix } from "./finix";
+import { mintFinixAttemptIdempotencyId } from "./idempotency";
+import { claimPaymentIdempotencyId } from "./payment-idempotency.server";
 import {
   manualCardEntryVisible,
   parseManualCard,
@@ -185,41 +187,165 @@ export async function chargeManualCard(
   });
   if (!planned.ok) return { ok: false, error: planned.error };
 
+  const mutationId = input.checkId ? `manual:${input.checkId}`.slice(0, 80) : "";
+  let manualPaymentId: string | null = null;
+  let idempotencyId = mintFinixAttemptIdempotencyId();
+  if (mutationId) {
+    const pending = await sql<{
+      id: string;
+      idempotency_id: string | null;
+      status: string;
+      processor_payment_id: string | null;
+      last4: string | null;
+      merchant_id: string | null;
+    }>`
+      select id, idempotency_id, status, processor_payment_id, last4, merchant_id
+      from summex_payments
+      where location_id = ${loc.id}
+        and client_mutation_id = ${mutationId}
+      limit 1
+    `;
+    const row = pending[0];
+    const already = String(row?.processor_payment_id ?? "").trim();
+    if (row && (row.status === "captured" || row.status === "authorized") && already) {
+      return {
+        ok: true,
+        transferId: already,
+        last4: String(row.last4 ?? "").replace(/\D/g, "").slice(-4),
+        merchantId: String(row.merchant_id ?? planned.parentMerchantId),
+      };
+    }
+    if (row) {
+      manualPaymentId = row.id;
+      idempotencyId = await claimPaymentIdempotencyId({
+        paymentId: row.id,
+        locationId: loc.id,
+        existing: row.idempotency_id,
+      });
+    } else {
+      manualPaymentId = newId("zpay");
+      try {
+        await sql`
+          insert into summex_payments (
+            id, org_id, location_id, merchant_id, amount_cents, currency, status, method, last4,
+            processor, processor_payment_id, capture_mode, check_id, reader_id, client_mutation_id,
+            idempotency_id
+          ) values (
+            ${manualPaymentId},
+            ${loc.org_id},
+            ${loc.id},
+            ${planned.parentMerchantId},
+            ${Math.max(0, Math.round(input.amountCents))},
+            ${"usd"},
+            ${"pending"},
+            ${"card"},
+            ${null},
+            ${"quantum_payments"},
+            ${null},
+            ${"sandbox"},
+            ${input.checkId ?? null},
+            ${""},
+            ${mutationId},
+            ${idempotencyId}
+          )
+        `;
+      } catch {
+        const again = await sql<{
+          id: string;
+          idempotency_id: string | null;
+          status: string;
+          processor_payment_id: string | null;
+          last4: string | null;
+          merchant_id: string | null;
+        }>`
+          select id, idempotency_id, status, processor_payment_id, last4, merchant_id
+          from summex_payments
+          where location_id = ${loc.id}
+            and client_mutation_id = ${mutationId}
+          limit 1
+        `;
+        const raced = again[0];
+        const racedTransfer = String(raced?.processor_payment_id ?? "").trim();
+        if (raced && (raced.status === "captured" || raced.status === "authorized") && racedTransfer) {
+          return {
+            ok: true,
+            transferId: racedTransfer,
+            last4: String(raced.last4 ?? "").replace(/\D/g, "").slice(-4),
+            merchantId: String(raced.merchant_id ?? planned.parentMerchantId),
+          };
+        }
+        if (!raced) return { ok: false, error: "Card was not approved. The check stays open." };
+        manualPaymentId = raced.id;
+        idempotencyId = await claimPaymentIdempotencyId({
+          paymentId: raced.id,
+          locationId: loc.id,
+          existing: raced.idempotency_id,
+        });
+      }
+    }
+  }
+
   const charged = await chargeManualCardOnFinix({
     card,
     amountCents: input.amountCents,
     merchantId: planned.parentMerchantId,
     checkId: input.checkId,
     splits: planned.splits,
+    idempotencyId,
   });
   if (!charged.ok) {
+    if (charged.keepIdempotency === false && manualPaymentId) {
+      await sql`
+        update summex_payments
+        set idempotency_id = null
+        where id = ${manualPaymentId}
+          and location_id = ${loc.id}
+          and processor_payment_id is null
+      `;
+    }
     return { ok: false, error: redactCardText(charged.error, secrets) };
   }
 
   try {
-    const id = newId("zpay");
-    await sql`
-      insert into summex_payments (
-        id, org_id, location_id, merchant_id, amount_cents, currency, status, method, last4,
-        processor, processor_payment_id, capture_mode, check_id, reader_id, client_mutation_id
-      ) values (
-        ${id},
-        ${loc.org_id},
-        ${loc.id},
-        ${planned.parentMerchantId},
-        ${Math.max(0, Math.round(input.amountCents))},
-        ${"usd"},
-        ${"captured"},
-        ${"card"},
-        ${charged.last4},
-        ${"quantum_payments"},
-        ${charged.transferId},
-        ${"sandbox"},
-        ${input.checkId ?? null},
-        ${""},
-        ${`manual:${input.checkId ?? id}`.slice(0, 80)}
-      )
-    `;
+    if (manualPaymentId) {
+      await sql`
+        update summex_payments
+        set status = ${"captured"},
+            processor_payment_id = ${charged.transferId},
+            last4 = ${charged.last4},
+            merchant_id = ${planned.parentMerchantId},
+            amount_cents = ${Math.max(0, Math.round(input.amountCents))},
+            idempotency_id = ${idempotencyId}
+        where id = ${manualPaymentId}
+          and location_id = ${loc.id}
+      `;
+    } else {
+      const id = newId("zpay");
+      await sql`
+        insert into summex_payments (
+          id, org_id, location_id, merchant_id, amount_cents, currency, status, method, last4,
+          processor, processor_payment_id, capture_mode, check_id, reader_id, client_mutation_id,
+          idempotency_id
+        ) values (
+          ${id},
+          ${loc.org_id},
+          ${loc.id},
+          ${planned.parentMerchantId},
+          ${Math.max(0, Math.round(input.amountCents))},
+          ${"usd"},
+          ${"captured"},
+          ${"card"},
+          ${charged.last4},
+          ${"quantum_payments"},
+          ${charged.transferId},
+          ${"sandbox"},
+          ${input.checkId ?? null},
+          ${""},
+          ${`manual:${input.checkId ?? id}`.slice(0, 80)},
+          ${idempotencyId}
+        )
+      `;
+    }
   } catch {
     /* The transfer already succeeded. The check still closes. */
   }

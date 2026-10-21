@@ -9,6 +9,7 @@ import { newId } from "@/lib/saas/ids";
 import { ForbiddenError, requireMembership } from "@/lib/saas/tenancy.server";
 import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
 import { chargeFinixPaymentInstrument, exchangeFinixCardToken } from "./finix";
+import { claimPaymentIdempotencyId } from "./payment-idempotency.server";
 import {
   cardNotPresentRejectsRawCard,
   finixJsEnvironment,
@@ -227,8 +228,9 @@ export async function chargeStoredInstrument(
     merchant_id: string | null;
     check_id: string | null;
     customer_ref: string | null;
+    idempotency_id: string | null;
   }>`
-    select payment_instrument_id, processor_payment_id, merchant_id, check_id, customer_ref
+    select payment_instrument_id, processor_payment_id, merchant_id, check_id, customer_ref, idempotency_id
     from summex_payments
     where id = ${input.paymentId} and location_id = ${loc.id}
     limit 1
@@ -246,6 +248,11 @@ export async function chargeStoredInstrument(
     const gate = liveCardGate({ locationLive: true, merchantId });
     if (!gate.ok) return { ok: false, error: gate.error };
   }
+  const idempotencyId = await claimPaymentIdempotencyId({
+    paymentId: input.paymentId,
+    locationId: loc.id,
+    existing: row.idempotency_id,
+  });
   const charged = await chargeFinixPaymentInstrument({
     mode,
     locationLive: live,
@@ -255,15 +262,28 @@ export async function chargeStoredInstrument(
     kind: input.kind,
     checkId: row.check_id || undefined,
     orderId: row.customer_ref || undefined,
+    idempotencyId,
   });
-  if (!charged.ok) return charged;
+  if (!charged.ok) {
+    if (charged.keepIdempotency === false) {
+      await sql`
+        update summex_payments
+        set idempotency_id = null
+        where id = ${input.paymentId}
+          and location_id = ${loc.id}
+          and processor_payment_id is null
+      `;
+    }
+    return charged;
+  }
   const status = input.kind === "authorization" ? "authorized" : "captured";
   await sql`
     update summex_payments
     set processor_payment_id = ${charged.id},
         status = ${status},
         merchant_id = ${merchantId},
-        amount_cents = ${Math.max(0, Math.round(input.amountCents))}
+        amount_cents = ${Math.max(0, Math.round(input.amountCents))},
+        idempotency_id = ${idempotencyId}
     where id = ${input.paymentId} and location_id = ${loc.id}
   `;
   return { ok: true, id: charged.id, instrumentId, kind: input.kind };
