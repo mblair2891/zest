@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Table } from "@/lib/pos/types";
 import { floorMapNumber } from "@/lib/pos/floor-fit";
-import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomFocus, fitRoomForTap, fixturePixelBox } from "@/lib/pos/floor-dimensions";
+import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomFocus, fitRoomToView, fixturePixelBox } from "@/lib/pos/floor-dimensions";
 import { usePosStore } from "@/lib/pos/store";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
@@ -78,7 +78,7 @@ export type FloorMapItem = {
 
 /**
  * Order / host floor. Status-colored shapes, table number only.
- * The plan is scaled to the canvas (64px minimum). Pinch and drag to pan.
+ * The published room fits the pane. Pinch to look closer. Drag to pan.
  */
 export function FloorMapCanvas({
   items,
@@ -119,12 +119,21 @@ export function FloorMapCanvas({
     if (!el) return;
     const measure = () => {
       const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) setView({ w: r.width, h: r.height });
+      if (r.width > 0 && r.height > 0) {
+        setView((prev) => (prev.w === r.width && prev.h === r.height ? prev : { w: r.width, h: r.height }));
+      }
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    window.addEventListener("orientationchange", measure);
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("orientationchange", measure);
+      viewport?.removeEventListener("resize", measure);
+    };
   }, []);
 
   const room = usePosStore((s) => s.floorRoom) ?? DEFAULT_ROOM;
@@ -140,14 +149,11 @@ export function FloorMapCanvas({
         minTapPx: 88,
       });
     }
-    return fitRoomForTap({
+    return fitRoomToView({
       room,
-      fixtures: seats.map((item) => item.table),
       viewW: view.w,
       viewH: view.h,
       marginPx: ROOM_FIT_MARGIN_PX,
-      minTapPx: 84,
-      growCap: 2.25,
     });
   }, [focusSection, items, room, view.w, view.h]);
 
@@ -243,6 +249,7 @@ export function FloorMapCanvas({
       data-floor-canvas="room"
       data-floor-nubs="0"
       data-floor-focus={focusSection ? "section" : "room"}
+      data-floor-fit={focusSection ? "section" : "room"}
       data-floor-table-count={items.length}
       style={{ touchAction: "none" }}
       onPointerDown={onPointerDown}

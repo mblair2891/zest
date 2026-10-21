@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_325_floor_fit",
+    date: "2026-10-21",
+    title: "Floor map shows the whole room",
+    summary: "The order tablet opens with the full floor in view.",
+    body: "On an order or host tablet the floor opens with the whole published room in view. Pinch to zoom in and drag to pan. Turning the tablet, or hiding the keyboard, fits the room again.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_324_station_setup",
     date: "2026-10-21",
     title: "Station setup stays readable",
