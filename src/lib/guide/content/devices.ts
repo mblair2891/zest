@@ -110,7 +110,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "The tablet is a screen, not a person. Station UI is the intersection of device role (what the hardware may do) and employee PIN (which of those capabilities this person may see). If either side denies an action, hide it or block with a short reason. Never give every PIN the same home.",
       ),
       p(
-        "Every staff station is one of four roles: order, ODS, host, or kiosk. An unpaired or unprimed tablet shows a pair-code field only — never a fake two-button POS. Type the Devices code and submit. After pair, the PIN pad. Password owner login is venue back office, never this PIN home.",
+        "Every staff station is one of four roles: order, ODS, host, or kiosk. An unpaired or unprimed tablet shows a pair-code field only — never a fake two-button POS. Type the Devices code and submit. After pair, the PIN pad. Password owner login is venue back office, never this PIN home. A bad setup response says the station could not read the setup response and to try pairing again. The pair-code field stays.",
       ),
       p(
         "Staff stations are Android tablets running one Play-ready app: Summex Station (`app.summex.pos`). Store WebView is https://app.summex.app/station — pair code first. Camera is optional (QR); typed code is enough. HTTPS only. Privacy: https://www.summex.app/privacy. First open is a text field for the venue pair code from Devices (for example K7VY5R) — never /login, never the marketing site. After pair, the PIN pad, optional lock-task. Guest QR and pay links stay on the guest’s own phone browser — not a staff station. iPad and browser POS are not a supported house setup.",

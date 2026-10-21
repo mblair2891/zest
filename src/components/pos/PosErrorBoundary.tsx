@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { SummexMark } from "@/components/brand/SummexMark";
 import { isProspectDemo } from "@/lib/demo/session";
+import { staffSetupMessage } from "@/lib/pos/setup-response";
 import { isDurableStationStorageKey } from "@/lib/pos/station-pair";
 
 interface Props {
@@ -76,7 +77,7 @@ export class PosErrorBoundary extends Component<Props, State> {
               : "Something went wrong loading the console. Reloading usually fixes it."}
           </p>
           <p className="max-w-lg break-all font-mono text-[11px] text-danger">
-            {this.state.error.message}
+            {staffSetupMessage(this.state.error.message) ?? this.state.error.message}
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={this.reload}>Reload</Button>

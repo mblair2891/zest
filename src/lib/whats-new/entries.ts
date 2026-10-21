@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_324_station_setup",
+    date: "2026-10-21",
+    title: "Station setup stays readable",
+    summary: "A bad setup response keeps the pair code and says to try again.",
+    body: "A new tablet that gets a bad setup response stays on the pair screen. It says the station could not read the setup response and to try pairing again. A valid code still pairs.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "device-roles",
+    tags: ["devices"],
+  },
+  {
     id: "upd_2026_10_323_floor_map",
     date: "2026-10-20",
     title: "Clearer floor map",

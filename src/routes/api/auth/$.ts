@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { auth } from "@/lib/auth/server";
 import { resolveCredentialEmail } from "@/lib/auth/resolve-login.server";
 import { withHostOnlySessionCookies } from "@/lib/auth/session-cookie";
+import { logSetupPayload, sanitizeAuthResponse } from "@/lib/pos/setup-response";
 import { clientKey, rateLimit } from "@/lib/saas/rate-limit.server";
 
 function safeReason(err: unknown): string {
@@ -18,6 +19,7 @@ async function failureLog(response: Response): Promise<{
   const status = response.status;
   try {
     const text = await response.clone().text();
+    logSetupPayload("auth sign-in", status, text);
     const json = JSON.parse(text) as { code?: unknown; message?: unknown };
     const code = typeof json.code === "string" ? json.code : undefined;
     const message =
@@ -89,13 +91,14 @@ function rebuild(request: Request, text: string): Request {
 
 async function handle({ request }: { request: Request }) {
   if (rateLimit(clientKey(request, "auth"), 40, 60_000)) {
-    return new Response("Too many requests", { status: 429 });
+    logSetupPayload("auth", 429, "Too many requests");
+    return authError(429, "Too many requests", "TOO_MANY_REQUESTS");
   }
   try {
     const prepared = await prepareAuthRequest(request);
     if (prepared instanceof Response) return prepared;
     const response = await auth.handler(prepared);
-    const fixed = withHostOnlySessionCookies(response);
+    const fixed = await sanitizeAuthResponse(withHostOnlySessionCookies(response), request.url);
     if (!fixed.ok && new URL(request.url).pathname.includes("/sign-in/")) {
       const reason = await failureLog(fixed);
       console.error("[auth] sign-in rejected", reason);

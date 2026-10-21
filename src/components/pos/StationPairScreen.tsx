@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { SummexMark } from "@/components/brand/SummexMark";
 import { COPYRIGHT_LINE, PRIVACY_URL } from "@/lib/platform/brand";
 import { pairStationFn } from "@/lib/access/api";
+import { staffSetupMessage } from "@/lib/pos/setup-response";
 import { readOrCreateBrowserDeviceId } from "@/lib/pos/location-devices";
 import {
   STATION_PAIR_INVALID,
@@ -97,10 +98,12 @@ export function StationPairScreen({
       onPaired(res.pair);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
+      const setup = staffSetupMessage(msg);
       setError(
-        /expired|invalid|no station slot|no slot/i.test(msg)
-          ? STATION_PAIR_INVALID
-          : msg || "Could not pair this tablet.",
+        setup ??
+          (/expired|invalid|no station slot|no slot/i.test(msg)
+            ? STATION_PAIR_INVALID
+            : msg || "Could not pair this tablet."),
       );
     } finally {
       setBusy(false);

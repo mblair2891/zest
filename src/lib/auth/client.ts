@@ -1,6 +1,21 @@
 import { genericOAuthClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
+import { sanitizeAuthResponse } from "@/lib/pos/setup-response";
 import { GROK_PROVIDERS } from "./providers";
+
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
+/** get-session and the rest of /api/auth. A non-JSON body never reaches JSON.parse. */
+const authFetch: typeof fetch = async (input, init) => {
+  const response = await fetch(input, init);
+  const url = response.url || requestUrl(input);
+  if (!url.includes("/api/auth/") && !url.includes("/get-session")) return response;
+  return sanitizeAuthResponse(response, url);
+};
 
 /**
  * Better Auth client for this React SPA (browser-side).
@@ -27,6 +42,7 @@ export const authClient = createAuthClient({
   plugins: [genericOAuthClient()],
   fetchOptions: {
     credentials: "include",
+    customFetchImpl: authFetch,
     onRequest(ctx) {
       const token = getBearerToken();
       if (token) ctx.headers.set("Authorization", `Bearer ${token}`);
