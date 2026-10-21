@@ -42,9 +42,15 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 import androidx.core.content.ContextCompat;
+import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -58,6 +64,12 @@ import java.util.regex.Pattern;
 import kotlin.coroutines.Continuation;
 import kotlin.coroutines.CoroutineContext;
 import kotlin.coroutines.EmptyCoroutineContext;
+import okhttp3.Interceptor;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okio.Buffer;
 import org.json.JSONObject;
 
 /**
@@ -119,6 +131,9 @@ public class PaxD135Plugin extends Plugin {
     private final AtomicInteger scanGeneration = new AtomicInteger();
     /** Held for the process. A new plugin instance must not drop a ready reader. */
     private static volatile MPOSFinix heldMpos;
+    /** One hook on the card-reader client. Later sales reuse it. */
+    private static final AtomicBoolean saleIdempotencyHookReady = new AtomicBoolean(false);
+    private static final AtomicBoolean saleIdempotencyHookLogged = new AtomicBoolean(false);
     private static volatile boolean heldReady;
     private static volatile boolean heldSettingUp;
     private static volatile String heldName = "";
@@ -576,6 +591,120 @@ public class PaxD135Plugin extends Plugin {
         }
     }
 
+    /**
+     * Copy the sale body's idempotency_id onto Idempotency-Key for the card-reader post.
+     * The SDK writes the body field and does not set that header. A missing body id
+     * never reaches Finix, so no Transfer is created.
+     */
+    private static void ensureSaleIdempotencyHeader(MPOSFinix current) {
+        if (saleIdempotencyHookReady.get()) return;
+        synchronized (saleIdempotencyHookReady) {
+            if (saleIdempotencyHookReady.get()) return;
+            try {
+                OkHttpClient client = cardReaderClient(current);
+                if (client == null) throw new IllegalStateException("missing card reader client");
+                List<Interceptor> next = new ArrayList<>(client.interceptors());
+                for (Interceptor interceptor : next) {
+                    if (interceptor instanceof SaleIdempotencyInterceptor) {
+                        saleIdempotencyHookReady.set(true);
+                        return;
+                    }
+                }
+                next.add(new SaleIdempotencyInterceptor());
+                Field field = OkHttpClient.class.getDeclaredField("interceptors");
+                field.setAccessible(true);
+                try {
+                    Field modifiers = Field.class.getDeclaredField("modifiers");
+                    modifiers.setAccessible(true);
+                    modifiers.setInt(field, field.getModifiers() & ~Modifier.FINAL);
+                } catch (Exception ignored) {
+                    /* ART may already allow the write. */
+                }
+                field.set(client, Collections.unmodifiableList(next));
+                saleIdempotencyHookReady.set(true);
+                Log.i("PaxD135", "SDK sale Idempotency-Key hook installed");
+            } catch (Exception e) {
+                if (saleIdempotencyHookLogged.compareAndSet(false, true)) {
+                    Log.i("PaxD135", "SDK sale Idempotency-Key hook unavailable");
+                }
+            }
+        }
+    }
+
+    /** The OkHttp client that posts card_reader/authorizations and card_reader/transfers. */
+    private static OkHttpClient cardReaderClient(MPOSFinix current) throws Exception {
+        MPOSFinixImpl impl = implOf(current);
+        if (impl == null) return null;
+        Field serverField = MPOSFinixImpl.class.getDeclaredField("serverAction");
+        serverField.setAccessible(true);
+        Object server = serverField.get(impl);
+        if (server == null) return null;
+        Field repoField = server.getClass().getDeclaredField("a");
+        repoField.setAccessible(true);
+        Object repo = repoField.get(server);
+        if (repo == null) return null;
+        Field serviceField = repo.getClass().getDeclaredField("cpoService");
+        serviceField.setAccessible(true);
+        Object service = serviceField.get(repo);
+        if (service == null || !Proxy.isProxyClass(service.getClass())) return null;
+        Object handler = Proxy.getInvocationHandler(service);
+        Field retrofitField = handler.getClass().getDeclaredField("this$0");
+        retrofitField.setAccessible(true);
+        Object retrofit = retrofitField.get(handler);
+        if (retrofit == null) return null;
+        Field callFactory = retrofit.getClass().getDeclaredField("callFactory");
+        callFactory.setAccessible(true);
+        Object factory = callFactory.get(retrofit);
+        if (factory instanceof OkHttpClient) return (OkHttpClient) factory;
+        return null;
+    }
+
+    /**
+     * Card-reader sale and authorization posts only. Refunds and other calls pass through.
+     * The original body bytes are replayed. The card payload is not logged.
+     */
+    private static final class SaleIdempotencyInterceptor implements Interceptor {
+        @Override
+        public Response intercept(Chain chain) throws IOException {
+            Request request = chain.request();
+            String path = request.url().encodedPath();
+            boolean cardReaderSale =
+                path.contains("card_reader/authorizations") || path.contains("card_reader/transfers");
+            if (!cardReaderSale || request.body() == null) return chain.proceed(request);
+            Buffer buffer = new Buffer();
+            request.body().writeTo(buffer);
+            byte[] bytes = buffer.readByteArray();
+            String raw = new String(bytes, StandardCharsets.UTF_8);
+            String key = saleBodyIdempotencyKey(raw);
+            if (!isSaleIdempotencyId(key)) {
+                Log.i("PaxD135", "SDK sale request missing idempotency_id");
+                throw new IOException("SDK sale request missing idempotency_id");
+            }
+            Log.i("PaxD135", "SDK sale Idempotency-Key=" + key);
+            RequestBody replay = RequestBody.create(bytes, request.body().contentType());
+            Request next = request.newBuilder()
+                .header("Idempotency-Key", key)
+                .method(request.method(), replay)
+                .build();
+            return chain.proceed(next);
+        }
+    }
+
+    /** idempotency_id from the card-reader JSON. A blank value or the word null is refused. */
+    private static String saleBodyIdempotencyKey(String raw) {
+        if (raw == null || raw.isEmpty()) return "";
+        try {
+            JSONObject json = new JSONObject(raw);
+            String snake = json.optString("idempotency_id", "");
+            if (isSaleIdempotencyId(snake)) return snake;
+            String camel = json.optString("idempotencyId", "");
+            if (isSaleIdempotencyId(camel)) return camel;
+        } catch (Exception ignored) {
+            /* A body that is not JSON has no idempotency id. */
+        }
+        return "";
+    }
+
     private void saleOnWorker(
         PluginCall call,
         MPOSFinix current,
@@ -600,12 +729,11 @@ public class PaxD135Plugin extends Plugin {
             if (checkId != null && !checkId.isEmpty()) tags.put("check", checkId);
             // The key is the check's stored attempt id. SDK 3.8.0 takes it as the last
             // startTransaction argument (Kotlin name idempotencyId) and writes JSON
-            // idempotency_id on POST card_reader/authorizations. That response has no
-            // idempotency field and no payment instrument. Finix stores idempotency_id
-            // on POST /transfers, POST /authorizations, and reversals.
-            // This sale does not create a second charge. The SDK already creates the
-            // resource (created_via CARD_PRESENT_ANDROID_D135_SDK) and does not return
-            // a payment instrument to reuse.
+            // idempotency_id on POST card_reader/authorizations. The same key is also
+            // sent as the Idempotency-Key header on that post. A card_reader sale or
+            // authorization whose body has no idempotency id is not sent.
+            // That response has no idempotency field and no payment instrument.
+            // This sale does not create a second charge.
             String saleRequest =
                 "SDK sale request amountCents=" + amount
                 + " transactionType=AUTHORIZATION"
@@ -613,8 +741,10 @@ public class PaxD135Plugin extends Plugin {
                 + " tags.check=" + checkId
                 + " promptForSignature=Never"
                 + " idempotencyId=" + idempotencyId
-                + " idempotency_id=" + idempotencyId;
+                + " idempotency_id=" + idempotencyId
+                + " Idempotency-Key=" + idempotencyId;
             Log.i("PaxD135", saleRequest);
+            ensureSaleIdempotencyHeader(current);
             current.startTransaction(
                 amount,
                 TransactionType.AUTHORIZATION,

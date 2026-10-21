@@ -1365,6 +1365,8 @@ export function classifyPaxError(
  * The key is the check's stored attempt UUID. PaxD135Plugin.saleOnWorker logs this
  * same line, then passes it as the last startTransaction argument (idempotencyId).
  * SDK 3.8.0 writes that value on the card_reader body as idempotency_id.
+ * The plugin also copies it onto the Idempotency-Key header of that post.
+ * A card_reader sale whose body has no idempotency id is not sent.
  * The card_reader response has no payment instrument, so the sale does not
  * create a second transfer.
  */

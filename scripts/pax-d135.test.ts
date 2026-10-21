@@ -415,6 +415,20 @@ test("a card-present SDK sale includes a non-null idempotency_id", async () => {
   assert.match(sale, /does not create a second charge/);
   assert.match(sale, /PromptForSignature\.Never\.INSTANCE,\s*idempotencyId\s*\)/);
   assert.doesNotMatch(sale, /startTransaction\([\s\S]*?null\s*\)\s*;/);
+  assert.match(sale, /Idempotency-Key=" \+ idempotencyId/);
+  const hookAt = sale.indexOf("ensureSaleIdempotencyHeader(current)");
+  assert.ok(hookAt > logAt && callAt > hookAt);
+  const hook = plugin.slice(
+    plugin.indexOf("class SaleIdempotencyInterceptor"),
+    plugin.indexOf("void saleOnWorker"),
+  );
+  assert.match(hook, /card_reader\/authorizations/);
+  assert.match(hook, /card_reader\/transfers/);
+  assert.match(hook, /header\("Idempotency-Key", key\)/);
+  const refuse = hook.indexOf('Log.i("PaxD135", "SDK sale request missing idempotency_id")');
+  const wire = hook.lastIndexOf("chain.proceed");
+  assert.ok(refuse >= 0 && wire > refuse);
+  assert.match(plugin, /SDK sale Idempotency-Key=/);
   const saleMethod = plugin.slice(
     plugin.indexOf("public void sale(PluginCall call)"),
     plugin.indexOf("private static boolean isSaleIdempotencyId"),
