@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_315_reader_autoconnect",
+    date: "2026-10-20",
+    title: "Reader connects on its own",
+    summary: "Devices shows Connected or Not connected. The assigned reader connects on its own.",
+    body: "On the station Devices screen the assigned card reader shows Connected or Not connected, and the reader name when it has one. A Bluetooth reader assigned to that station connects on its own when it is on and was connected here before. Scan for reader is still there if that does not connect. A USB reader uses the cable and is not scanned over Bluetooth.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["payments", "devices"],
+  },
+  {
     id: "upd_2026_10_314_fullscreen_check",
     date: "2026-10-20",
     title: "Full-screen check",

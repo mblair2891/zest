@@ -953,6 +953,113 @@ export function paxLinkStatusText(link: { phase: string; message: string }): str
   return message;
 }
 
+/** Last Bluetooth name and address for an assigned reader. Keyed by serial. */
+export const PAX_READER_LINK_KEY = "summex.pax.reader-link";
+
+export type PaxBluetoothMemory = {
+  serial: string;
+  address: string;
+  name: string;
+};
+
+function readPaxBluetoothStore(): Record<string, PaxBluetoothMemory> {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(PAX_READER_LINK_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const out: Record<string, PaxBluetoothMemory> = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!value || typeof value !== "object") continue;
+      const row = value as Record<string, unknown>;
+      const serial = normalizePaxSerial(String(row.serial ?? key));
+      const address = String(row.address ?? "").trim().slice(0, 80);
+      const name = String(row.name ?? "").trim().slice(0, 80);
+      if (!serial || !address || address.toLowerCase() === "usb") continue;
+      out[serial] = { serial, address, name };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** Address saved after the last successful Bluetooth connect for this serial. */
+export function rememberedPaxBluetooth(serial: string): PaxBluetoothMemory | null {
+  const key = normalizePaxSerial(serial);
+  if (!key) return null;
+  return readPaxBluetoothStore()[key] ?? null;
+}
+
+/** Keep the Bluetooth address so the next launch can connect without a scan. */
+export function rememberPaxBluetooth(input: PaxBluetoothMemory): void {
+  if (typeof localStorage === "undefined") return;
+  const serial = normalizePaxSerial(input.serial);
+  const address = String(input.address ?? "").trim().slice(0, 80);
+  const name = String(input.name ?? "").trim().slice(0, 80);
+  if (!serial || !address || address.toLowerCase() === "usb") return;
+  const all = readPaxBluetoothStore();
+  all[serial] = { serial, address, name };
+  try {
+    localStorage.setItem(PAX_READER_LINK_KEY, JSON.stringify(all));
+  } catch {
+    /* the next scan can still connect */
+  }
+}
+
+/**
+ * Station Devices face. Connected only when the assigned reader is up.
+ * Pay still uses Reader ready. This line is the Devices screen only.
+ */
+export function stationDeviceFaceStatus(input: {
+  phase: string;
+  connectedSerial?: string | null;
+  assignedSerial?: string | null;
+  usb?: boolean;
+  usbAttached?: boolean | null;
+}): { label: "Connected" | "Not connected"; connected: boolean } {
+  const assigned = normalizePaxSerial(String(input.assignedSerial ?? ""));
+  const connectedSerial = normalizePaxSerial(String(input.connectedSerial ?? ""));
+  const phaseUp = input.phase === "connected";
+  const serialOk = !assigned || connectedSerial === assigned;
+  if (input.usb) {
+    const up = phaseUp && input.usbAttached === true && serialOk;
+    return { label: up ? "Connected" : "Not connected", connected: up };
+  }
+  const up = phaseUp && serialOk;
+  return { label: up ? "Connected" : "Not connected", connected: up };
+}
+
+export type PaxAutoConnectPlan = "skip" | "direct" | "scan" | "usb";
+
+/**
+ * One automatic attempt for the reader assigned to this station.
+ * A saved Bluetooth address connects directly. Otherwise the station scans.
+ * USB uses the cable. Network stays off this path.
+ */
+export function paxAutoConnectPlan(input: {
+  phase: string;
+  connectedSerial?: string | null;
+  assigned: PaxReader | null;
+  rememberedAddress?: string | null;
+  usbAttached?: boolean | null;
+  inFlight?: boolean;
+}): PaxAutoConnectPlan {
+  const assigned = input.assigned;
+  if (!assigned || input.inFlight) return "skip";
+  if (input.phase === "scanning" || input.phase === "connecting" || input.phase === "setting_up") {
+    return "skip";
+  }
+  const held = normalizePaxSerial(String(input.connectedSerial ?? ""));
+  if (input.phase === "connected" && held === assigned.serial) return "skip";
+  const link = normalizePaxLink(assigned.link);
+  if (link === "network") return "skip";
+  if (link === "usb") return input.usbAttached === true ? "usb" : "skip";
+  if (String(input.rememberedAddress ?? "").trim()) return "direct";
+  return "scan";
+}
+
 /**
  * Pay status. The reader entity and the check entity stay on the banner.
  * A match then continues into the Finix connect line.

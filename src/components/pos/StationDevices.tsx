@@ -15,13 +15,16 @@ import {
   paxConnectActivityTrace,
   paxSdkConnectActivityResult,
   normalizePaxLink,
-  paxLinkStatusText,
-  payReaderStatusText,
+  normalizePaxSerial,
+  paxAutoConnectPlan,
   paxScanPresentation,
   paxScanRowLabel,
   paxTabletCallback,
   readerForSerial,
+  rememberPaxBluetooth,
+  rememberedPaxBluetooth,
   runPaxConnect,
+  stationDeviceFaceStatus,
   type PaxReader,
   type PaxScanRow,
 } from "@/lib/payments/pax-d135";
@@ -30,6 +33,7 @@ import { noteStationActivity, paxReaderSessionData } from "@/lib/payments/statio
 import {
   beginPaxConnect,
   beginPaxScan,
+  clearPaxScanRows,
   failPaxConnect,
   finishPaxScan,
   getPaxStationLink,
@@ -40,7 +44,7 @@ import {
   usePaxStationLink,
 } from "@/lib/pos/pax-station-link";
 import { isStationPinPath } from "@/lib/pos/device-roles";
-import { readPairedDeviceId } from "@/lib/pos/location-devices";
+import { readPairedDeviceId, type LocationDevice } from "@/lib/pos/location-devices";
 import { readStationPair } from "@/lib/pos/station-pair";
 import { usePosStore } from "@/lib/pos/store";
 import {
@@ -87,6 +91,382 @@ function locationIdNow(): string {
     readStationPair()?.locationId ||
     ""
   );
+}
+
+let connectBusyCount = 0;
+const connectBusyListeners = new Set<() => void>();
+
+function setConnectBusy(on: boolean): void {
+  connectBusyCount += on ? 1 : -1;
+  if (connectBusyCount < 0) connectBusyCount = 0;
+  for (const listener of connectBusyListeners) listener();
+}
+
+function useConnectBusy(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      connectBusyListeners.add(listener);
+      return () => connectBusyListeners.delete(listener);
+    },
+    () => connectBusyCount > 0,
+    () => false,
+  );
+}
+
+let autoQueue: Promise<void> = Promise.resolve();
+const autoSeen = new Set<string>();
+
+function assignedReaderNow(): { station: LocationDevice | null; reader: PaxReader } | null {
+  const devices = usePosStore.getState().locationDevices;
+  const station = devices.find((device) => device.id === stationIdNow()) ?? null;
+  const reader = readerForSerial(getPaxStationLink().readers, String(station?.cardReaderId ?? ""));
+  if (!reader) return null;
+  return { station, reader };
+}
+
+/** Launch tries once. Opening Devices tries once more. A USB cable can try once. */
+function requestAssignedReaderConnect(reason: "launch" | "devices" | "usb"): void {
+  const found = assignedReaderNow();
+  if (!found) return;
+  const kind = normalizePaxLink(found.reader.link);
+  if (kind === "network") return;
+  if (reason === "usb" && kind !== "usb") return;
+  const key = `${reason}:${found.reader.serial}`;
+  if (autoSeen.has(key)) return;
+  const link = getPaxStationLink();
+  const held = link.phase === "connected" ? normalizePaxSerial(link.reader?.serial ?? "") : "";
+  if (held && held === found.reader.serial) return;
+  if (link.phase === "scanning" || link.phase === "connecting" || link.phase === "setting_up") return;
+  autoSeen.add(key);
+  const serial = found.reader.serial;
+  autoQueue = autoQueue.then(() => runAssignedReaderConnect(serial)).catch(() => undefined);
+}
+
+async function connectPaxRow(input: {
+  row: PaxScanRow;
+  station: LocationDevice | null;
+  assignedSerial: string | null;
+}): Promise<boolean> {
+  const { row, station } = input;
+  setConnectBusy(true);
+  let sent: ReturnType<typeof paxConnectActivityTrace> | undefined;
+  try {
+    const locationId = locationIdNow();
+    let locationLive = false;
+    if (locationId) {
+      try {
+        const status = await getPaymentsStatusFn({ data: { locationId } });
+        locationLive = status.mode === "live" && !status.lifecycleForcesSandbox;
+      } catch {
+        locationLive = false;
+      }
+    }
+    const decision = decideStationReaderConnect({
+      row,
+      readers: getPaxStationLink().readers,
+      locationLive,
+      assignedSerial: input.assignedSerial,
+    });
+    const readerEntity = decision.ok ? decision.reader.entityName || decision.reader.entityId : "";
+    if (!decision.ok) {
+      await noteStationActivity({
+        locationId,
+        action: "connect",
+        readerEntity,
+        result: decision.message,
+      });
+      failPaxConnect(decision.message);
+      return false;
+    }
+    beginPaxConnect(decision.reader);
+    let diagnostic = "";
+    const logConnect = async (
+      result: string,
+      trace?: {
+        applicationId?: string;
+        environment?: string;
+        usernamePresent?: "yes" | "no";
+        passwordPresent?: "yes" | "no";
+        merchantId?: string;
+        deviceId?: string;
+      },
+    ) => {
+      await noteStationActivity({
+        locationId,
+        action: "connect",
+        diagnostic,
+        readerEntity,
+        applicationId: trace?.applicationId,
+        environment: trace?.environment,
+        usernamePresent: trace?.usernamePresent,
+        passwordPresent: trace?.passwordPresent,
+        merchantId: trace?.merchantId,
+        deviceId: trace?.deviceId,
+        result,
+      });
+    };
+    const session = await paxReaderSessionFn({
+      data: paxReaderSessionData({
+        locationId,
+        serial: decision.reader.serial,
+        entityId: decision.reader.entityId,
+      }),
+    });
+    if (!session.ok) {
+      await noteStationActivity({
+        locationId,
+        action: "Finix keys",
+        usernamePresent: "no",
+        passwordPresent: "no",
+        readerEntity,
+        result: session.error,
+      });
+      await logConnect(session.error);
+      failPaxConnect(session.error);
+      return false;
+    }
+    const creds = {
+      userId: session.userId.trim(),
+      password: session.password.trim(),
+      merchantId: session.merchantId.trim(),
+      deviceId: session.deviceId.trim(),
+      env: session.env,
+      mid: session.mid.trim(),
+    };
+    diagnostic = finixConnectDiagnostic(creds);
+    sent = paxConnectActivityTrace(creds);
+    logFinixConnectDiagnostic(diagnostic);
+    await noteStationActivity({
+      locationId,
+      action: "Finix keys",
+      diagnostic,
+      readerEntity,
+      result: diagnostic,
+    });
+    const preview = finixMerchantDataPreview(creds);
+    logFinixConnectDiagnostic(preview);
+    await noteStationActivity({
+      locationId,
+      action: "connect",
+      diagnostic,
+      readerEntity,
+      environment: sent?.environment,
+      usernamePresent: sent?.usernamePresent,
+      passwordPresent: sent?.passwordPresent,
+      merchantId: sent?.merchantId,
+      deviceId: sent?.deviceId,
+      result: preview,
+    });
+    showPaxConnectBanner(preview);
+    const gap = finixMerchantDataGap(creds);
+    if (gap) {
+      await logConnect(gap, sent);
+      failPaxConnect(gap);
+      return false;
+    }
+    let raw = "";
+    let trace:
+      | {
+          applicationId?: string;
+          environment?: string;
+          usernamePresent?: "yes" | "no";
+          passwordPresent?: "yes" | "no";
+          merchantId?: string;
+          deviceId?: string;
+        }
+      | undefined;
+    if (!paxReaderOnThisStation()) {
+      try {
+        const auth = await finixConnectAuthFn({
+          data: paxReaderSessionData({
+            locationId,
+            serial: decision.reader.serial,
+            entityId: decision.reader.entityId,
+          }),
+        });
+        trace = {
+          applicationId: auth.applicationId,
+          environment: auth.environment,
+          usernamePresent: auth.usernamePresent,
+          passwordPresent: auth.passwordPresent,
+          merchantId: auth.merchantId,
+          deviceId: auth.deviceId,
+        };
+        raw = String(auth.response ?? "").trim();
+        if (!auth.ok) {
+          const body = String(auth.error ?? "").trim();
+          await logConnect(raw || body || "Finix login check failed", trace);
+        }
+      } catch (err) {
+        const detail = err instanceof Error ? err.message.trim() : "";
+        await logConnect(detail || "Finix login check failed", trace);
+      }
+    }
+    const connected = await runPaxConnect(() =>
+      connectForPaxReader({
+        name: row.name,
+        address: row.address,
+        merchantId: creds.merchantId,
+        deviceId: creds.deviceId,
+        userId: creds.userId,
+        password: creds.password,
+        mid: creds.mid,
+        env: creds.env,
+        link: normalizePaxLink(decision.reader.link),
+      }),
+    );
+    const sdkTrace = finixSdkTraceFromConnect(connected);
+    const activity = {
+      ...paxConnectActivityTrace({
+        ...creds,
+        applicationId: trace?.applicationId,
+      }),
+      ...(sdkTrace?.environment ? { environment: sdkTrace.environment } : {}),
+      ...(sdkTrace?.merchantId ? { merchantId: sdkTrace.merchantId } : {}),
+      ...(sdkTrace?.deviceId ? { deviceId: sdkTrace.deviceId } : {}),
+    };
+    const sdk = paxSdkConnectActivityResult(connected);
+    logFinixConnectDiagnostic(sdk);
+    if (!connected.ok) {
+      const shown = paxTabletCallback(connected);
+      await logConnect(sdk || shown, activity);
+      failPaxConnect(shown);
+      return false;
+    }
+    await logConnect(sdk, activity);
+    if (normalizePaxLink(decision.reader.link) === "bluetooth") {
+      rememberPaxBluetooth({
+        serial: decision.reader.serial,
+        address: row.address,
+        name: row.name || decision.reader.name,
+      });
+    }
+    markPaxConnected(
+      decision.reader,
+      typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
+      finixConnectBanner(diagnostic, PAX_MSG.ready),
+    );
+    clearPaxScanRows();
+    if (decision.claimSlot && station) {
+      const nextSerial = decision.reader.serial;
+      usePosStore.setState({
+        locationDevices: usePosStore.getState().locationDevices.map((device) =>
+          device.id === station.id ? { ...device, cardReaderId: nextSerial } : device,
+        ),
+      });
+      const orgId = readStationPair()?.orgId || readTenantPosContext()?.orgId || "";
+      if (orgId && locationId) {
+        void saveLocationDeviceFn({
+          data: {
+            orgId,
+            locationId,
+            device: {
+              id: station.id,
+              label: station.label,
+              type: station.type,
+              serial: station.serial,
+              assignment: station.assignment,
+              receiptPrinterId: station.receiptPrinterId ?? null,
+              stationClass: station.stationClass ?? null,
+              cardReaderId: nextSerial,
+              cardReaderKind: station.cardReaderKind ?? null,
+            },
+          },
+        }).catch(() => undefined);
+      }
+    }
+    return true;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message.trim() : "";
+    const outcome = detail || "Exception during connection";
+    await noteStationActivity({
+      locationId: locationIdNow(),
+      action: "connect",
+      environment: sent?.environment,
+      usernamePresent: sent?.usernamePresent,
+      passwordPresent: sent?.passwordPresent,
+      merchantId: sent?.merchantId,
+      deviceId: sent?.deviceId,
+      result: outcome,
+    });
+    failPaxConnect(outcome);
+    return false;
+  } finally {
+    setConnectBusy(false);
+  }
+}
+
+async function runAssignedReaderConnect(serial: string): Promise<void> {
+  const found = assignedReaderNow();
+  if (!found || found.reader.serial !== serial) return;
+  const kind = normalizePaxLink(found.reader.link);
+  if (kind === "network") return;
+  const link = getPaxStationLink();
+  let usbAttached: boolean | null = null;
+  if (kind === "usb") {
+    try {
+      usbAttached = await usbReaderAttached();
+    } catch {
+      usbAttached = false;
+    }
+  }
+  const memory = kind === "bluetooth" ? rememberedPaxBluetooth(serial) : null;
+  const plan = paxAutoConnectPlan({
+    phase: link.phase,
+    connectedSerial: link.phase === "connected" ? link.reader?.serial : "",
+    assigned: found.reader,
+    rememberedAddress: memory?.address,
+    usbAttached,
+    inFlight: link.phase === "scanning" || link.phase === "connecting" || link.phase === "setting_up",
+  });
+  if (plan === "skip") return;
+  if (plan === "usb") {
+    await connectPaxRow({
+      row: {
+        name: found.reader.name,
+        address: "usb",
+        serial: found.reader.serial,
+        registered: true,
+        entityId: found.reader.entityId,
+      },
+      station: found.station,
+      assignedSerial: serial,
+    });
+    return;
+  }
+  if (plan === "direct" && memory) {
+    const ok = await connectPaxRow({
+      row: {
+        name: memory.name || found.reader.name,
+        address: memory.address,
+        serial: found.reader.serial,
+        registered: true,
+        entityId: found.reader.entityId,
+      },
+      station: found.station,
+      assignedSerial: serial,
+    });
+    if (ok) return;
+    const after = getPaxStationLink();
+    if (after.phase === "scanning" || after.phase === "connecting" || after.phase === "setting_up") return;
+  }
+  beginPaxScan();
+  let presented: ReturnType<typeof paxScanPresentation>;
+  try {
+    const scanned = await scanForPaxReaders();
+    presented = paxScanPresentation(scanned, getPaxStationLink().readers);
+  } catch {
+    presented = { phase: "idle", message: PAX_MSG.permissions, rows: [] };
+  }
+  finishPaxScan(presented);
+  const row = presented.rows.find((item) => normalizePaxSerial(item.serial) === normalizePaxSerial(serial));
+  if (!row) return;
+  const again = assignedReaderNow();
+  await connectPaxRow({
+    row,
+    station: again?.station ?? found.station,
+    assignedSerial: serial,
+  });
 }
 
 function useStationReaders(): void {
@@ -194,6 +574,16 @@ export function StationDeviceHealthBanner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [printerKey, tenantLocationId]);
 
+  const readerKey = link.readers.map((reader) => `${reader.serial}:${reader.link ?? ""}`).join("|");
+  const assignedSerial = useMemo(() => {
+    const station = devices.find((device) => device.id === stationId);
+    return String(station?.cardReaderId ?? "");
+  }, [devices, stationId]);
+  useEffect(() => {
+    if (!readerKey || !assignedSerial) return;
+    requestAssignedReaderConnect("launch");
+  }, [readerKey, assignedSerial]);
+
   const notices = stationHealthNotices({
     systems,
     connectedSerial: link.phase === "connected" ? link.reader?.serial ?? null : null,
@@ -236,7 +626,7 @@ export function StationDevicesHost() {
 function StationDeviceScreen({ onClose }: { onClose: () => void }) {
   const link = usePaxStationLink();
   const devices = usePosStore((s) => s.locationDevices);
-  const [busy, setBusy] = useState(false);
+  const busy = useConnectBusy();
   const stationId = stationIdNow();
   const station = devices.find((device) => device.id === stationId) ?? null;
   const connectedSerial = link.phase === "connected" ? link.reader?.serial ?? "" : "";
@@ -255,7 +645,9 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
         setUsbAttached(attached);
         if (!attached && getPaxStationLink().phase === "connected" && getPaxStationLink().reader?.link === "usb") {
           failPaxConnect(CARD_READER_USB_NOT_CONNECTED);
+          return;
         }
+        if (attached) requestAssignedReaderConnect("usb");
       });
     };
     tick();
@@ -265,6 +657,12 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
       window.clearInterval(id);
     };
   }, [usbMode]);
+
+  const readerKey = link.readers.map((reader) => reader.serial).join("|");
+  useEffect(() => {
+    if (!assigned?.serial) return;
+    requestAssignedReaderConnect("devices");
+  }, [assigned?.serial, readerKey]);
 
   const scan = () => {
     void (async () => {
@@ -278,243 +676,14 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
     })();
   };
 
-  const pick = (row: PaxScanRow) => {
-    void (async () => {
-      const locationId = locationIdNow();
-      let locationLive = false;
-      if (locationId) {
-        try {
-          const status = await getPaymentsStatusFn({ data: { locationId } });
-          locationLive = status.mode === "live" && !status.lifecycleForcesSandbox;
-        } catch {
-          locationLive = false;
-        }
-      }
-      const decision = decideStationReaderConnect({
-        row,
-        readers: getPaxStationLink().readers,
-        locationLive,
-        assignedSerial: station?.cardReaderId ?? null,
-      });
-      const readerEntity = decision.ok ? decision.reader.entityName || decision.reader.entityId : "";
-      if (!decision.ok) {
-        await noteStationActivity({
-          locationId,
-          action: "connect",
-          readerEntity,
-          result: decision.message,
-        });
-        failPaxConnect(decision.message);
-        return;
-      }
-      beginPaxConnect(decision.reader);
-      setBusy(true);
-      let diagnostic = "";
-      let sent: ReturnType<typeof paxConnectActivityTrace> | undefined;
-      const logConnect = async (
-        result: string,
-        trace?: {
-          applicationId?: string;
-          environment?: string;
-          usernamePresent?: "yes" | "no";
-          passwordPresent?: "yes" | "no";
-          merchantId?: string;
-          deviceId?: string;
-        },
-      ) => {
-        await noteStationActivity({
-          locationId,
-          action: "connect",
-          diagnostic,
-          readerEntity,
-          applicationId: trace?.applicationId,
-          environment: trace?.environment,
-          usernamePresent: trace?.usernamePresent,
-          passwordPresent: trace?.passwordPresent,
-          merchantId: trace?.merchantId,
-          deviceId: trace?.deviceId,
-          result,
-        });
-      };
-      try {
-        const session = await paxReaderSessionFn({
-          data: paxReaderSessionData({
-            locationId,
-            serial: decision.reader.serial,
-            entityId: decision.reader.entityId,
-          }),
-        });
-        if (!session.ok) {
-          await noteStationActivity({
-            locationId,
-            action: "Finix keys",
-            usernamePresent: "no",
-            passwordPresent: "no",
-            readerEntity,
-            result: session.error,
-          });
-          await logConnect(session.error);
-          failPaxConnect(session.error);
-          setBusy(false);
-          return;
-        }
-        const creds = {
-          userId: session.userId.trim(),
-          password: session.password.trim(),
-          merchantId: session.merchantId.trim(),
-          deviceId: session.deviceId.trim(),
-          env: session.env,
-          mid: session.mid.trim(),
-        };
-        diagnostic = finixConnectDiagnostic(creds);
-        sent = paxConnectActivityTrace(creds);
-        logFinixConnectDiagnostic(diagnostic);
-        await noteStationActivity({
-          locationId,
-          action: "Finix keys",
-          diagnostic,
-          readerEntity,
-          result: diagnostic,
-        });
-        const preview = finixMerchantDataPreview(creds);
-        logFinixConnectDiagnostic(preview);
-        await noteStationActivity({
-          locationId,
-          action: "connect",
-          diagnostic,
-          readerEntity,
-          environment: sent?.environment,
-          usernamePresent: sent?.usernamePresent,
-          passwordPresent: sent?.passwordPresent,
-          merchantId: sent?.merchantId,
-          deviceId: sent?.deviceId,
-          result: preview,
-        });
-        showPaxConnectBanner(preview);
-        const gap = finixMerchantDataGap(creds);
-        if (gap) {
-          await logConnect(gap, sent);
-          failPaxConnect(gap);
-          setBusy(false);
-          return;
-        }
-        let raw = "";
-        let trace:
-          | {
-              applicationId?: string;
-              environment?: string;
-              usernamePresent?: "yes" | "no";
-              passwordPresent?: "yes" | "no";
-              merchantId?: string;
-              deviceId?: string;
-            }
-          | undefined;
-        if (!paxReaderOnThisStation()) {
-          try {
-            const auth = await finixConnectAuthFn({
-              data: paxReaderSessionData({
-                locationId,
-                serial: decision.reader.serial,
-                entityId: decision.reader.entityId,
-              }),
-            });
-            trace = {
-              applicationId: auth.applicationId,
-              environment: auth.environment,
-              usernamePresent: auth.usernamePresent,
-              passwordPresent: auth.passwordPresent,
-              merchantId: auth.merchantId,
-              deviceId: auth.deviceId,
-            };
-            raw = String(auth.response ?? "").trim();
-            if (!auth.ok) {
-              const body = String(auth.error ?? "").trim();
-              await logConnect(raw || body || "Finix login check failed", trace);
-            }
-          } catch (err) {
-            const detail = err instanceof Error ? err.message.trim() : "";
-            await logConnect(detail || "Finix login check failed", trace);
-          }
-        }
-        const connected = await runPaxConnect(() =>
-          connectForPaxReader({
-            name: row.name,
-            address: row.address,
-            merchantId: creds.merchantId,
-            deviceId: creds.deviceId,
-            userId: creds.userId,
-            password: creds.password,
-            mid: creds.mid,
-            env: creds.env,
-            link: normalizePaxLink(decision.reader.link),
-          }),
-        );
-        const sdkTrace = finixSdkTraceFromConnect(connected);
-        const activity = {
-          ...paxConnectActivityTrace({
-            ...creds,
-            applicationId: trace?.applicationId,
-          }),
-          ...(sdkTrace?.environment ? { environment: sdkTrace.environment } : {}),
-          ...(sdkTrace?.merchantId ? { merchantId: sdkTrace.merchantId } : {}),
-          ...(sdkTrace?.deviceId ? { deviceId: sdkTrace.deviceId } : {}),
-        };
-        const sdk = paxSdkConnectActivityResult(connected);
-        logFinixConnectDiagnostic(sdk);
-        if (!connected.ok) {
-          const shown = paxTabletCallback(connected);
-          await logConnect(sdk || shown, activity);
-          failPaxConnect(shown);
-          setBusy(false);
-          return;
-        }
-        await logConnect(sdk, activity);
-        markPaxConnected(
-          decision.reader,
-          typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
-          finixConnectBanner(diagnostic, PAX_MSG.ready),
-        );
-        if (decision.claimSlot && station) {
-          const nextSerial = decision.reader.serial;
-          usePosStore.setState({
-            locationDevices: usePosStore.getState().locationDevices.map((device) =>
-              device.id === station.id ? { ...device, cardReaderId: nextSerial } : device,
-            ),
-          });
-          const orgId = readStationPair()?.orgId || readTenantPosContext()?.orgId || "";
-          if (orgId && locationId) {
-            void saveLocationDeviceFn({
-              data: {
-                orgId,
-                locationId,
-                device: {
-                  id: station.id,
-                  label: station.label,
-                  type: station.type,
-                  serial: station.serial,
-                  assignment: station.assignment,
-                  receiptPrinterId: station.receiptPrinterId ?? null,
-                  stationClass: station.stationClass ?? null,
-                  cardReaderId: nextSerial,
-                  cardReaderKind: station.cardReaderKind ?? null,
-                },
-              },
-            }).catch(() => undefined);
-          }
-        }
-      } catch (err) {
-        const detail = err instanceof Error ? err.message.trim() : "";
-        const outcome = detail || "Exception during connection";
-        await logConnect(outcome, sent);
-        failPaxConnect(outcome);
-      }
-      setBusy(false);
-    })();
-  };
-
-  const status = usbMode
-    ? payReaderStatusText({ link: "usb", usbAttached, phase: link.phase, message: link.message })
-    : paxLinkStatusText(link);
+  const face = stationDeviceFaceStatus({
+    phase: link.phase,
+    connectedSerial,
+    assignedSerial: assigned?.serial ?? "",
+    usb: usbMode,
+    usbAttached,
+  });
+  const readerName = assigned?.name?.trim() || "";
 
   return (
     <div
@@ -529,14 +698,19 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
       </header>
       <StationDeviceHealthBanner />
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
-        <p className="text-sm text-muted-foreground">
-          {station?.label ? `${station.label}. ` : ""}
-          Scan for a paired PAX D135 and connect it before a check is open.
+        <p
+          className={`text-lg font-semibold ${face.connected ? "text-emerald-700" : "text-amber-700"}`}
+          data-pax-status
+          data-pax-connected={connectedSerial}
+          data-pax-face={face.connected ? "connected" : "down"}
+        >
+          {face.label}
         </p>
-        <p className="text-sm font-medium" data-pax-status data-pax-connected={connectedSerial}>
-          {status}
-          {link.phase === "connected" && link.battery != null ? ` · Battery ${link.battery}%` : ""}
-        </p>
+        {readerName ? (
+          <p className="text-sm text-muted-foreground" data-pax-reader-name>
+            {readerName}
+          </p>
+        ) : null}
         <Button
           type="button"
           size="lg"
@@ -553,7 +727,13 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
             type="button"
             data-pax-serial={row.serial}
             className="rounded-lg border border-border px-3 py-3 text-left text-sm"
-            onClick={() => pick(row)}
+            onClick={() => {
+              void connectPaxRow({
+                row,
+                station,
+                assignedSerial: station?.cardReaderId ?? null,
+              });
+            }}
           >
             {paxScanRowLabel(row, link.readers)}
           </button>

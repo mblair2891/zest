@@ -90,6 +90,12 @@ export function finishPaxScan(presented: {
   });
 }
 
+/** Drop the scan list without dropping a reader that is already connected. */
+export function clearPaxScanRows(): void {
+  if (state.rows.length === 0) return;
+  patch({ rows: [] });
+}
+
 export function beginPaxConnect(reader: PaxReader): void {
   const presented = presentPaxHold({ event: "select", wasReady: state.phase === "connected" });
   patch({ phase: "connecting", reader, message: presented.message });
