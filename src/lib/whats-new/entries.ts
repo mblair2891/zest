@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_330_handheld",
+    date: "2026-10-21",
+    title: "Handheld layout",
+    summary: "A handheld uses a one-hand floor, check, and menu. A larger tablet keeps its layout.",
+    body: "On a handheld, or on a screen under 600px wide, the floor, the check, and the menu use a one-hand layout. The floor fits the whole room, table taps are larger, status colors are simpler, and a list of tables is available. Send and Pay stay at the bottom of the check. Menu cards are larger, in one column, and modifiers are large taps. The PIN pad, the order display, and the host stand keep their layout on a larger tablet.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_329_reader_reenroll",
     date: "2026-10-21",
     title: "Re-enroll readers for live",

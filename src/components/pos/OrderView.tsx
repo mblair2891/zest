@@ -142,6 +142,8 @@ export function OrderView({
   const [wellBottle, setWellBottle] = useState<WellLevelRow | null>(null);
   const [wellPour, setWellPour] = useState<WellPour | null>(null);
   const [payOpen, setPayOpen] = useState(false);
+  const [seatsOpen, setSeatsOpen] = useState(false);
+  const [lineOpen, setLineOpen] = useState(false);
   useEffect(() => {
     void import("@/lib/pos/station-busy").then((m) => m.setStationPayOpen(payOpen));
     if (!payOpen) {
@@ -709,8 +711,8 @@ export function OrderView({
     return null;
   };
 
-  /** Tablet order screen, portrait or landscape: check on the left third, menu on the right two-thirds. A phone keeps the check over the menu. */
-  const orderSplit = layout.width >= 640;
+  /** Tablet order screen, portrait or landscape: check on the left third, menu on the right two-thirds. A phone or 8" handheld keeps the check over the menu. */
+  const orderSplit = layout.width >= 640 && !layout.smallForm;
   const checkOverlay = !orderSplit;
 
   const runPrintCheck = () => {
@@ -943,7 +945,13 @@ export function OrderView({
           ))}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          <div className="grid grid-cols-2 gap-2 min-[1100px]:grid-cols-3">
+          <div
+            className={cn(
+              "grid gap-2",
+              layout.smallForm ? "grid-cols-1" : "grid-cols-2 min-[1100px]:grid-cols-3",
+            )}
+            data-menu-cols={layout.smallForm ? "1" : undefined}
+          >
             {tiles.map((tile) => {
               if (tile.kind === "spirit") {
                 return (
@@ -955,7 +963,10 @@ export function OrderView({
                     onClick={() =>
                       openWellSpirit({ spiritId: tile.spiritId, entityId: tile.entityId, name: tile.name })
                     }
-                    className="flex min-h-16 flex-col rounded-2xl border border-border bg-surface p-3 text-left active:scale-[0.98]"
+                    className={cn(
+                      "flex min-h-16 flex-col rounded-2xl border border-border bg-surface p-3 text-left active:scale-[0.98]",
+                      layout.smallForm && "min-h-28 p-4 text-lg",
+                    )}
                   >
                     <span className="text-base font-semibold leading-snug">{tile.name}</span>
                     <span className="mt-auto pt-2 text-sm font-semibold tabular">
@@ -980,6 +991,7 @@ export function OrderView({
                   onClick={() => onMenuClick(item)}
                   className={cn(
                     "flex min-h-16 flex-col rounded-2xl border border-border bg-surface p-3 text-left active:scale-[0.98]",
+                    layout.smallForm && "min-h-28 p-4 text-lg",
                     !item.available && "opacity-40",
                   )}
                 >
@@ -1064,7 +1076,23 @@ export function OrderView({
           </div>
         </div>
 
-        <div className="flex gap-1 overflow-x-auto border-b border-border px-2 py-1.5">
+        {layout.smallForm && (
+          <button
+            type="button"
+            data-check-section="seats"
+            className="flex min-h-14 w-full items-center border-b border-border px-3 text-left text-base font-semibold"
+            onClick={() => setSeatsOpen((open) => !open)}
+          >
+            {seatsOpen ? "Hide seats" : "Seats"}
+          </button>
+        )}
+        <div
+          className={cn(
+            "flex gap-1 overflow-x-auto border-b border-border px-2 py-1.5",
+            layout.smallForm && !seatsOpen && "hidden",
+            layout.smallForm && "[&_button]:min-h-12 [&_button]:px-4 [&_button]:text-base",
+          )}
+        >
           <Button
             size="sm"
             variant={activeSeat === null ? "default" : "outline"}
@@ -1150,7 +1178,24 @@ export function OrderView({
           <p className="px-3 py-1 text-xs text-danger">{gateError}</p>
         )}
         {checkLevelActions}
-        <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
+        {layout.smallForm && (
+          <button
+            type="button"
+            data-check-section="line"
+            className="flex min-h-14 w-full items-center border-t border-border px-3 text-left text-base font-semibold"
+            onClick={() => setLineOpen((open) => !open)}
+          >
+            {lineOpen ? "Hide line actions" : "Line actions"}
+          </button>
+        )}
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-2 border-t border-border p-2",
+            layout.smallForm && !lineOpen && "hidden",
+            layout.smallForm && "[&_button]:min-h-14 [&_button]:text-base",
+          )}
+          data-check-section={layout.smallForm ? "line" : undefined}
+        >
           {(() => {
             const selected = selectedLineId
               ? order.lines.find((l) => l.id === selectedLineId)
@@ -1293,24 +1338,30 @@ export function OrderView({
             </div>
           </div>
         )}
-        <div className="grid grid-cols-2 gap-2 p-2">
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-2 p-2",
+            layout.smallForm && "sticky bottom-0 z-10 bg-surface pb-[max(0.5rem,env(safe-area-inset-bottom))]",
+          )}
+          data-order-actions={layout.smallForm ? "sticky" : undefined}
+        >
           {mayPrintCheck && (
           <Button
             variant="outline"
-            className="station-touch min-h-12"
+            className={cn("station-touch min-h-12", layout.smallForm && "min-h-16 text-lg")}
             onClick={() => runPrintCheck()}
           >
             <Printer className="h-4 w-4" />
             Print check
           </Button>
           )}
-          <Button className="station-touch min-h-12" disabled={!unsent} onClick={() => sendOrder()}>
+          <Button className={cn("station-touch min-h-12", layout.smallForm && "min-h-16 text-lg")} disabled={!unsent} onClick={() => sendOrder()}>
             <Send className="h-4 w-4" />
             Send
           </Button>
           {canEmployee(emp, "payments:take") && !odsNoPay && (
           <Button
-            className="station-touch col-span-full min-h-12"
+            className={cn("station-touch col-span-full min-h-12", layout.smallForm && "min-h-16 text-lg")}
             size="lg"
             disabled={
               order.status !== "open" || !totals || totals.itemCount === 0
@@ -1458,10 +1509,13 @@ export function OrderView({
           <div
             className={cn(
               "grid gap-2",
-              checkOverlay
-                ? "grid-cols-2"
-                : "grid-cols-2 min-[1100px]:grid-cols-3 min-[1500px]:grid-cols-4",
+              layout.smallForm
+                ? "grid-cols-1"
+                : checkOverlay
+                  ? "grid-cols-2"
+                  : "grid-cols-2 min-[1100px]:grid-cols-3 min-[1500px]:grid-cols-4",
             )}
+            data-menu-cols={layout.smallForm ? "1" : undefined}
           >
             {menuItems.length === 0 && (
               <div className="rounded-2xl border border-dashed border-border bg-surface p-5 text-center">
@@ -1486,7 +1540,10 @@ export function OrderView({
                     onClick={() =>
                       openWellSpirit({ spiritId: tile.spiritId, entityId: tile.entityId, name: tile.name })
                     }
-                    className="flex min-h-[5.5rem] w-full flex-col rounded-2xl border border-border bg-surface p-3 text-left transition hover:border-border-strong active:scale-[0.98]"
+                    className={cn(
+                      "flex min-h-[5.5rem] w-full flex-col rounded-2xl border border-border bg-surface p-3 text-left transition hover:border-border-strong active:scale-[0.98]",
+                      layout.smallForm && "min-h-28 p-4 text-lg",
+                    )}
                   >
                     <span className="text-sm font-medium leading-snug">{tile.name}</span>
                     <span className="mt-auto pt-2 text-right tabular text-sm font-semibold">
@@ -1512,6 +1569,7 @@ export function OrderView({
                     onClick={() => onMenuClick(item)}
                     className={cn(
                       "flex min-h-[5.5rem] w-full flex-col rounded-2xl border border-border bg-surface p-3 text-left transition hover:border-border-strong active:scale-[0.98]",
+                      layout.smallForm && "min-h-28 p-4 text-lg",
                       !item.available && "opacity-40",
                     )}
                   >
@@ -1584,7 +1642,13 @@ export function OrderView({
           {printMsg && (
             <p className="shrink-0 bg-surface px-3 pb-1 text-[11px] text-muted-foreground">{printMsg}</p>
           )}
-          <div className="grid grid-cols-2 gap-2 border-t border-border bg-surface p-2 safe-bottom">
+          <div
+            className={cn(
+              "grid grid-cols-2 gap-2 border-t border-border bg-surface p-2 safe-bottom",
+              layout.smallForm && "sticky bottom-0 z-10 [&_button]:min-h-16 [&_button]:text-lg",
+            )}
+            data-order-actions={layout.smallForm ? "sticky" : undefined}
+          >
             {mayPrintCheck && (
             <Button
               size="lg"

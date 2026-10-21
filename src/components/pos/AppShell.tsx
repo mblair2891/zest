@@ -509,6 +509,7 @@ export function AppShell() {
       <div
         className={cn("relative flex station-viewport flex-col bg-bg text-foreground", shellPad)}
         data-station-layout={stationLayout.form}
+        data-small-form={stationLayout.smallForm ? "1" : "0"}
       >
         <LoginOnboardingHost />
         <TrainingBanner />
@@ -562,6 +563,7 @@ export function AppShell() {
       <div
         className={cn("flex station-viewport flex-col bg-bg text-foreground", shellPad)}
         data-station-layout={stationLayout.form}
+        data-small-form={stationLayout.smallForm ? "1" : "0"}
         data-station-pin-shell
       >
         <TrainingBanner />

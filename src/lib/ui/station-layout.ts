@@ -25,6 +25,11 @@ export type StationLayout = {
   /** 15"+ counter: side nav + check + menu. */
   counter: boolean;
   form: StationForm;
+  /**
+   * Phone, or a known 8" handheld in portrait.
+   * Floor, check, and menu use the one-hand layout. Larger tablets do not.
+   */
+  smallForm: boolean;
 };
 
 const TWO_COL_MIN_WIDTH = 840;
@@ -33,6 +38,13 @@ const PHONE_MAX_WIDTH = 640;
 const COUNTER_MIN_WIDTH = 1400;
 const COUNTER_MIN_HEIGHT = 800;
 const SHORT_HEIGHT = 700;
+/** Phone-sized width. A turned phone still counts when its short side is under this. */
+export const SMALL_FORM_MAX_WIDTH = 600;
+/**
+ * 8" Android handheld portrait is about 600–820 CSS px wide.
+ * A 10" tablet portrait starts near 834 and keeps the tablet layout.
+ */
+export const HANDHELD_FORM_MAX_WIDTH = 820;
 
 export function viewportSize(): { width: number; height: number } {
   if (typeof window === "undefined") return { width: 1280, height: 800 };
@@ -66,6 +78,29 @@ export function applyStationViewport(width: number, height: number): void {
   root.dataset.orientation = next.orientation;
 }
 
+/** Width under 600px, a turned phone, or an 8" handheld in portrait. */
+export function isSmallForm(width: number, height: number): boolean {
+  const w = Math.max(0, Math.round(width));
+  const h = Math.max(0, Math.round(height));
+  if (w < SMALL_FORM_MAX_WIDTH) return true;
+  if (Math.min(w, h) < SMALL_FORM_MAX_WIDTH) return true;
+  return h > w && w <= HANDHELD_FORM_MAX_WIDTH;
+}
+
+/**
+ * Four fills for a small floor map. Empty stays white. Seated work is blue.
+ * Food on the table is green. Closed · needs bus is red. Saved tablet colors stay put.
+ */
+export function handheldStatusFill(status: string): string {
+  if (status === "empty") return "#ffffff";
+  if (status === "reserved") return "#e7e5e4";
+  if (status === "closed_not_cleaned") return "#e11d48";
+  if (status === "ordered_food" || status === "food_delivered" || status === "food_completed") {
+    return "#059669";
+  }
+  return "#2563eb";
+}
+
 export function stationLayoutFromSize(width: number, height: number): StationLayout {
   const w = Math.max(0, Math.round(width));
   const h = Math.max(0, Math.round(height));
@@ -87,6 +122,7 @@ export function stationLayoutFromSize(width: number, height: number): StationLay
     twoCol,
     counter,
     form,
+    smallForm: isSmallForm(w, h),
   };
 }
 
@@ -96,6 +132,7 @@ export function useStationLayout(): StationLayout {
     const apply = () => {
       const next = viewportSize();
       applyStationViewport(next.width, next.height);
+      document.documentElement.dataset.smallForm = isSmallForm(next.width, next.height) ? "1" : "0";
       setSize((prev) =>
         prev.width === next.width && prev.height === next.height ? prev : next,
       );

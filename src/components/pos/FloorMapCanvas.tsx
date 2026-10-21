@@ -80,12 +80,15 @@ export type FloorMapItem = {
  * Order / host floor. Status-colored shapes, table number only.
  * The published room fits the pane. Pinch to look closer. Drag to pan.
  */
+const HANDHELD_MIN_TAP_PX = 48;
+
 export function FloorMapCanvas({
   items,
   onTableClick,
   onCombine,
   focusSection = false,
   selectedId = null,
+  largeTaps = false,
 }: {
   items: FloorMapItem[];
   onTableClick: (table: Table) => void;
@@ -95,6 +98,8 @@ export function FloorMapCanvas({
   focusSection?: boolean;
   /** Table whose check was opened. Stays marked after Back to floor. */
   selectedId?: string | null;
+  /** Handheld: keep the drawn shape, grow the tap to at least 48px. */
+  largeTaps?: boolean;
 }) {
   const viewRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ w: 800, h: 600 });
@@ -273,45 +278,10 @@ export function FloorMapCanvas({
           const box = fixturePixelBox(item.table, room, fit.pxPerIn);
           const num = floorMapNumber(item.table.label);
           const fill = item.fill && item.fill !== "transparent" ? item.fill : "#ffffff";
-          return (
-            <button
-              key={item.table.id}
-              type="button"
-              data-table-id={item.table.id}
-              data-floor-label={num}
-              data-floor-seat={stool ? "tile" : "table"}
-              data-floor-pipeline={item.status ?? ""}
-              aria-label={stool ? `Seat ${num}` : `Table ${num}`}
-              onClick={() => {
-                if (suppress.current) {
-                  suppress.current = false;
-                  return;
-                }
-                onTableClick(item.table);
-              }}
-              data-floor-rotation={((Number(item.table.rotation) || 0) % 360 + 360) % 360}
-              data-floor-bar-hit={item.table.kind === "bar_top" ? "path" : undefined}
-              style={{
-                left: box.left,
-                top: box.top,
-                width: box.width,
-                height: box.height,
-                color: item.ink,
-                background: "transparent",
-                // Size containment clips overflow. A door swing has to leave the thin box.
-                ...(arch ? {} : { containerType: "size" as const }),
-              }}
-              className={cn(
-                "absolute overflow-visible border-0 bg-transparent p-0",
-                item.table.kind === "bar_top" && "pointer-events-none",
-                stool && "z-[2]",
-                item.flashing && "table-sla-flash-thin",
-                item.dim && "opacity-40",
-                !arch && selectedId === item.table.id && "z-20",
-              )}
-              data-floor-selected={!arch && selectedId === item.table.id ? "1" : undefined}
-            >
-              {arch ? (
+          const enlarge = largeTaps && !arch;
+          const hitW = enlarge ? Math.max(box.width, HANDHELD_MIN_TAP_PX) : box.width;
+          const hitH = enlarge ? Math.max(box.height, HANDHELD_MIN_TAP_PX) : box.height;
+          const art = arch ? (
                 <FloorArchitectureMark
                   table={item.table}
                   variant="live"
@@ -343,6 +313,60 @@ export function FloorMapCanvas({
                   marked={!arch && selectedId === item.table.id}
                   className="h-full w-full"
                 />
+              );
+          return (
+            <button
+              key={item.table.id}
+              type="button"
+              data-table-id={item.table.id}
+              data-floor-label={num}
+              data-floor-seat={stool ? "tile" : "table"}
+              data-floor-pipeline={item.status ?? ""}
+              data-floor-tap={enlarge ? String(HANDHELD_MIN_TAP_PX) : undefined}
+              aria-label={stool ? `Seat ${num}` : `Table ${num}`}
+              onClick={() => {
+                if (suppress.current) {
+                  suppress.current = false;
+                  return;
+                }
+                onTableClick(item.table);
+              }}
+              data-floor-rotation={((Number(item.table.rotation) || 0) % 360 + 360) % 360}
+              data-floor-bar-hit={item.table.kind === "bar_top" ? "path" : undefined}
+              style={{
+                left: enlarge ? box.left - (hitW - box.width) / 2 : box.left,
+                top: enlarge ? box.top - (hitH - box.height) / 2 : box.top,
+                width: hitW,
+                height: hitH,
+                color: item.ink,
+                background: "transparent",
+                // Size containment clips overflow. A door swing has to leave the thin box.
+                ...(arch ? {} : { containerType: "size" as const }),
+              }}
+              className={cn(
+                "absolute overflow-visible border-0 bg-transparent p-0",
+                item.table.kind === "bar_top" && "pointer-events-none",
+                stool && "z-[2]",
+                item.flashing && "table-sla-flash-thin",
+                item.dim && "opacity-40",
+                !arch && selectedId === item.table.id && "z-20",
+              )}
+              data-floor-selected={!arch && selectedId === item.table.id ? "1" : undefined}
+            >
+              {enlarge ? (
+                <span
+                  className="pointer-events-none absolute"
+                  style={{
+                    width: box.width,
+                    height: box.height,
+                    left: (hitW - box.width) / 2,
+                    top: (hitH - box.height) / 2,
+                  }}
+                >
+                  {art}
+                </span>
+              ) : (
+                art
               )}
             </button>
           );

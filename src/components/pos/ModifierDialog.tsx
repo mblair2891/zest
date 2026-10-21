@@ -14,6 +14,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { isHappyHour, policyForLine } from "@/lib/pos/calculations";
 import { cardPriceCents } from "@/lib/pos/cash-discount";
 import { needsOpenAmount } from "@/lib/pos/open-items";
+import { useStationLayout } from "@/lib/ui/station-layout";
 
 interface Props {
   item: MenuItem | null;
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Props) {
+  const layout = useStationLayout();
   const groups = usePosStore((s) => s.modifierGroups);
   const settings = usePosStore((s) => s.settings);
   const addItem = usePosStore((s) => s.addItem);
@@ -112,7 +114,10 @@ export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Pro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent
+        className={cn("max-w-lg", layout.smallForm && "w-[calc(100%-1rem)] max-w-none")}
+        data-modifier-layout={layout.smallForm ? "handheld" : undefined}
+      >
         <DialogHeader>
           <DialogTitle>{item.name}</DialogTitle>
           <p className="text-sm text-muted-foreground">
@@ -133,7 +138,7 @@ export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Pro
                   {g.max > 1 ? ` · pick up to ${g.max}` : ""}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className={cn("flex flex-wrap gap-2", layout.smallForm && "grid grid-cols-1")}>
                 {g.options.map((o) => {
                   const on = (selected[g.id] ?? []).includes(o.id);
                   return (
@@ -143,6 +148,7 @@ export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Pro
                       onClick={() => toggle(g.id, o.id, g.max)}
                       className={cn(
                         "rounded-xl border px-3 py-2 text-sm transition",
+                        layout.smallForm && "min-h-14 px-4 text-left text-base",
                         on
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-surface-2 text-foreground hover:border-border-strong",
@@ -177,6 +183,7 @@ export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Pro
             <Button
               size="icon"
               variant="outline"
+              className={layout.smallForm ? "h-14 w-14 text-xl" : undefined}
               onClick={() => setQty((q) => Math.max(1, q - 1))}
             >
               −
@@ -187,6 +194,7 @@ export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Pro
             <Button
               size="icon"
               variant="outline"
+              className={layout.smallForm ? "h-14 w-14 text-xl" : undefined}
               onClick={() => setQty((q) => q + 1)}
             >
               +
@@ -198,7 +206,7 @@ export function ModifierDialog({ item, open, onOpenChange, unitPriceCents }: Pro
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={!valid} onClick={confirm}>
+          <Button disabled={!valid} className={layout.smallForm ? "min-h-14 text-lg" : undefined} onClick={confirm}>
             Add · {formatCurrency(lineTotal)}
           </Button>
         </DialogFooter>

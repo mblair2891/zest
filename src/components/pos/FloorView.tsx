@@ -69,7 +69,7 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
 import { canAccessView, canAccessViewForEmployee } from "@/lib/pos/rbac";
 import { entityFloorEditorId } from "@/lib/pos/entity-floor";
-import { useStationLayout } from "@/lib/ui/station-layout";
+import { handheldStatusFill, useStationLayout } from "@/lib/ui/station-layout";
 import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
@@ -218,6 +218,7 @@ export function FloorView({
   const canBusClean = stationCan(cap, "bus_clean") || canStatus;
 
   const layout = useStationLayout();
+  const [floorList, setFloorList] = useState(false);
   const [seatOpen, setSeatOpen] = useState(false);
   const [seatTarget, setSeatTarget] = useState<Table | null>(null);
   const [guests, setGuests] = useState(2);
@@ -551,10 +552,17 @@ export function FloorView({
     return res;
   };
 
+  const showFloorList = layout.smallForm && floorList;
+  const statusFill = (st: string) => {
+    if (layout.smallForm) return handheldStatusFill(st);
+    if (st === "reserved") return "#e8e6e1";
+    return floorCfg.colors[st as FloorPipelineStatus] ?? "#ffffff";
+  };
+  const floorListRows = painted.filter((t) => !isArchitectureKind(t.kind));
   const mapItems: FloorMapItem[] = mapOnly
     ? painted.map((t) => {
         const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
-        const fill = st === "reserved" ? "#e8e6e1" : (floorCfg.colors[st] ?? "#ffffff");
+        const fill = statusFill(st);
         const orderAcc = tableAccess(t.id, "order");
         const seatAcc = tableAccess(t.id, "seat");
         const dim =
@@ -564,13 +572,46 @@ export function FloorView({
           fill,
           ink: contrastInk(fill),
           status: st,
-          hollow: st === "empty",
+          hollow: layout.smallForm ? false : st === "empty",
           flashing: tableFlash(t, floorCfg, clock || Date.now(), st),
           dim,
           joined: clusterNumbers(tables, t.id).joined,
         };
       })
     : [];
+
+  const floorListPane = (
+    <div className="min-h-0 flex-1 overflow-y-auto bg-[#f6f3ec]" data-floor-view="list">
+      {floorListRows.map((t) => {
+        const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
+        const fill = statusFill(st);
+        const seat = t.kind === "barstool" || t.shape === "bar";
+        return (
+          <button
+            key={t.id}
+            type="button"
+            data-floor-list-row={t.label}
+            className="flex min-h-14 w-full items-center gap-3 border-b border-black/10 px-3 text-left"
+            onClick={() => onTableClick(t)}
+          >
+            <span
+              className="h-5 w-5 shrink-0 rounded-full border border-black/20"
+              style={{ background: fill }}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-lg font-semibold leading-tight text-[#1c1917]">
+                {seat ? "Seat" : "Table"} {t.label}
+              </span>
+              <span className="block text-sm text-[#1c1917]/70">{pipelineLabel(st)}</span>
+            </span>
+          </button>
+        );
+      })}
+      {floorListRows.length === 0 && (
+        <p className="px-4 py-8 text-center text-base text-[#1c1917]/70">No tables in this view</p>
+      )}
+    </div>
+  );
 
   return (
     <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden" data-demo="floor" data-checklist-focus="floor" tabIndex={-1}>
@@ -620,7 +661,17 @@ export function FloorView({
             </Button>
           ))}
         </div>
-        <div className="ml-auto flex shrink-0 gap-1">
+        {layout.smallForm && (
+          <button
+            type="button"
+            data-floor-view-toggle=""
+            className="station-touch ml-auto shrink-0 rounded-full border border-border bg-surface px-3 text-sm font-semibold"
+            onClick={() => setFloorList((open) => !open)}
+          >
+            {floorList ? "Map" : "List"}
+          </button>
+        )}
+        <div className={cn("flex shrink-0 gap-1", !layout.smallForm && "ml-auto")}>
           {FLOOR_PIPELINE.filter((st) => floorCfg.enabled[st] !== false).map((st) => (
             <Badge
               key={st}
@@ -736,6 +787,16 @@ export function FloorView({
                   </button>
                 ))}
               </div>
+              {layout.smallForm && (
+                <button
+                  type="button"
+                  data-floor-view-toggle=""
+                  className="station-touch shrink-0 rounded-full bg-white px-3 py-2 text-sm font-semibold text-[#1c1917]"
+                  onClick={() => setFloorList((open) => !open)}
+                >
+                  {floorList ? "Map" : "List"}
+                </button>
+              )}
               <div className="flex shrink-0 items-center gap-0.5 text-[#1c1917]">
                 <NotificationBell />
                 <button
@@ -767,16 +828,21 @@ export function FloorView({
                 {FLOOR_DRAFT_BANNER}
               </p>
             )}
-            <div className="relative min-h-0 flex-1">
+            <div className="relative min-h-0 flex-1" data-floor-view={showFloorList ? "list" : "map"}>
+              {showFloorList ? (
+                floorListPane
+              ) : (
               <FloorMapCanvas
                 items={mapItems}
                 focusSection={namedSection}
                 selectedId={floorFocusTableId}
+                largeTaps={layout.smallForm}
                 onTableClick={onTableClick}
                 onCombine={(draggedId, ontoId) => {
                   withManager((pin) => joinParty(draggedId, ontoId, pin));
                 }}
               />
+              )}
             </div>
             <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-black/10 px-2 py-1.5" data-floor-chrome="bottom">
               <div className="flex overflow-hidden rounded-full bg-white text-sm font-semibold text-[#1c1917]">
@@ -826,7 +892,9 @@ export function FloorView({
           data-floor-canvas="room"
           data-floor-nubs="0"
           data-floor-fit="room"
+          data-floor-view={showFloorList ? "list" : "map"}
         >
+          {showFloorList ? floorListPane : (
           <div
             className="absolute left-0 top-0"
             style={{
@@ -837,10 +905,7 @@ export function FloorView({
           >
             {visible.map((t) => {
               const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
-              const fill =
-                st === "reserved"
-                  ? "#e8e6e1"
-                  : floorCfg.colors[st] ?? "#ffffff";
+              const fill = statusFill(st);
               const ink = contrastInk(fill);
               const cluster = clusterNumbers(tables, t.id);
               const flashing = tableFlash(t, floorCfg, clock || Date.now(), st);
@@ -913,6 +978,7 @@ export function FloorView({
                     }
                   }}
                   data-table-id={t.id}
+                  data-floor-tap={layout.smallForm ? "48" : undefined}
                   style={{
                     left: `${t.x}%`,
                     top: `${t.y}%`,
@@ -924,6 +990,7 @@ export function FloorView({
                     "absolute border-0 bg-transparent p-0 text-center",
                     flashing && "table-sla-flash",
                     outOfSection && "opacity-55",
+                    layout.smallForm && "min-h-12 min-w-12",
                     (barPick || layout.handheld) &&
                       isBarRailSeat(t) &&
                       "min-h-12 min-w-12",
@@ -937,7 +1004,7 @@ export function FloorView({
                     joined={cluster.joined}
                     rotation={t.rotation ?? 0}
                     mode="status"
-                    hollow={st === "empty"}
+                    hollow={layout.smallForm ? false : st === "empty"}
                     ink={ink}
                     marked={marked}
                   />
@@ -950,6 +1017,7 @@ export function FloorView({
               </p>
             )}
           </div>
+          )}
         </div>
         </div>
         )}
@@ -1270,6 +1338,7 @@ export function FloorView({
               clock={clock}
               busy
               compact
+              handheld={layout.smallForm}
               onOpenCheck={(orderId) => {
                 if (!canOrderEntry) {
                   showBlocked(detailLive, "This PIN cannot open a table order.");
@@ -1593,6 +1662,7 @@ export function FloorView({
                 }}
                 busy={mapOnly}
                 compact={mapOnly || !layout.twoCol}
+                handheld={layout.smallForm}
                 onAdd={(orderId) => {
                   if (!canOrderEntry) {
                     showBlocked(detailLive, "This PIN cannot open a table order.");
@@ -2050,6 +2120,7 @@ function TableDetailBody({
   onAddEmpty,
   onPartySize,
   compact = false,
+  handheld = false,
 }: {
   table: Table;
   openChecks: Order[];
@@ -2095,6 +2166,8 @@ function TableDetailBody({
   onPartySize?: () => void;
   /** Tablet sheet: skip the extra status card. The header already names the table. */
   compact?: boolean;
+  /** Phone or 8" handheld: collapsible items and a sticky Send / Pay bar. */
+  handheld?: boolean;
 }) {
   const [pickedId, setPickedId] = useState(openChecks[0]?.id ?? "");
   const picked = openChecks.find((c) => c.id === pickedId) ?? openChecks[0] ?? null;
@@ -2116,6 +2189,8 @@ function TableDetailBody({
   const dualPicked = picked ? computeDualTotals(picked, settings) : null;
   const visibleLines = picked?.lines.filter((line) => !line.voided) ?? [];
   const unsent = Boolean(picked?.lines.some((line) => !line.sent && !line.voided && !line.held));
+  const ItemShell = handheld ? "details" : "div";
+  const TotalsShell = handheld ? "details" : "div";
 
   return (
     <div className={cn(busy ? "flex min-h-0 flex-1 flex-col gap-2" : "space-y-2")} data-demo="table-detail">
@@ -2132,7 +2207,17 @@ function TableDetailBody({
       </div>
       )}
       {busy && (
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background" data-check-items>
+        <ItemShell
+          {...(handheld ? { open: true } : {})}
+          className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background"
+          data-check-items
+          data-check-section={handheld ? "items" : undefined}
+        >
+          {handheld && (
+            <summary className="flex min-h-14 cursor-pointer list-none items-center px-4 text-lg font-semibold">
+              Items
+            </summary>
+          )}
           {openChecks.length > 1 && (
             <div className="flex gap-2 overflow-x-auto border-b border-border p-2">
               {openChecks.map((check) => (
@@ -2177,9 +2262,19 @@ function TableDetailBody({
               })}
             </ul>
           )}
-        </div>
+        </ItemShell>
       )}
       {busy && (
+        <TotalsShell
+          {...(handheld ? { open: true } : {})}
+          className="shrink-0"
+          data-check-section={handheld ? "totals" : undefined}
+        >
+          {handheld && (
+            <summary className="flex min-h-12 cursor-pointer list-none items-center px-1 text-base font-semibold">
+              Totals
+            </summary>
+          )}
         <div className="grid shrink-0 grid-cols-2 gap-3 rounded-2xl border border-border bg-background px-4 py-3" data-check-totals>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cash</p>
@@ -2194,9 +2289,17 @@ function TableDetailBody({
             </p>
           </div>
         </div>
+        </TotalsShell>
       )}
       {busy && (
-        <div className="grid shrink-0 grid-cols-2 gap-2" data-busy-actions>
+        <div
+          className={cn(
+            "grid shrink-0 grid-cols-2 gap-2",
+            handheld && "sticky bottom-0 z-10 bg-[#f6f3ec] [&_button]:min-h-[4.75rem] [&_button]:text-xl",
+          )}
+          data-busy-actions
+          data-check-actions={handheld ? "sticky" : undefined}
+        >
           {empty && canSeat && (
             <Button
               className="station-touch col-span-2 h-16 text-xl font-semibold"
