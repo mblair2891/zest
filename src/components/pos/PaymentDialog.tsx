@@ -1940,11 +1940,12 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       <DialogContent
         data-station-pay=""
         data-pay-sheet=""
+        data-pay-complete={done ? "" : undefined}
         overlayClassName="station-pay-overlay"
         className="bottom-[var(--pay-nav-clear,4.75rem)] left-1/2 right-auto top-auto flex max-h-[min(62dvh,34rem)] w-[min(calc(100vw-1rem),40rem)] max-w-none translate-x-[-50%] translate-y-0 flex-col gap-1.5 overflow-hidden rounded-none rounded-t-2xl p-2.5"
       >
         <DialogHeader className="shrink-0 gap-0">
-          <DialogTitle className="flex items-center justify-between gap-2 pr-6 text-base leading-none">
+          <DialogTitle className={`flex items-center justify-between gap-2 text-base leading-none ${done ? "pr-8" : "pr-6"}`}>
             <span>
               {done
                 ? "Payment complete"
@@ -1983,21 +1984,21 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             {payStatus.liveReady ? "" : ` ${payStatus.message ?? ""}`}
           </p>
         )}
-        {done || guestFace ? (
-        <div className="station-pay-scroll">
         {done ? (
-          <div className="space-y-4 py-4 text-center">
-            <p className="text-3xl font-semibold tabular text-success">
+          <div className="text-center" data-pay-complete-body>
+            <div className="shrink-0">
+            <p className="text-2xl font-semibold leading-none tabular text-success">
               Paid
             </p>
             {change != null && change > 0 && (
-              <p className="text-lg">
+              <p className="mt-1 text-sm leading-tight">
                 Change due{" "}
                 <span className="font-semibold tabular">
                   {formatCurrency(change)}
                 </span>
               </p>
             )}
+            </div>
             {(() => {
               const view = buildGuestCheckView({
                 order,
@@ -2007,7 +2008,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
               });
               return (
-                <div className="rounded-xl border border-border bg-bg p-3 text-left">
+                <div
+                  className="min-h-0 rounded-lg border border-border bg-bg px-2 py-1.5 text-left"
+                  data-pay-complete-check=""
+                >
                   <GuestCheckByVendor
                     view={view}
                     compact
@@ -2034,7 +2038,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 </div>
               );
             })()}
-            <p className="text-sm text-muted-foreground">
+            <div className="shrink-0 space-y-0.5">
+            <p className="text-xs leading-snug text-muted-foreground">
               Charged as{" "}
               {order.payments[order.payments.length - 1]?.chargeBrand ||
                 settings.name}{" "}
@@ -2048,31 +2053,32 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               . Tip recorded: {formatCurrency(payTip)}
             </p>
             {dual.enabled && order.payments.some((p) => p.method === "cash") && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] leading-tight text-muted-foreground">
                 Cash {formatCurrency(dual.cash.totalCents)} · Cash discount applied
               </p>
             )}
+            </div>
+            <div className="shrink-0 space-y-1.5" data-pay-complete-actions="">
             {cardReceiptAsk ? (
               <div
-                className="space-y-3 rounded-xl border border-border bg-bg p-4"
+                className="space-y-1.5 rounded-lg border border-border bg-bg px-2 py-1.5"
                 data-card-receipt-ask
                 role="dialog"
                 aria-label="Does the customer want a receipt?"
               >
-                <p className="text-lg font-semibold">Does the customer want a receipt?</p>
+                <p className="text-sm font-semibold leading-tight">Does the customer want a receipt?</p>
+                <div className="grid grid-cols-2 gap-1.5">
                 <Button
-                  size="lg"
-                  className="station-touch min-h-12 w-full"
+                  className="min-h-10 w-full px-2 text-sm"
                   disabled={receiptBusy}
                   data-card-receipt-yes=""
                   onClick={() => void answerCardReceipt(true)}
                 >
-                  <Printer className="h-5 w-5" />
+                  <Printer className="h-4 w-4" />
                   Yes
                 </Button>
                 <Button
-                  size="lg"
-                  className="station-touch min-h-12 w-full"
+                  className="min-h-10 w-full px-2 text-sm"
                   variant="outline"
                   disabled={receiptBusy}
                   data-card-receipt-no=""
@@ -2080,27 +2086,26 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 >
                   No
                 </Button>
+                </div>
               </div>
             ) : (
-              <p className="text-sm font-medium">Receipt</p>
+              <p className="text-xs font-medium leading-none">Receipt</p>
             )}
             {!cardReceiptAsk && receiptChoice === "choose" && (
-              <div className="grid gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 <Button
-                  size="lg"
-                  className="station-touch min-h-12 w-full"
+                  className="min-h-10 w-full px-2 text-sm"
                   data-receipt-email=""
                   onClick={() => {
                     setReceiptChoice("email");
                     setReceiptMsg(null);
                   }}
                 >
-                  <Mail className="h-5 w-5" />
+                  <Mail className="h-4 w-4" />
                   Email
                 </Button>
                 <Button
-                  size="lg"
-                  className="station-touch min-h-12 w-full"
+                  className="min-h-10 w-full px-2 text-sm"
                   variant="outline"
                   data-receipt-text=""
                   onClick={() => {
@@ -2112,21 +2117,19 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 </Button>
                 {mayPrintReceipt && (
                 <Button
-                  size="lg"
-                  className="station-touch min-h-12 w-full"
+                  className="min-h-10 w-full px-2 text-sm"
                   variant="outline"
                   disabled={receiptBusy}
                   data-receipt-print=""
                   onClick={() => void runPrintReceipt()}
                 >
-                  <Printer className="h-5 w-5" />
-                  Print
+                  <Printer className="h-4 w-4" />
+                  Print receipt
                 </Button>
                 )}
                 {stationClass === "handheld" && (
                   <Button
-                    size="lg"
-                    className="station-touch min-h-12 w-full"
+                    className="col-span-2 min-h-10 w-full px-2 text-sm"
                     variant="outline"
                     onClick={() => {
                       flagReceiptPending(order.id);
@@ -2137,18 +2140,17 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   </Button>
                 )}
                 <Button
-                  size="lg"
-                  className="station-touch min-h-12 w-full"
+                  className="min-h-10 w-full px-2 text-sm"
                   variant="outline"
                   onClick={finish}
                 >
-                  <Ban className="h-5 w-5" />
+                  <Ban className="h-4 w-4" />
                   None
                 </Button>
               </div>
             )}
             {receiptChoice === "sms" && (
-              <div className="space-y-2 text-left">
+              <div className="space-y-1.5 text-left">
                 <Input
                   type="tel"
                   placeholder="Mobile number"
@@ -2157,15 +2159,14 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   autoFocus
                 />
                 <Button
-                  className="station-touch min-h-12 w-full"
-                  size="lg"
+                  className="min-h-10 w-full text-sm"
                   disabled={!receiptSms.trim() || receiptBusy}
                   onClick={() => void runSmsReceipt()}
                 >
                   Send text
                 </Button>
                 <Button
-                  className="w-full"
+                  className="min-h-9 w-full text-sm"
                   variant="ghost"
                   onClick={() => {
                     setReceiptChoice("choose");
@@ -2177,7 +2178,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               </div>
             )}
             {receiptChoice === "email" && (
-              <div className="space-y-2 text-left">
+              <div className="space-y-1.5 text-left">
                 <Input
                   type="email"
                   placeholder="Guest email"
@@ -2186,15 +2187,14 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   autoFocus
                 />
                 <Button
-                  className="station-touch min-h-12 w-full"
-                  size="lg"
+                  className="min-h-10 w-full text-sm"
                   disabled={!receiptEmail.trim() || receiptBusy}
                   onClick={() => void runEmailReceipt()}
                 >
                   Send email
                 </Button>
                 <Button
-                  className="w-full"
+                  className="min-h-9 w-full text-sm"
                   variant="ghost"
                   onClick={() => {
                     setReceiptChoice("choose");
@@ -2206,26 +2206,26 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               </div>
             )}
             {receiptMsg ? (
-              <p className="text-sm text-danger" role="status">
+              <p className="text-xs text-danger" role="status">
                 {receiptMsg}
               </p>
             ) : null}
             {receiptMsg && /print/i.test(receiptMsg) && (
               <Button
-                className="station-touch min-h-12 w-full"
-                size="lg"
+                className="min-h-10 w-full text-sm"
                 variant="outline"
                 disabled={receiptBusy}
                 onClick={() => void runPrintReceipt()}
               >
-                <Printer className="h-5 w-5" />
+                <Printer className="h-4 w-4" />
                 Print instead
               </Button>
             )}
             {order.tableId && (
               <Button
-                className="w-full"
+                className="min-h-10 w-full text-sm"
                 variant="outline"
+                data-bus-table=""
                 onClick={() => {
                   clearTable(order.tableId!);
                   finish();
@@ -2234,8 +2234,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 Bus table now
               </Button>
             )}
+            </div>
           </div>
-        ) : (
+        ) : guestFace ? (
+        <div className="station-pay-scroll">
           <div className="space-y-4" data-guest-pay-face>
             <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">
               {settings.name}
@@ -2337,7 +2339,6 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               </Button>
             </div>
           </div>
-        )}
         </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto" data-pay-body="">

@@ -131,8 +131,16 @@ test("card payment screen source shows the four buttons and no tip", () => {
   assert.match(pay, /visibleTipFailure/);
   assert.match(pay, /station-pay-overlay/);
   assert.match(pay, /data-pay-tip-panel/);
+  assert.match(pay, /data-pay-complete/);
+  assert.match(pay, /data-pay-complete-check/);
+  assert.match(pay, /data-pay-complete-actions/);
+  assert.match(pay, /data-bus-table/);
+  assert.match(pay, /Print receipt/);
+  assert.match(pay, /Bus table now/);
   assert.doesNotMatch(pay, /The tip could not be captured\. The check stays open\./);
   const css = read("src/styles.css");
+  assert.match(css, /\[data-station-pay\]\[data-pay-complete\]/);
+  assert.match(css, /width: min\(100vw - 1\.5rem, 23rem\)/);
   assert.match(css, /station-pay-overlay/);
   assert.match(css, /--pay-nav-clear/);
   assert.doesNotMatch(css, /\[data-station-pay\][\s\S]{0,400}max-height:\s*var\(--station-vh/);
@@ -144,7 +152,9 @@ test("payments and tipping guides describe the card tip buttons", () => {
   const types = read("src/lib/guide/types.ts");
   assert.match(payments, /18%, 20%, 25%, and Custom/);
   assert.match(payments, /Sandbox keys send the charge to the Finix sandbox/);
-  assert.match(payments, /matches Guide v2026\.10\.316/);
+  assert.match(payments, /matches Guide v2026\.10\.317/);
+  assert.match(payments, /Payment complete is a narrow panel/);
+  assert.match(payments, /Bus table now/);
   assert.match(payments, /Insufficient funds, Invalid card number, Card declined, Canceled, Address mismatch, or Invalid CVV/);
   assert.match(payments, /does not reuse the original sale key/);
   assert.match(payments, /own idempotency id/);
@@ -153,7 +163,7 @@ test("payments and tipping guides describe the card tip buttons", () => {
   assert.match(payments, /close with no tip, retry, or cancel/);
   assert.match(tipping, /18%, 20%, 25%, and Custom/);
   assert.match(tipping, /No tip closes the check at \$0/);
-  assert.match(types, /GUIDE_VERSION = "2026\.10\.316"/);
+  assert.match(types, /GUIDE_VERSION = "2026\.10\.317"/);
   assert.match(types, /Full-screen check/);
   assert.match(types, /Card sale idempotency/);
   assert.match(payments, /The station PIN pad and the floor, order, pay, and kitchen screens fit the display/);

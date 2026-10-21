@@ -352,6 +352,61 @@ html[data-orientation="landscape"] [data-station-pay] {
   padding: 0.5rem;
 }
 
+/* Paid receipt only. The unpaid sheet above stays wide and short. */
+[data-station-pay][data-pay-complete],
+html[data-orientation="landscape"] [data-station-pay][data-pay-complete] {
+  width: min(100vw - 1.5rem, 23rem) !important;
+  max-width: 23rem;
+  max-height: calc(100dvh - var(--pay-nav-clear, 4.75rem) - 0.35rem) !important;
+  padding: 0.4rem 0.55rem 0.45rem;
+  gap: 0.28rem;
+}
+
+[data-pay-complete-body] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+[data-pay-complete-check] {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+[data-pay-complete-actions] {
+  flex: 0 0 auto;
+}
+
+[data-station-pay][data-pay-complete] [data-guest-check-slip] {
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+[data-station-pay][data-pay-complete] [data-guest-check-slip] li > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-station-pay][data-pay-complete] [data-guest-check-location] {
+  font-size: 0.8125rem;
+  line-height: 1.2;
+}
+
+[data-station-pay][data-pay-complete] [data-pay-training] {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  line-height: 1.25;
+}
+
 .station-pay-scroll {
   min-height: 0;
   min-width: 0;

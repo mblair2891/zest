@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_317_paid_modal",
+    date: "2026-10-20",
+    title: "Payment complete fits on the tablet",
+    summary: "Paid, the items, the tip, Print receipt, and Bus table now fit on the tablet.",
+    body: "After the check is paid, Payment complete is a narrow panel. It shows Paid, the selling entity, the items, and the total, the tip, Print receipt, and Bus table now. Those fit on a landscape tablet without scrolling. Email, Text, and None stay on that panel.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_316_card_token",
     date: "2026-10-20",
     title: "Online card uses the Finix form",
