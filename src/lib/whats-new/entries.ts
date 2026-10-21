@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_319_table_flash",
+    date: "2026-10-20",
+    title: "Table flash is the icon",
+    summary: "A table past its time flashes red on the shape.",
+    body: "When a table is past its status time, the table shape flashes red. The square outline is gone. Tables that are not over time keep their status color.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_318_pin_pad",
     date: "2026-10-20",
     title: "Station PIN pad is Summex",
