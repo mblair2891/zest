@@ -136,10 +136,24 @@ export const replacePaxReaderFn = createServerFn({ method: "POST" })
     return replacePaxReaderRecord(context.userId, data);
   });
 
+export const reassignPaxReaderFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; id: string; entityId: string; entityName?: string }) => ({
+    locationId: loc(d.locationId),
+    id: String(d.id ?? "").trim().slice(0, 80),
+    entityId: String(d.entityId ?? "").trim().slice(0, 80),
+    entityName: String(d.entityName ?? "").replace(/\s+/g, " ").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { reassignPaxReaderRecord } = await import("./pax-d135.server");
+    return reassignPaxReaderRecord(context.userId, data);
+  });
+
 function stationReaderInput(d: {
   locationId: string;
   serial: string;
   entityId: string;
+  entityName?: string;
   stationDeviceId?: string;
   stationPin?: string;
 }) {
@@ -147,6 +161,7 @@ function stationReaderInput(d: {
     locationId: loc(d.locationId),
     serial: String(d.serial ?? "").replace(/\s+/g, "").slice(0, 40),
     entityId: String(d.entityId ?? "").trim().slice(0, 80),
+    entityName: String(d.entityName ?? "").replace(/\s+/g, " ").trim().slice(0, 80),
     stationDeviceId: String(d.stationDeviceId ?? "").trim().slice(0, 80),
     stationPin: String(d.stationPin ?? "").replace(/\D/g, "").slice(0, 8),
   };

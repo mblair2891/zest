@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_327_reader_entity",
+    date: "2026-10-21",
+    title: "Reader follows the check",
+    summary: "A reader at this location follows the check when the merchant matches.",
+    body: "A card reader registered at this location can take a card for any selling entity here whose Finix merchant matches. When the merchants differ, Pay names both entities and says to open Devices and choose Reassign. The tablet stays paired.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["payments", "devices"],
+  },
+  {
     id: "upd_2026_10_326_card_sale_id",
     date: "2026-10-21",
     title: "Card sale keeps its id",

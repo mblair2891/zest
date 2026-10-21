@@ -11,6 +11,7 @@ import {
   checkEntityBannerLabel,
   checkEntityLabelForReader,
   checkSellingEntityIds,
+  cardSaleEntityAllowed,
   decidePaxPick,
   envBlock,
   payEntityStatusText,
@@ -25,6 +26,7 @@ import {
   readerAssignOptions,
   readerAssignmentBlock,
   rememberCapturedCheck,
+  reassignPaxReader,
   removePaxReader,
   renamePaxReader,
   replacePaxReader,
@@ -201,7 +203,43 @@ test("peer mixed check matches the selling entity on the items", () => {
     locationLive: false,
   });
   assert.equal(refused.ok, false);
-  if (!refused.ok) assert.equal(refused.message, PAX_MSG.wrongEntity);
+  if (!refused.ok) {
+    assert.match(refused.message, /Copper Bar/);
+    assert.match(refused.message, /opr_summit_hearth/);
+    assert.match(refused.message, /Finix merchants do not match/);
+    assert.match(refused.message, /choose Reassign/);
+    assert.match(refused.message, /tablet stays paired/);
+  }
+  const sameLocation = decidePaxPick({
+    row: rows[0]!,
+    readers: [copper],
+    sellingEntityId: "opr_summit_hearth",
+    sellingEntityIds: ["opr_summit_hearth"],
+    locationEntityIds: ["opr_summit_hearth", "opr_summit_copper"],
+    locationLive: false,
+  });
+  assert.equal(sameLocation.ok, true);
+  if (sameLocation.ok) assert.equal(sameLocation.paymentEntityId, "opr_summit_hearth");
+  const oneEntity = cardSaleEntityAllowed({
+    readerEntityId: "ent_bar",
+    readerLabel: "Bar",
+    sellingEntityId: "host",
+    sellingEntityIds: [],
+    locationEntityIds: ["ent_bar", "host"],
+    peerVenue: false,
+  });
+  assert.equal(oneEntity.ok, true);
+  if (oneEntity.ok) assert.equal(oneEntity.paymentEntityId, "ent_bar");
+  const peerHost = cardSaleEntityAllowed({
+    readerEntityId: "opr_summit_copper",
+    readerLabel: "Copper Bar",
+    sellingEntityId: "host",
+    sellingEntityIds: [],
+    locationEntityIds: ["opr_summit_hearth", "opr_summit_copper"],
+    peerVenue: true,
+  });
+  assert.equal(peerHost.ok, false);
+  if (!peerHost.ok) assert.match(peerHost.message, /not a selling entity/);
 });
 
 test("unregistered serial is refused", () => {
@@ -571,8 +609,22 @@ test("failsafes do not charge", async () => {
   if (!reverse.ok) assert.equal(reverse.message, PAX_MSG.liveOnSandbox);
   const wrong = await runAndroidPaxSale({ ...base, checkId: "chk_w", sellingEntityId: "other" });
   assert.equal(wrong.ok, false);
-  if (!wrong.ok) assert.equal(wrong.message, PAX_MSG.wrongEntity);
-  assert.equal(sales.n, 0);
+  if (!wrong.ok) {
+    assert.match(wrong.message, /Finix merchants do not match/);
+    assert.match(wrong.message, /choose Reassign/);
+    assert.equal(wrong.charged, false);
+    assert.equal(wrong.keepIdempotency, true);
+  }
+  const cross = await runAndroidPaxSale({
+    ...base,
+    checkId: "chk_cross",
+    sellingEntityId: "other",
+    locationEntityIds: ["other", "ent_bbq"],
+    bridge: bridge(sales, { ok: true, transferId: "TRok", last4: "4242" }),
+  });
+  assert.equal(cross.ok, true);
+  assert.equal(sales.n, 1);
+  sales.n = 0;
   assert.equal(classifyPaxError("timeout").message, PAX_MSG.timeout);
   assert.equal(classifyPaxError("chip").message, PAX_MSG.chip);
   assert.equal(classifyPaxError("cancelled").message, "Canceled");
@@ -639,6 +691,21 @@ test("device body is PAX_D135 and a reader belongs to one entity", () => {
   });
   assert.equal(live.ok, false);
   if (!live.ok) assert.equal(live.message, PAX_MSG.liveRegister);
+  if (!placed.ok) return;
+  const moved = reassignPaxReader({
+    readers: placed.readers,
+    id: placed.reader.id,
+    entityId: "other",
+    entityName: "Other",
+    merchantId: "MU2",
+  });
+  assert.equal(moved.ok, true);
+  if (!moved.ok) return;
+  assert.equal(moved.reader.serial, placed.reader.serial);
+  assert.equal(moved.reader.finixDeviceId, placed.reader.finixDeviceId);
+  assert.equal(moved.reader.entityId, "other");
+  assert.equal(moved.reader.entityName, "Other");
+  assert.equal(moved.reader.finixMerchantId, "MU2");
 });
 
 test("the PAX path does not use Web Bluetooth or Stripe", () => {
@@ -730,6 +797,10 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(devices, /data-pax-assign=""/);
   assert.match(devices, /data-pax-reader-name=""/);
   assert.match(devices, /data-pax-reader-entity=/);
+  assert.match(devices, /data-pax-reassign=""/);
+  assert.match(devices, /data-pax-reassign-form=""/);
+  assert.match(devices, /data-pax-reassign-entity=""/);
+  assert.match(devices, /data-pax-reassign-save=""/);
   assert.match(devices, /\{option\.name\}/);
   assert.doesNotMatch(devices, /placeholder="Finix \/ Quantum reader"/);
   const renameBody = server.slice(
@@ -759,6 +830,8 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(sessionBody, /readServerEnv\("FINIX_USERNAME"\)/);
   assert.match(sessionBody, /readServerEnv\("FINIX_PASSWORD"\)/);
   assert.match(sessionBody, /venueFinixMerchantId/);
+  assert.match(sessionBody, /paymentEntity/);
+  assert.match(sessionBody, /readerMerchantMismatchMessage/);
   assert.match(sessionBody, /account\.mid/);
   assert.match(sessionBody, /authorizeStationFloor/);
   assert.match(sessionBody, /paxReaderSessionForStation/);
@@ -776,6 +849,15 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(merchantFn, /finix_mid/);
   assert.doesNotMatch(sessionBody, /reader\.finixMerchantId/);
   assert.doesNotMatch(sessionBody, /finixSandboxLogin\(/);
+  const reassignAt = server.indexOf("export async function reassignPaxReaderRecord");
+  const sessionEnd = server.indexOf("export type FinixConnectAuthResult");
+  assert.ok(reassignAt > sessionEnd);
+  const reassignBody = server.slice(reassignAt, server.indexOf("async function readerTransferId"));
+  assert.match(reassignBody, /createPaxD135Device/);
+  assert.match(reassignBody, /venueFinixMerchantId/);
+  assert.doesNotMatch(reassignBody, /locationDevices/);
+  assert.match(dialog, /locationEntityIds/);
+  assert.match(dialog, /paymentEntityId/);
   const registerBody = server.slice(
     server.indexOf("export async function registerPaxReader"),
     server.indexOf("export async function renamePaxReaderRecord"),
@@ -806,6 +888,9 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(guidePay, /webhook secret before a charge can settle/);
   assert.match(guideDevices, /dropdown of those names/);
   assert.match(guideDevices, /One reader is assigned to one tablet/);
+  assert.match(guideDevices, /choose Reassign/);
+  assert.match(guideDevices, /The tablet stays paired/);
+  assert.match(guidePay, /choose Reassign/);
   assert.match(guidePay, /Scan for reader/);
   assert.match(guidePay, /Nearby devices and Location/);
   assert.match(guidePay, /for example Bar 1/);

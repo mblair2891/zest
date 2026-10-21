@@ -41,6 +41,7 @@ import {
 import {
   CARD_READER_USB_NOT_CONNECTED,
   PAX_MSG,
+  cardSaleEntityAllowed,
   checkAlreadyCaptured,
   checkEntityLabelForReader,
   checkSellingEntityId,
@@ -64,6 +65,8 @@ import {
   readerCheckEntityBanner,
   readerEntityLabel,
   readerForSerial,
+  sellingEntityLabel,
+  stationLocationEntityIds,
   reuseCardSaleIdempotencyId,
   runAndroidPaxCapture,
   runAndroidPaxSale,
@@ -453,18 +456,23 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const pickPax = (row: PaxScanRow) => {
     void (async () => {
       if (!order) return;
-      const loc = usePosStore.getState().tenantLocationId || readTenantPosContext()?.locationId || "";
+      const pos = usePosStore.getState();
+      const loc = pos.tenantLocationId || readTenantPosContext()?.locationId || "";
       const locationLive = Boolean(payStatus && payStatus.mode === "live" && !payStatus.lifecycleForcesSandbox);
       const readers = getPaxStationLink().readers;
       const sellingEntityIds = checkSellingEntityIds(order.lines);
+      const peerVenue = Boolean(pos.settings.peerVenue || pos.settings.operatingModel === "peer_venue");
+      const locationEntityIds = stationLocationEntityIds({ vendors: pos.vendors, peerVenue });
       const decision = decidePaxPick({
         row,
         readers,
         sellingEntityId: checkSellingEntityId(order.lines),
         sellingEntityIds,
+        locationEntityIds,
+        peerVenue,
         locationLive,
       });
-      if (!decision.ok && decision.message !== PAX_MSG.wrongEntity) {
+      if (!decision.ok && !decision.message.includes("Finix merchants do not match") && !decision.message.includes("choose Reassign") && !decision.message.includes("not a selling entity")) {
         await noteStationActivity({
           locationId: loc,
           action: "connect",
@@ -506,13 +514,14 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         action: "entity match",
         checkEntity,
         readerEntity,
-        result: decision.ok ? "match" : banner,
+        result: decision.ok ? "match" : decision.message,
       });
       if (!decision.ok) {
-        failPaxConnect(banner);
-        setError(banner);
+        failPaxConnect(decision.message);
+        setError(decision.message);
         return;
       }
+      const paymentEntityId = decision.paymentEntityId;
       setError(null);
       beginPaxConnect(decision.reader);
       showPaxConnectBanner(banner);
@@ -550,7 +559,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           data: paxReaderSessionData({
             locationId: loc,
             serial: decision.reader.serial,
-            entityId: decision.reader.entityId,
+            entityId: paymentEntityId,
+            entityName: checkEntity,
           }),
         });
         if (!session.ok) {
@@ -630,7 +640,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               data: paxReaderSessionData({
                 locationId: loc,
                 serial: decision.reader.serial,
-                entityId: decision.reader.entityId,
+                entityId: paymentEntityId,
+                entityName: checkEntity,
               }),
             });
             trace = {
@@ -1323,14 +1334,62 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           if (currentOrder.cardSaleIdempotencyId !== idempotencyId) {
             usePosStore.getState().setCardSaleIdempotencyId(order.id, idempotencyId);
           }
+          const posNow = usePosStore.getState();
+          const peerVenue = Boolean(
+            posNow.settings.peerVenue || posNow.settings.operatingModel === "peer_venue",
+          );
+          const locationEntityIds = stationLocationEntityIds({
+            vendors: posNow.vendors,
+            peerVenue,
+          });
+          const lineIds = checkSellingEntityIds(order.lines);
+          let saleMerchantId = linkNow.reader?.finixMerchantId || "";
+          let paymentEntityId = checkSellingEntityId(order.lines);
+          if (linkNow.reader) {
+            const names = posNow.vendors.map((vendor) => ({ id: vendor.id, name: vendor.name }));
+            const gate = cardSaleEntityAllowed({
+              readerEntityId: linkNow.reader.entityId,
+              readerLabel: linkNow.reader.entityName || linkNow.reader.entityId,
+              checkLabel: sellingEntityLabel(paymentEntityId, names, posNow.settings.name),
+              sellingEntityId: paymentEntityId,
+              sellingEntityIds: lineIds,
+              locationEntityIds,
+              peerVenue,
+            });
+            if (!gate.ok) {
+              setError(staffCardDecline(gate.message, { amountCents: tend, training }));
+              setBusy(false);
+              return;
+            }
+            paymentEntityId = gate.paymentEntityId;
+            if (linkNow.reader.entityId !== gate.paymentEntityId) {
+              const checkEntity = sellingEntityLabel(gate.paymentEntityId, names, posNow.settings.name);
+              const session = await paxReaderSessionFn({
+                data: paxReaderSessionData({
+                  locationId,
+                  serial: linkNow.reader.serial,
+                  entityId: gate.paymentEntityId,
+                  entityName: checkEntity,
+                }),
+              });
+              if (!session.ok) {
+                setError(staffCardDecline(session.error, { amountCents: tend, training }));
+                setBusy(false);
+                return;
+              }
+              if (session.merchantId.trim()) saleMerchantId = session.merchantId.trim();
+            }
+          }
           const sale = await runAndroidPaxSale({
             checkId: order.id,
             amountCents: tend,
             tipCents: 0,
             locationLive,
             reader: linkNow.reader,
-            sellingEntityId: checkSellingEntityId(order.lines),
-            sellingEntityIds: checkSellingEntityIds(order.lines),
+            sellingEntityId: paymentEntityId,
+            sellingEntityIds: lineIds,
+            locationEntityIds,
+            peerVenue,
             alreadyCaptured: checkAlreadyCaptured({
               checkId: order.id,
               status: order.status,
@@ -1358,7 +1417,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           authorizationId = sale.transferId;
           paxJournal = {
             readerId: linkNow.reader?.finixDeviceId || "",
-            merchantId: linkNow.reader?.finixMerchantId || "",
+            merchantId: saleMerchantId,
             locationId,
             orgId,
           };

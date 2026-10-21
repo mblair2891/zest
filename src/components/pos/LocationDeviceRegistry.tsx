@@ -111,6 +111,7 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { SquareTerminalPanel } from "@/components/pos/SquareTerminalPanel";
 import {
   listPaxReadersFn,
+  reassignPaxReaderFn,
   registerPaxReaderFn,
   removePaxReaderFn,
   renamePaxReaderFn,
@@ -247,6 +248,8 @@ export function LocationDeviceRegistry({
   const [replacingReaderId, setReplacingReaderId] = useState<string | null>(null);
   const [replaceSerial, setReplaceSerial] = useState("");
   const [replaceDeviceId, setReplaceDeviceId] = useState("");
+  const [reassignReaderId, setReassignReaderId] = useState<string | null>(null);
+  const [reassignEntityId, setReassignEntityId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1422,7 +1425,7 @@ export function LocationDeviceRegistry({
             <div>
               <p className="text-sm font-medium">Card readers</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Add a PAX D135 for one selling entity. The station app connects in sandbox.
+                Add a PAX D135 for a selling entity at this location. Reassign moves it to another entity here and keeps the tablet. The station app connects in sandbox.
                 Live card readers are not available in this build. Cash still works with no reader.
               </p>
             </div>
@@ -1534,6 +1537,7 @@ export function LocationDeviceRegistry({
                           setRenameDraft(reader.name);
                           setOpenReaderId(null);
                           setReplacingReaderId(null);
+                          setReassignReaderId(null);
                         }}
                       >
                         Rename
@@ -1548,6 +1552,7 @@ export function LocationDeviceRegistry({
                           setDeviceDraft(reader.finixDeviceId);
                           setRenamingReaderId(null);
                           setReplacingReaderId(null);
+                          setReassignReaderId(null);
                         }}
                       >
                         Open
@@ -1563,9 +1568,25 @@ export function LocationDeviceRegistry({
                           setReplaceDeviceId(reader.finixDeviceId);
                           setOpenReaderId(null);
                           setRenamingReaderId(null);
+                          setReassignReaderId(null);
                         }}
                       >
                         Replace
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        data-pax-reassign=""
+                        disabled={busy}
+                        onClick={() => {
+                          setReassignReaderId(reader.id);
+                          setReassignEntityId(reader.entityId);
+                          setOpenReaderId(null);
+                          setRenamingReaderId(null);
+                          setReplacingReaderId(null);
+                        }}
+                      >
+                        Reassign
                       </Button>
                       <Button
                         size="sm"
@@ -1591,6 +1612,7 @@ export function LocationDeviceRegistry({
                                 setCardReaderId("");
                               }
                               if (replacingReaderId === reader.id) setReplacingReaderId(null);
+                              if (reassignReaderId === reader.id) setReassignReaderId(null);
                               if (openReaderId === reader.id) setOpenReaderId(null);
                               if (renamingReaderId === reader.id) setRenamingReaderId(null);
                               setPaxMsg(`${res.removed.name} was removed.`);
@@ -1721,6 +1743,74 @@ export function LocationDeviceRegistry({
                               await load({ silent: true });
                             } catch (e) {
                               setPaxMsg(e instanceof Error ? e.message : "The reader could not be saved.");
+                            } finally {
+                              setBusy(false);
+                            }
+                          })();
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  ) : null}
+                  {reassignReaderId === reader.id ? (
+                    <div className="flex flex-wrap items-end gap-2" data-pax-reassign-form="">
+                      <label className="min-w-[12rem] flex-1 text-xs text-muted-foreground">
+                        Selling entity
+                        <select
+                          className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm"
+                          data-pax-reassign-entity=""
+                          value={reassignEntityId}
+                          onChange={(e) => setReassignEntityId(e.target.value)}
+                        >
+                          <option value="">Pick the selling entity</option>
+                          <option value={HOST_SCOPE}>{hostName}</option>
+                          {operators
+                            .filter((op) => op.id !== HOST_SCOPE)
+                            .map((op) => (
+                              <option key={op.id} value={op.id}>
+                                {op.name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <Button
+                        size="sm"
+                        data-pax-reassign-save=""
+                        disabled={busy || !reassignEntityId || reassignEntityId === reader.entityId}
+                        onClick={() => {
+                          void (async () => {
+                            if (!resolvedLocId) return;
+                            setBusy(true);
+                            setPaxMsg(null);
+                            const entityName =
+                              reassignEntityId === HOST_SCOPE
+                                ? hostName
+                                : operators.find((op) => op.id === reassignEntityId)?.name ||
+                                  reassignEntityId;
+                            try {
+                              const res = await reassignPaxReaderFn({
+                                data: {
+                                  locationId: resolvedLocId,
+                                  id: reader.id,
+                                  entityId: reassignEntityId,
+                                  entityName,
+                                },
+                              });
+                              if (!res.ok) {
+                                setPaxMsg(res.error);
+                                return;
+                              }
+                              setCardReaders((rows) =>
+                                rows.map((row) => (row.id === res.reader.id ? res.reader : row)),
+                              );
+                              setReassignReaderId(null);
+                              setPaxMsg(
+                                `${res.reader.name} is registered to ${res.reader.entityName || res.reader.entityId}. The tablet stays paired.`,
+                              );
+                              await load({ silent: true });
+                            } catch (e) {
+                              setPaxMsg(e instanceof Error ? e.message : "The reader could not be reassigned.");
                             } finally {
                               setBusy(false);
                             }

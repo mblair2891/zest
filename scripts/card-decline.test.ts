@@ -73,6 +73,7 @@ test("operational errors stay off the decline list", () => {
     "The authorization could not be voided. The check stays open.",
     "The processor did not add the tip.",
     "This reader is registered to another selling entity.",
+    "This reader is registered to Bar. This payment is for Grill. The Finix merchants do not match. Open Devices, select this reader, and choose Reassign. The tablet stays paired.",
   ];
   for (const line of lines) {
     assert.equal(displayCardDecline({ message: line, amountCents: 193, training: true }), null);

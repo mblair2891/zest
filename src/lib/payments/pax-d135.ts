@@ -497,6 +497,122 @@ export function readerMatchesSellingEntities(input: {
   return readerId === input.sellingEntityId;
 }
 
+/** Operators at this location. A hosted venue also includes the host account. */
+export function stationLocationEntityIds(input: {
+  vendors: { id: string }[];
+  peerVenue?: boolean;
+}): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const vendor of input.vendors) {
+    const id = String(vendor.id ?? "").trim();
+    if (!id || id === "host" || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  if (!input.peerVenue) ids.push("host");
+  return ids;
+}
+
+/**
+ * Entity this card payment must use.
+ * A single line entity wins. An empty check at a one-entity location uses that entity.
+ * A mixed check uses the reader entity when that entity is on the check.
+ */
+export function paymentEntityForCardSale(input: {
+  sellingEntityId: string | null;
+  sellingEntityIds?: string[];
+  readerEntityId: string;
+  selectedEntityId?: string | null;
+  locationEntityIds?: string[];
+  peerVenue?: boolean;
+}): string | null {
+  const listed = (input.sellingEntityIds ?? [])
+    .map((id) => id.trim())
+    .filter((id) => id && id !== "host");
+  const selected = String(input.selectedEntityId ?? "").trim();
+  if (selected && selected !== "host") {
+    if (listed.length === 0 || listed.includes(selected)) return selected;
+    return null;
+  }
+  if (listed.length === 1) return listed[0]!;
+  if (listed.length > 1) {
+    const readerId = String(input.readerEntityId ?? "").trim();
+    if (readerId && listed.includes(readerId)) return readerId;
+    return null;
+  }
+  const explicit = String(input.sellingEntityId ?? "").trim();
+  if (explicit && explicit !== "host") return explicit;
+  const operators = (input.locationEntityIds ?? [])
+    .map((id) => id.trim())
+    .filter((id) => id && id !== "host");
+  if (!input.peerVenue && operators.length === 1) return operators[0]!;
+  return "host";
+}
+
+/** Pay and the server use this when the Finix merchants differ. */
+export function readerMerchantMismatchMessage(readerEntity: string, checkEntity: string): string {
+  const reader = cleanEntityLabel(readerEntity) || "the registered entity";
+  const check = cleanEntityLabel(checkEntity) || "the check entity";
+  return `This reader is registered to ${reader}. This payment is for ${check}. The Finix merchants do not match. Open Devices, select this reader, and choose Reassign. The tablet stays paired.`;
+}
+
+export function readerNeedsEntityChoiceMessage(entities: string): string {
+  const named = cleanEntityLabel(entities);
+  const which = named ? ` (${named})` : "";
+  return `This check has more than one selling entity${which}. Pick the entity for this payment. Open Devices and choose Reassign if this reader must move. The tablet stays paired.`;
+}
+
+/**
+ * Same entity always proceeds.
+ * Another entity at this location proceeds so the server can compare Finix merchants.
+ * A merchant mismatch is named before any charge.
+ */
+export function cardSaleEntityAllowed(input: {
+  readerEntityId: string;
+  readerLabel?: string;
+  checkLabel?: string;
+  sellingEntityId: string | null;
+  sellingEntityIds?: string[];
+  locationEntityIds?: string[];
+  peerVenue?: boolean;
+  selectedEntityId?: string | null;
+}): { ok: true; paymentEntityId: string } | { ok: false; message: string } {
+  const readerId = String(input.readerEntityId ?? "").trim();
+  const listed = (input.sellingEntityIds ?? [])
+    .map((id) => id.trim())
+    .filter((id) => id && id !== "host");
+  const paymentEntityId = paymentEntityForCardSale({
+    sellingEntityId: input.sellingEntityId,
+    sellingEntityIds: input.sellingEntityIds,
+    readerEntityId: readerId,
+    selectedEntityId: input.selectedEntityId,
+    locationEntityIds: input.locationEntityIds,
+    peerVenue: input.peerVenue,
+  });
+  if (!paymentEntityId) {
+    return { ok: false, message: readerNeedsEntityChoiceMessage(listed.join(", ")) };
+  }
+  if (input.peerVenue && paymentEntityId === "host") {
+    return {
+      ok: false,
+      message: "The venue is not a selling entity. Pick the operator on the check.",
+    };
+  }
+  if (readerId && readerId === paymentEntityId) return { ok: true, paymentEntityId };
+  const allowed = new Set(
+    (input.locationEntityIds ?? []).map((id) => id.trim()).filter((id) => id),
+  );
+  if (allowed.has(paymentEntityId)) return { ok: true, paymentEntityId };
+  return {
+    ok: false,
+    message: readerMerchantMismatchMessage(
+      input.readerLabel || readerId,
+      input.checkLabel || paymentEntityId,
+    ),
+  };
+}
+
 function cleanEntityLabel(raw: string): string {
   return String(raw ?? "").replace(/\s+/g, " ").trim();
 }
@@ -605,24 +721,30 @@ export function decidePaxPick(input: {
   sellingEntityId: string | null;
   /** Item selling entities. When present, the building name is not the match. */
   sellingEntityIds?: string[];
+  /** Selling entities at this location. A match here waits for the merchant check. */
+  locationEntityIds?: string[];
+  peerVenue?: boolean;
+  /** Staff picked this entity for the payment. */
+  paymentEntityId?: string | null;
   locationLive: boolean;
-}): { ok: true; reader: PaxReader } | { ok: false; message: string } {
+}): { ok: true; reader: PaxReader; paymentEntityId: string } | { ok: false; message: string } {
   const reader = readerForSerial(input.readers, input.row.serial);
   if (!input.row.registered || !reader) {
     return { ok: false, message: PAX_MSG.notRegistered };
   }
   const blocked = envBlock(input.locationLive, reader.env);
   if (blocked) return { ok: false, message: blocked };
-  if (
-    !readerMatchesSellingEntities({
-      readerEntityId: reader.entityId,
-      sellingEntityId: input.sellingEntityId,
-      sellingEntityIds: input.sellingEntityIds,
-    })
-  ) {
-    return { ok: false, message: PAX_MSG.wrongEntity };
-  }
-  return { ok: true, reader };
+  const gate = cardSaleEntityAllowed({
+    readerEntityId: reader.entityId,
+    readerLabel: reader.entityName || reader.entityId,
+    sellingEntityId: input.sellingEntityId,
+    sellingEntityIds: input.sellingEntityIds,
+    locationEntityIds: input.locationEntityIds,
+    peerVenue: input.peerVenue,
+    selectedEntityId: input.paymentEntityId,
+  });
+  if (!gate.ok) return gate;
+  return { ok: true, reader, paymentEntityId: gate.paymentEntityId };
 }
 
 /**
@@ -1241,6 +1363,38 @@ export function removePaxReader<T extends AssignedStation>(input: {
 }
 
 /**
+ * Move this reader to another selling entity at the location.
+ * The serial and the Finix device ID stay, so the tablet assignment stays.
+ */
+export function reassignPaxReader(input: {
+  readers: PaxReader[];
+  id: string;
+  entityId: string;
+  entityName: string;
+  merchantId: string;
+}): { ok: true; readers: PaxReader[]; reader: PaxReader } | { ok: false; message: string } {
+  const current = input.readers.find((r) => r.id === input.id);
+  if (!current) return { ok: false, message: PAX_MSG.notRegistered };
+  const entityId = input.entityId.trim().slice(0, 80);
+  if (!entityId) return { ok: false, message: PAX_MSG.notSaved };
+  const entityName = cleanEntityLabel(input.entityName).slice(0, 80) || entityId;
+  const merchantId = input.merchantId.trim().slice(0, 80);
+  const reader: PaxReader = {
+    ...current,
+    entityId,
+    entityName,
+    finixMerchantId: merchantId || current.finixMerchantId,
+    serial: current.serial,
+    finixDeviceId: current.finixDeviceId,
+  };
+  return {
+    ok: true,
+    readers: input.readers.map((r) => (r.id === current.id ? reader : r)),
+    reader,
+  };
+}
+
+/**
  * Keep the same reader and any station that uses it.
  * The serial and the Finix device ID can change. The name and the selling entity stay.
  * The reader stays listed, so payment can still use it.
@@ -1448,6 +1602,9 @@ export async function runAndroidPaxSale(input: {
   reader: PaxReader | null;
   sellingEntityId: string | null;
   sellingEntityIds?: string[];
+  /** Selling entities at this location. Included so a matching merchant is not blocked here. */
+  locationEntityIds?: string[];
+  peerVenue?: boolean;
   alreadyCaptured: boolean;
   settingUp: boolean;
   connected: boolean;
@@ -1492,14 +1649,16 @@ export async function runAndroidPaxSale(input: {
       keepIdempotency: true,
     };
   }
-  if (
-    !readerMatchesSellingEntities({
-      readerEntityId: input.reader.entityId,
-      sellingEntityId: input.sellingEntityId,
-      sellingEntityIds: input.sellingEntityIds,
-    })
-  ) {
-    return { ok: false, message: PAX_MSG.wrongEntity, charged: false, keepIdempotency: true };
+  const gate = cardSaleEntityAllowed({
+    readerEntityId: input.reader.entityId,
+    readerLabel: input.reader.entityName || input.reader.entityId,
+    sellingEntityId: input.sellingEntityId,
+    sellingEntityIds: input.sellingEntityIds,
+    locationEntityIds: input.locationEntityIds,
+    peerVenue: input.peerVenue,
+  });
+  if (!gate.ok) {
+    return { ok: false, message: gate.message, charged: false, keepIdempotency: true };
   }
   if (!input.connected) {
     return {

@@ -25,6 +25,8 @@ import {
   normalizePaxLink,
   placePaxReader,
   readerForSerial,
+  readerMerchantMismatchMessage,
+  reassignPaxReader,
   removePaxReader,
   renamePaxReader,
   replacePaxReader,
@@ -84,7 +86,7 @@ export async function registerPaxReader(
   if (live) return { ok: false, error: PAX_MSG.liveRegister };
   const entityId = input.entityId.trim().slice(0, 80);
   if (loc.operating_model === "peer_venue" && entityId === HOST_SCOPE) {
-    return { ok: false, error: "The venue is not a selling entity. Pick the operator on the check." };
+    return { ok: false, error: PAX_PEER_HOST };
   }
   const serial = normalizePaxSerial(input.serial);
   if (!serial || !entityId) return { ok: false, error: PAX_MSG.notSaved };
@@ -283,7 +285,17 @@ async function venueFinixMerchantId(
   };
 }
 
-type PaxSessionInput = { locationId: string; serial: string; entityId: string };
+type PaxSessionInput = {
+  locationId: string;
+  serial: string;
+  entityId: string;
+  /** Display name for the check entity. The merchant decision does not use it. */
+  entityName?: string;
+};
+
+const PAX_NO_MERCHANT =
+  "This selling entity does not have a Quantum Payments merchant. Use cash or keep the check open.";
+const PAX_PEER_HOST = "The venue is not a selling entity. Pick the operator on the check.";
 
 type PaxSessionResult =
   | {
@@ -325,6 +337,7 @@ export async function paxReaderSessionForStation(
     locationId: granted.grant.locationId,
     serial: input.serial,
     entityId: input.entityId,
+    entityName: input.entityName,
   });
 }
 
@@ -336,14 +349,36 @@ async function paxReaderCredentials(
   const live = locationLifecycleStatus(setup, loc.lifecycle_status) === "live";
   const reader = readerForSerial(parsePaxReaders(setup.paxReaders), input.serial);
   if (!reader) return { ok: false, error: PAX_MSG.notRegistered };
-  if (reader.entityId !== input.entityId.trim()) {
-    return { ok: false, error: PAX_MSG.wrongEntity };
+  const paymentEntity = input.entityId.trim();
+  if (loc.operating_model === "peer_venue" && paymentEntity === HOST_SCOPE) {
+    return { ok: false, error: PAX_PEER_HOST };
   }
   const blocked = envBlock(live, reader.env);
   if (blocked) return { ok: false, error: blocked };
   // Username and password stay on the server. Merchant id and MID are the saved
-  // payment-account values, not a stored reader merchant and not a hardcoded id.
-  const account = await venueFinixMerchantId(loc.id, reader.entityId);
+  // payment-account values for the check entity, not a stored reader merchant
+  // and not a hardcoded id. A different entity is allowed only when both
+  // merchants exist and are the same.
+  const readerAccount = await venueFinixMerchantId(loc.id, reader.entityId);
+  const paymentAccount =
+    paymentEntity === reader.entityId.trim()
+      ? readerAccount
+      : await venueFinixMerchantId(loc.id, paymentEntity);
+  if (paymentEntity !== reader.entityId.trim()) {
+    const readerMu = readerAccount.merchantId.startsWith("MU") ? readerAccount.merchantId : "";
+    const paymentMu = paymentAccount.merchantId.startsWith("MU") ? paymentAccount.merchantId : "";
+    if (!paymentMu) return { ok: false, error: PAX_NO_MERCHANT };
+    if (!readerMu || readerMu !== paymentMu) {
+      return {
+        ok: false,
+        error: readerMerchantMismatchMessage(
+          reader.entityName || reader.entityId,
+          input.entityName?.trim() || paymentEntity,
+        ),
+      };
+    }
+  }
+  const account = paymentAccount;
   const merchantId = account.merchantId.startsWith("MU") ? account.merchantId : "";
   return {
     ok: true,
@@ -394,6 +429,7 @@ export async function finixConnectAuth(
         locationId: input.locationId,
         serial: input.serial,
         entityId: input.entityId,
+        entityName: input.entityName,
         stationDeviceId: input.stationDeviceId ?? "",
         stationPin: input.stationPin ?? "",
       });
@@ -411,6 +447,71 @@ export async function finixConnectAuth(
   };
   if (!probe.failure) return { ok: true, ...trace };
   return { ok: false, error: probe.failure, ...trace };
+}
+
+/**
+ * Move a reader to another selling entity at this location.
+ * The serial stays, so the tablet assignment stays.
+ * A different Finix merchant re-enrolls the serial. The saved device id stays.
+ */
+export async function reassignPaxReaderRecord(
+  userId: string,
+  input: { locationId: string; id: string; entityId: string; entityName: string },
+): Promise<{ ok: true; reader: PaxReader; reenrolled: boolean } | { ok: false; error: string }> {
+  const loc = await loadLoc(input.locationId);
+  await requireMembership(userId, loc.org_id, undefined, input.locationId);
+  const setup = setupOf(loc.setup);
+  const live = locationLifecycleStatus(setup, loc.lifecycle_status) === "live";
+  if (live) return { ok: false, error: PAX_MSG.liveRegister };
+  const entityId = input.entityId.trim().slice(0, 80);
+  if (loc.operating_model === "peer_venue" && entityId === HOST_SCOPE) {
+    return { ok: false, error: PAX_PEER_HOST };
+  }
+  if (!entityId) return { ok: false, error: PAX_MSG.notSaved };
+  const readers = parsePaxReaders(setup.paxReaders);
+  const current = readers.find((row) => row.id === input.id);
+  if (!current) return { ok: false, error: PAX_MSG.notRegistered };
+  if (current.entityId === entityId) return { ok: true, reader: current, reenrolled: false };
+
+  const { ensureEntityPaymentAccount } = await import("./onboarding.server");
+  const account = await ensureEntityPaymentAccount({
+    orgId: loc.org_id,
+    locationId: loc.id,
+    entityId,
+    displayName: input.entityName || entityId,
+  });
+  const merchantId = String(account.finix_merchant_id ?? "").trim();
+  if (!merchantId.startsWith("MU")) return { ok: false, error: PAX_NO_MERCHANT };
+
+  const previous = await venueFinixMerchantId(loc.id, current.entityId);
+  const previousMu = previous.merchantId.startsWith("MU") ? previous.merchantId : "";
+  let reenrolled = false;
+  if (previousMu !== merchantId) {
+    const { createPaxD135Device } = await import("./finix");
+    const created = await createPaxD135Device({
+      merchantId,
+      serial: current.serial,
+      name: `${input.entityName || "Reader"} ${current.serial}`.trim(),
+    });
+    if (!created.ok) return { ok: false, error: created.error };
+    reenrolled = true;
+  }
+
+  const moved = reassignPaxReader({
+    readers,
+    id: current.id,
+    entityId,
+    entityName: input.entityName,
+    merchantId,
+  });
+  if (!moved.ok) return { ok: false, error: moved.message };
+  const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+  await updateLocationSetupForUser(userId, {
+    orgId: loc.org_id,
+    locationId: loc.id,
+    setup: { ...setup, paxReaders: moved.readers },
+  });
+  return { ok: true, reader: moved.reader, reenrolled };
 }
 
 /** Store the sale idempotency id on the chip Transfer. A captured close is not a second charge. */

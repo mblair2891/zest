@@ -50,6 +50,10 @@ export function isOperationalCardError(text: string): boolean {
     t.includes("requires connection") ||
     t.includes("not connected") ||
     t.includes("another selling entity") ||
+    t.includes("finix merchants do not match") ||
+    t.includes("choose reassign") ||
+    t.includes("the tablet stays paired") ||
+    t.includes("not a selling entity") ||
     t.includes("not registered") ||
     t.includes("could not be voided") ||
     t.includes("void failed") ||

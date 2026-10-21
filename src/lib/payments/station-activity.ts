@@ -29,10 +29,12 @@ export function paxReaderSessionData(input: {
   locationId: string;
   serial: string;
   entityId: string;
+  entityName?: string;
 }): {
   locationId: string;
   serial: string;
   entityId: string;
+  entityName: string;
   stationDeviceId: string;
   stationPin: string;
 } {
@@ -41,6 +43,7 @@ export function paxReaderSessionData(input: {
     locationId: input.locationId,
     serial: input.serial,
     entityId: input.entityId,
+    entityName: String(input.entityName ?? "").replace(/\s+/g, " ").trim().slice(0, 80),
     stationDeviceId: station?.stationDeviceId ?? "",
     stationPin: station?.stationPin ?? "",
   };
