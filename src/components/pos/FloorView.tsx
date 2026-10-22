@@ -71,11 +71,20 @@ import { canAccessView, canAccessViewForEmployee } from "@/lib/pos/rbac";
 import { entityFloorEditorId } from "@/lib/pos/entity-floor";
 import { useStationLayout } from "@/lib/ui/station-layout";
 import {
+  floorLegendItems,
   otherServerTable,
   serverInitials,
   tableServicePaint,
   usePrefersDark,
+  type ColorScheme,
 } from "@/lib/pos/service-colors";
+import { CheckMenuPane } from "./CheckMenuPane";
+import {
+  ADD_RECEIPT_PRINTER,
+  currentStationDeviceId,
+  stationHasBoundReceiptPrinter,
+  stationMayPrintReceipt,
+} from "@/lib/print/receipt-printer";
 import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
@@ -114,6 +123,36 @@ function pipelineLabel(status: string): string {
   return FLOOR_STATUS_LABEL[n];
 }
 
+function FloorStatusLegend({ scheme }: { scheme: ColorScheme }) {
+  const items = floorLegendItems(scheme);
+  return (
+    <div
+      className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-black/10 bg-[#f6f3ec] px-2 py-1.5"
+      data-floor-legend
+    >
+      {items.map((item) => (
+        <span
+          key={item.id}
+          className="inline-flex items-center gap-1 text-[11px] font-semibold leading-none text-[#1c1917]"
+          data-floor-legend-item={item.id}
+        >
+          <span
+            aria-hidden
+            className="inline-block h-3.5 w-3.5 shrink-0 rounded-[3px] border-2"
+            data-floor-legend-swatch
+            style={{
+              background: item.dotted ? "transparent" : item.fill,
+              borderColor: item.edge,
+              borderStyle: item.dotted ? "dotted" : "solid",
+            }}
+          />
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function FloorView({
   hostStand = false,
   chromeActions = false,
@@ -129,7 +168,7 @@ export function FloorView({
   mapOnly?: boolean;
   /** My tables starts on Mine; New table / host floor starts on All. */
   preferMine?: boolean;
-  /** Busy-night bar: Send returns to Floor; Add opens Menu; Pay opens Pay. */
+  /** Busy-night bar: Send returns to Floor. Add stays on this check. Pay opens Pay. */
   onBusyNav?: (dest: "floor" | "menu" | "pay") => void;
   /** Checks tab: open this table’s full-screen check. */
   openCheckTableId?: string | null;
@@ -177,6 +216,8 @@ export function FloorView({
   });
   const clock = usePosStore((s) => s.clock);
   const locId = usePosStore((s) => s.tenantLocationId);
+  const locationDevices = usePosStore((s) => s.locationDevices);
+  const activeDeviceId = usePosStore((s) => s.activeDeviceId);
   const logout = usePosStore((s) => s.logout);
   const [draftBanner, setDraftBanner] = useState(false);
   const [ticketQuery, setTicketQuery] = useState("");
@@ -262,6 +303,35 @@ export function FloorView({
     setQrOpen(false);
     if (mapOnly) onFloorCheckClose?.();
   };
+
+  const openedId = mapOnly ? (detailLive?.id ?? null) : null;
+  useEffect(() => {
+    if (!openedId) return;
+    const state = usePosStore.getState();
+    const table = state.tables.find((t) => t.id === openedId);
+    if (!table) return;
+    const checks = openChecksOnTable(table, state.orders);
+    const id = checks[0]?.id;
+    if (!id) return;
+    if (state.activeTableId === openedId && checks.some((c) => c.id === state.activeOrderId)) return;
+    selectTable(openedId, id);
+  }, [openedId, selectTable]);
+
+  const stationId = activeDeviceId || currentStationDeviceId();
+  const mayPrintCheck = useMemo(() => {
+    if (!detailLive) return true;
+    const ctx = {
+      table: detailLive,
+      tables,
+      tableId: detailLive.id,
+      sections: floorSections,
+      orderType: "dine-in" as const,
+    };
+    return (
+      stationHasBoundReceiptPrinter(locationDevices, stationId, ctx) &&
+      stationMayPrintReceipt(locationDevices, stationId, ctx)
+    );
+  }, [detailLive, tables, floorSections, locationDevices, stationId]);
 
   const checkRequest = useRef<string | null>(null);
   useEffect(() => {
@@ -654,6 +724,7 @@ export function FloorView({
   return (
     <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden" data-demo="floor" data-checklist-focus="floor" tabIndex={-1}>
       {!mapOnly && (
+      <>
       <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-surface px-3 py-1.5" data-floor-chrome="top">
         <h2 className="shrink-0 text-sm font-semibold">
           Floor · {saasLoc?.code ?? loc?.code ?? settings.name}
@@ -709,27 +780,14 @@ export function FloorView({
             {floorList ? "Map" : "List"}
           </button>
         )}
-        <div className={cn("flex shrink-0 gap-1", !layout.smallForm && "ml-auto")}>
-          {FLOOR_PIPELINE.filter((st) => floorCfg.enabled[st] !== false).map((st) => (
-            <Badge
-              key={st}
-              variant="secondary"
-              className="tabular px-1.5 py-0 text-[10px]"
-              style={{
-                background: floorCfg.colors[st],
-                color: contrastInk(floorCfg.colors[st]),
-              }}
-            >
-              {FLOOR_STATUS_LABEL[st]} {counts[st] ?? 0}
-            </Badge>
-          ))}
-          {(counts.check_open ?? 0) > 0 && (
-            <Badge variant="secondary" className="tabular bg-amber-700 px-1.5 py-0 text-[10px] text-white">
-              CHECK OPEN {counts.check_open}
-            </Badge>
-          )}
-        </div>
+        {(counts.check_open ?? 0) > 0 && (
+          <Badge variant="secondary" className="ml-auto shrink-0 tabular bg-amber-700 px-1.5 py-0 text-[10px] text-white">
+            CHECK OPEN {counts.check_open}
+          </Badge>
+        )}
       </div>
+      <FloorStatusLegend scheme={scheme} />
+      </>
       )}
 
       {barPick && (
@@ -858,6 +916,7 @@ export function FloorView({
                 </button>
               </div>
             </header>
+            <FloorStatusLegend scheme={scheme} />
             {draftBanner && (
               <p
                 className="shrink-0 bg-[#1c1917] px-3 py-1 text-center text-xs font-medium text-white"
@@ -1341,6 +1400,7 @@ export function FloorView({
           className="absolute inset-0 z-40 flex min-h-0 flex-col bg-[#f6f3ec] text-foreground"
           data-floor-sheet="check"
           data-floor-check="screen"
+          data-order-layout={layout.smallForm ? "stack" : "thirds"}
         >
           <header className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-3">
             <button
@@ -1367,7 +1427,30 @@ export function FloorView({
               </p>
             </div>
           </header>
-          <div className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-2">
+          {!mayPrintCheck && (
+            <p
+              className="shrink-0 border-b border-border bg-white px-3 py-1.5 text-center text-sm font-medium text-[#1c1917]"
+              role="status"
+              data-receipt-printer-banner
+              data-add-receipt-printer
+            >
+              {ADD_RECEIPT_PRINTER}
+            </p>
+          )}
+          <div
+            className={cn(
+              "flex min-h-0 flex-1",
+              layout.smallForm ? "flex-col" : "flex-row",
+            )}
+          >
+            <div
+              data-order-check
+              data-ticket-strip
+              className={cn(
+                "flex min-h-0 min-w-0 flex-col px-3 pb-3 pt-2",
+                layout.smallForm ? "max-h-[58%] min-h-0 flex-[1.15]" : "h-full w-1/3 shrink-0 basis-1/3 border-r border-border",
+              )}
+            >
             <TableDetailBody
               table={detailLive}
               openChecks={groupMembers(tables, detailLive.id).flatMap((t) => openChecksOnTable(t, orders))}
@@ -1435,6 +1518,10 @@ export function FloorView({
                   if (!ok && !err) toast.error(NO_SECTION_RECEIPT);
                 });
               }}
+              onFocusCheck={(orderId) => {
+                const res = selectTable(detailLive.id, orderId);
+                if (!res.ok) showBlocked(detailLive, res.error ?? "Outside your section");
+              }}
               onAdd={(orderId) => {
                 if (!canOrderEntry) {
                   showBlocked(detailLive, "This PIN cannot open a table order.");
@@ -1443,10 +1530,7 @@ export function FloorView({
                 const res = selectTable(detailLive.id, orderId);
                 if (!res.ok) {
                   showBlocked(detailLive, res.error ?? "Outside your section");
-                  return;
                 }
-                dismissDetail();
-                onBusyNav?.("menu");
               }}
               onAddEmpty={() => {
                 if (!canOrderEntry) {
@@ -1473,12 +1557,7 @@ export function FloorView({
                 const id = usePosStore.getState().activeOrderId;
                 if (!id) return;
                 const res = selectTable(detailLive.id, id);
-                if (!res.ok) {
-                  showBlocked(detailLive, res.error ?? "Outside your section");
-                  return;
-                }
-                dismissDetail();
-                onBusyNav?.("menu");
+                if (!res.ok) showBlocked(detailLive, res.error ?? "Outside your section");
               }}
               onSend={(orderId) => {
                 if (!canOrderEntry) {
@@ -1603,6 +1682,15 @@ export function FloorView({
                   : undefined
               }
             />
+            </div>
+            <div
+              className={cn(
+                "flex min-h-0 min-w-0",
+                layout.smallForm ? "min-h-0 flex-1" : "h-full w-2/3 flex-1",
+              )}
+            >
+              <CheckMenuPane />
+            </div>
           </div>
         </div>
       )}
@@ -2165,6 +2253,7 @@ function TableDetailBody({
   onPay,
   onAddEmpty,
   onPartySize,
+  onFocusCheck,
   compact = false,
   handheld = false,
 }: {
@@ -2207,9 +2296,11 @@ function TableDetailBody({
   onAdd?: (orderId: string) => void;
   onSend?: (orderId: string) => void;
   onPay?: (orderId: string) => void;
-  /** Empty table: seat or open, then go add items. The check stays open. */
+  /** Empty table: seat or open so the menu on this screen can add items. */
   onAddEmpty?: () => void;
   onPartySize?: () => void;
+  /** Keep the menu adding to the check the server picked. */
+  onFocusCheck?: (orderId: string) => void;
   /** Tablet sheet: skip the extra status card. The header already names the table. */
   compact?: boolean;
   /** Phone or 8" handheld: collapsible items and a sticky Send / Pay bar. */
@@ -2274,7 +2365,10 @@ function TableDetailBody({
                     "station-touch min-h-12 shrink-0 rounded-xl px-4 text-base font-semibold",
                     picked?.id === check.id ? "bg-foreground text-background" : "bg-surface",
                   )}
-                  onClick={() => setPickedId(check.id)}
+                  onClick={() => {
+                    setPickedId(check.id);
+                    onFocusCheck?.(check.id);
+                  }}
                 >
                   #{check.number}
                 </button>

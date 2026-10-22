@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_336_floor_legend_check",
+    date: "2026-10-22",
+    title: "Floor legend and ticket check",
+    summary: "The floor legend matches the table colors. A table opens the check on the left and the menu on the right.",
+    body: "The floor shows a legend for every status color on the tables: empty, seated, not sent, drinks ordered, food ordered, food delivered, unpaid, needs bus, selected, and another server. Drinks ordered and food ordered share yellow. Food delivered and unpaid share green. Tapping a table keeps the check on the left, with items, quantities, cash and card, and Add, Send, Print check, and Pay. The menu stays on the right. An item tapped there lands on that check. Send, Print check, and Pay stay on the check.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_335_d135_bluetooth",
     date: "2026-10-22",
     title: "D135 readers connect only by Bluetooth",

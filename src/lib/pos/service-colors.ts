@@ -90,6 +90,51 @@ export function tableServicePaint(input: {
   return { tone, fill: row.fill, ink: contrastInk(row.fill), edge: row.edge, dotted: row.dotted };
 }
 
+export type FloorLegendItem = {
+  id: string;
+  label: string;
+  fill: string;
+  ink: string;
+  edge: string;
+  dotted: boolean;
+};
+
+/** Status colors the live floor actually paints. Drinks and food share Sent. Delivered and unpaid share Fulfilled. */
+export function floorLegendItems(scheme: ColorScheme): FloorLegendItem[] {
+  const paint = (
+    pipeline: string,
+    extra?: { selected?: boolean; otherServer?: boolean; lines?: ServiceLine[] },
+  ): ServicePaint =>
+    tableServicePaint({
+      pipeline,
+      selected: extra?.selected ?? false,
+      otherServer: extra?.otherServer ?? false,
+      lines: extra?.lines ?? [],
+      tickets: [],
+      scheme,
+    });
+  const rows: { id: string; label: string; paint: ServicePaint }[] = [
+    { id: "empty", label: "Empty", paint: paint("empty") },
+    { id: "seated", label: "Seated", paint: paint("sat_no_order") },
+    { id: "held", label: "Not sent", paint: paint("sat_no_order", { lines: [{ sent: false }] }) },
+    { id: "drinks", label: "Drinks ordered", paint: paint("ordered_drinks") },
+    { id: "food", label: "Food ordered", paint: paint("ordered_food") },
+    { id: "delivered", label: "Food delivered", paint: paint("food_delivered") },
+    { id: "unpaid", label: "Unpaid", paint: paint("food_completed") },
+    { id: "bus", label: "Needs bus", paint: paint("closed_not_cleaned") },
+    { id: "selected", label: "Selected", paint: paint("empty", { selected: true }) },
+    { id: "other", label: "Another server", paint: paint("sat_no_order", { otherServer: true }) },
+  ];
+  return rows.map((row) => ({
+    id: row.id,
+    label: row.label,
+    fill: row.paint.fill,
+    ink: row.paint.ink,
+    edge: row.paint.edge,
+    dotted: row.paint.dotted,
+  }));
+}
+
 export type MenuSwatch = {
   id: string;
   label: string;

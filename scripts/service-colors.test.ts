@@ -12,6 +12,7 @@ import {
 import {
   MENU_SWATCHES,
   categoryButtonPaint,
+  floorLegendItems,
   otherServerTable,
   tableServicePaint,
   tableServiceTone,
@@ -155,4 +156,19 @@ test("order buttons, the floor map, and the order display use the service colors
   assert.doesNotMatch(ods, /smallForm/);
   assert.match(floor, /tableServicePaint/);
   assert.match(floor, /hollow=\{paint\.dotted\}/);
+  assert.match(floor, /data-floor-legend/);
+  assert.match(floor, /data-order-layout=\{layout\.smallForm \? "stack" : "thirds"\}/);
+  assert.match(floor, /data-order-check/);
+  assert.match(floor, /CheckMenuPane/);
+  const legend = floorLegendItems("light");
+  const byId = Object.fromEntries(legend.map((item) => [item.id, item]));
+  assert.equal(byId.empty?.fill, tableServicePaint({ ...base, scheme: "light" }).fill);
+  assert.equal(byId.empty?.dotted, true);
+  assert.equal(byId.held?.fill, "#b91c1c");
+  assert.equal(byId.drinks?.fill, byId.food?.fill);
+  assert.equal(byId.delivered?.fill, byId.unpaid?.fill);
+  assert.equal(byId.bus?.fill, tableServicePaint({ ...base, pipeline: "closed_not_cleaned", scheme: "light" }).fill);
+  assert.equal(byId.selected?.fill, "#1d4ed8");
+  assert.equal(byId.other?.fill, "#d6d3d1");
+  assert.equal(byId.seated?.fill, tableServicePaint({ ...base, pipeline: "sat_no_order", scheme: "light" }).fill);
 });
