@@ -11,6 +11,7 @@ import { giftNeedsManagerPin, giftSellBlockedReason, parseGiftLimits } from "@/l
 import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/api";
 import { setPreferredMsrGiftAction, type MsrSwipeEvent } from "@/lib/pos/elo-msr";
 import { ManagerPinDialog } from "./ManagerPinDialog";
+import { UsbGiftMsrNote } from "./EloMsrStation";
 
 /** Paired station + staff PIN: sell face-value gift or redeem on the open check. */
 export function StationGiftJob() {
@@ -226,6 +227,7 @@ export function StationGiftJob() {
 
   return (
     <div className="mx-auto max-w-md space-y-4 p-4" data-demo="station-gift-job">
+      <UsbGiftMsrNote action={tab === "sell" ? "load" : "redeem"} />
       <div className="flex gap-2">
         <Button
           className="flex-1"

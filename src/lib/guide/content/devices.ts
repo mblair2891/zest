@@ -28,7 +28,35 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Last swipe shows the action and the last four. The full stripe is not kept.",
         "Unlink by editing the tablet to Link a tablet and saving. Test swipe asks for a tablet until one is linked.",
       ),
-      related("gift-cards", "pax-card-reader", "printers-kds"),
+      related("gift-cards", "usb-gift-msr", "pax-card-reader", "printers-kds"),
+    ],
+  }),
+  topic({
+    id: "usb-gift-msr",
+    chapterId: "devices",
+    title: "USB gift card MSR",
+    summary:
+      "Devices stores a magstripe reader on USB and assigns it to one station. Gift load and redeem on that station use it.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    keywords: ["msr", "magstripe", "mag stripe", "gift card", "usb", "elo", "station"],
+    openView: "settings",
+    blocks: [
+      why(
+        "A slot-mounted magstripe reader plugs into one station with a USB cable. Gift cards on that station use it. It does not take a bank card.",
+      ),
+      steps(
+        "Open location Devices. Add device. Type is Magstripe reader · Gift card MSR. Name it, for example Bar slot.",
+        "Connection is USB. There is no network address and no Bluetooth pairing.",
+        "Station is the terminal this reader is plugged into. Save.",
+        "On that station, Gift card load and redeem use this reader. A swipe fills the gift code on the house ledger. Other stations do not use it.",
+        "The row shows USB and the station name. Test swipe sends a house gift swipe to that station. Balance, Load, or Redeem is the test.",
+      ),
+      ul(
+        "This reader is only for gift cards. It is not a PAX D135 and it does not store a bank card number.",
+        "The Elo side-mounted MSR is a separate reader. It can still link to a tablet for gift, loyalty, or a general swipe.",
+        "A station with no USB reader assigned is unchanged.",
+      ),
+      related("gift-cards", "elo-side-msr", "pax-card-reader"),
     ],
   }),
   topic({

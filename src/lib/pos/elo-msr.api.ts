@@ -26,7 +26,7 @@ async function writeDevices(userId: string, orgId: string, locationId: string, s
   const { getSql } = await import("@/lib/db");
   const sql = await getSql();
   for (const device of devices) {
-    if (device.type !== "elo_msr") continue;
+    if (device.type !== "elo_msr" && device.type !== "gift_msr") continue;
     try {
       await sql`
         insert into location_devices (
@@ -81,7 +81,9 @@ export const recordEloMsrSwipeFn = createServerFn({ method: "POST" })
     const ctx = await loadEntityWriteContext(context.userId, orgId, data.locationId);
     const prev = parseLocationDevices(ctx.setup.locationDevices);
     const existing = prev.find((d) => d.id === data.deviceId);
-    if (!existing) return { ok: false as const, error: "Elo reader not found" };
+    if (!existing || (existing.type !== "elo_msr" && existing.type !== "gift_msr")) {
+      return { ok: false as const, error: "Elo reader not found" };
+    }
     assertHostOrManageDevices(ctx, existing.assignment.operatorId || "host");
     const applied = applyEloMsrSwipe(prev, data.deviceId, data.raw, {
       giftAction: data.giftAction,

@@ -51,15 +51,21 @@ export type MsrSwipeEvent = {
   summary: string;
 };
 
+export type MsrMount = "side" | "slot";
+/** Slot reader on the station USB port. No network address and no Bluetooth. */
+export type MsrConnection = "usb";
+
 export type MsrConfig = {
-  mount: "side";
+  mount: MsrMount;
   role: MsrRole;
-  /** Tablet that receives swipe events. */
+  /** Station that receives swipe events. */
   stationId: string | null;
+  /** Present on a USB gift-card reader. Absent on the side-mounted wedge. */
+  connection?: MsrConnection;
   lastSwipeAt?: number;
   lastSwipeKind?: MsrSwipeKind;
   lastSwipeSummary?: string;
-  /** One undelivered swipe for the linked tablet. */
+  /** One undelivered swipe for the linked station. */
   pending?: MsrSwipeEvent | null;
 };
 
@@ -76,6 +82,15 @@ const STATION_TYPES = new Set(["tablet_pos", "host_stand", "kds", "kiosk"]);
 
 export function isMsrStationType(type: string): boolean {
   return STATION_TYPES.has(type);
+}
+
+/** Side-mounted Elo wedge or a USB gift-card magstripe reader. */
+export function isStripeReaderType(type: string): boolean {
+  return type === "elo_msr" || type === "gift_msr";
+}
+
+export function isUsbGiftMsrType(type: string): boolean {
+  return type === "gift_msr";
 }
 
 export function defaultMsrConfig(): MsrConfig {
@@ -142,14 +157,56 @@ export function parseMsrConfig(raw: unknown): MsrConfig | undefined {
   const station = String(o.stationId ?? "").trim().slice(0, 80);
   const kind = kindOf(o.lastSwipeKind);
   const at = Number(o.lastSwipeAt) > 0 ? Math.round(Number(o.lastSwipeAt)) : undefined;
+  const connection = o.connection === "usb" ? "usb" : undefined;
   return {
-    mount: "side",
+    mount: connection === "usb" ? "slot" : "side",
     role: roleOf(o.role),
     stationId: station || null,
+    ...(connection ? { connection } : {}),
     lastSwipeAt: at,
     lastSwipeKind: kind,
     lastSwipeSummary: o.lastSwipeSummary ? String(o.lastSwipeSummary).slice(0, 80) : undefined,
     pending: parsePending(o.pending),
+  };
+}
+
+function keptSwipe(existing?: MsrConfig): Pick<
+  MsrConfig,
+  "lastSwipeAt" | "lastSwipeKind" | "lastSwipeSummary" | "pending"
+> {
+  return {
+    lastSwipeAt: existing?.lastSwipeAt,
+    lastSwipeKind: existing?.lastSwipeKind,
+    lastSwipeSummary: existing?.lastSwipeSummary,
+    pending: existing?.pending ?? null,
+  };
+}
+
+/** Read path. A USB gift reader is always USB and gift-only. A side reader stays a wedge. */
+export function msrConfigForDeviceType(type: string, raw: unknown): MsrConfig | undefined {
+  if (!isStripeReaderType(type)) return undefined;
+  const parsed = parseMsrConfig(raw);
+  if (type === "gift_msr") {
+    return {
+      mount: "slot",
+      role: "gift",
+      connection: "usb",
+      stationId: parsed?.stationId ?? null,
+      lastSwipeAt: parsed?.lastSwipeAt,
+      lastSwipeKind: parsed?.lastSwipeKind,
+      lastSwipeSummary: parsed?.lastSwipeSummary,
+      pending: parsed?.pending ?? null,
+    };
+  }
+  if (!parsed) return undefined;
+  return {
+    mount: "side",
+    role: parsed.role,
+    stationId: parsed.stationId,
+    lastSwipeAt: parsed.lastSwipeAt,
+    lastSwipeKind: parsed.lastSwipeKind,
+    lastSwipeSummary: parsed.lastSwipeSummary,
+    pending: parsed.pending,
   };
 }
 
@@ -159,6 +216,17 @@ export function msrForSavedDevice(
   incoming: unknown,
   existing?: MsrConfig,
 ): MsrConfig | undefined {
+  if (type === "gift_msr") {
+    const parsed = parseMsrConfig(incoming);
+    const stationId = parsed ? parsed.stationId : (existing?.stationId ?? null);
+    return {
+      mount: "slot",
+      role: "gift",
+      connection: "usb",
+      stationId,
+      ...keptSwipe(existing),
+    };
+  }
   if (type !== "elo_msr") return undefined;
   const parsed = parseMsrConfig(incoming);
   const role = parsed?.role ?? existing?.role ?? "gift";
@@ -167,11 +235,28 @@ export function msrForSavedDevice(
     mount: "side",
     role,
     stationId,
-    lastSwipeAt: existing?.lastSwipeAt,
-    lastSwipeKind: existing?.lastSwipeKind,
-    lastSwipeSummary: existing?.lastSwipeSummary,
-    pending: existing?.pending ?? null,
+    ...keptSwipe(existing),
   };
+}
+
+/**
+ * Reader a gift load or redeem on this station should use.
+ * A USB gift reader assigned here wins for load and redeem.
+ * Another station does not see it.
+ */
+export function selectStationStripeReader<T extends SwipeDevice>(
+  devices: T[],
+  stationId: string,
+  giftAction?: MsrGiftAction,
+): T | undefined {
+  const sid = String(stationId ?? "").trim();
+  if (!sid) return undefined;
+  const usb = devices.find(
+    (d) => d.type === "gift_msr" && d.msr?.connection === "usb" && d.msr.stationId === sid,
+  );
+  const elo = devices.find((d) => d.type === "elo_msr" && d.msr?.stationId === sid);
+  if (usb && (giftAction === "load" || giftAction === "redeem" || !elo)) return usb;
+  return elo;
 }
 
 export function eloMsrPresence(
@@ -225,19 +310,24 @@ export function applyEloMsrSwipe<T extends SwipeDevice>(
   const id = String(deviceId ?? "").trim();
   const index = devices.findIndex((d) => d.id === id);
   const device = index >= 0 ? devices[index] : undefined;
-  if (!device || device.type !== "elo_msr") {
+  if (!device || !isStripeReaderType(device.type)) {
     return { devices, event: null, error: "Elo reader not found" };
   }
+  const usb = device.type === "gift_msr";
   const stationId = device.msr?.stationId ?? null;
   if (!stationId) {
-    return { devices, event: null, error: "Link this reader to a tablet first." };
+    return {
+      devices,
+      event: null,
+      error: usb ? "Assign this reader to a station first." : "Link this reader to a tablet first.",
+    };
   }
   const station = devices.find((d) => d.id === stationId && isMsrStationType(d.type));
   if (!station) {
     return { devices, event: null, error: "That tablet is not on this location." };
   }
   const now = opts?.now ?? Date.now();
-  const role = device.msr?.role ?? "gift";
+  const role = usb ? "gift" : (device.msr?.role ?? "gift");
   const parsed = parseMsrWedge(raw);
   let kind = swipeKindFor(role, opts?.giftAction);
   let code: string | undefined;
@@ -268,7 +358,8 @@ export function applyEloMsrSwipe<T extends SwipeDevice>(
     status: "online",
     lastSeenAt: now,
     msr: {
-      mount: "side",
+      mount: usb ? "slot" : "side",
+      ...(usb ? { connection: "usb" as const } : {}),
       role,
       stationId,
       lastSwipeAt: now,
@@ -289,9 +380,15 @@ export function takeEloMsrSwipe<T extends SwipeDevice>(
 ): { devices: T[]; event: MsrSwipeEvent | null } {
   const station = String(stationId ?? "").trim();
   if (!station) return { devices, event: null };
-  const index = devices.findIndex(
-    (d) => d.type === "elo_msr" && d.msr?.pending && d.msr.pending.stationId === station,
+  const usbIndex = devices.findIndex(
+    (d) => d.type === "gift_msr" && d.msr?.pending && d.msr.pending.stationId === station,
   );
+  const index =
+    usbIndex >= 0
+      ? usbIndex
+      : devices.findIndex(
+          (d) => d.type === "elo_msr" && d.msr?.pending && d.msr.pending.stationId === station,
+        );
   if (index < 0) return { devices, event: null };
   const device = devices[index]!;
   const event = device.msr?.pending ?? null;

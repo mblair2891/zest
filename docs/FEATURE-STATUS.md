@@ -49,9 +49,11 @@
 
 **Elo side-mounted MSR.** Devices stores an `elo_msr` row on `locationDevices` with the role and the linked tablet. A swipe updates that row and the tablet reads it. Gift load, redeem, and balance call the existing gift ledger (`lookupGiftCard`, `issueGiftCard`, `redeemGiftCard`). The full stripe and a bank card number are not stored.
 
+**USB gift card MSR.** Devices stores a `gift_msr` row. Connection is USB. It is assigned to one station. Gift load and redeem on that station use `selectStationStripeReader`. Another station does not. There is no network address and no Bluetooth pairing. The full stripe and a bank card number are not stored.
+
 **Liquor from any order tablet.** A server, host, or bar order tablet can open a check and add bar items. Send uses the section bar printer and the bar order display. Food still uses the order printers checked on that tablet. The person’s role still decides which items they can enter.
 
-**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.336), not a record the venue saves.
+**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.337), not a record the venue saves.
 
 **Entity settings.** Entity admin Settings (`EntityOwnedSettings`) loads `loadEntitySettingsFn` and saves `saveEntitySettingsFn` onto that operator: legal name, DBA, menu display name, tip percents, and staff PIN length (`operators`, migration `0053_entity_settings.sql`). The logo uses the entity slot. Venue name, address, and timezone stay on the location and stay read-only for an entity admin who is not the location contact. The location contact can change the entity fields. A refresh reads the operator row again. Payment and tax are not on this screen.
 

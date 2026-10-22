@@ -27,7 +27,7 @@ import {
   type LocationDevice,
   type LocationDeviceType,
 } from "@/lib/pos/location-devices";
-import { eloMsrPresence, msrForSavedDevice } from "@/lib/pos/elo-msr";
+import { eloMsrPresence, isStripeReaderType, msrForSavedDevice } from "@/lib/pos/elo-msr";
 import {
   STATION_PAIR_INVALID,
   claimExpired,
@@ -343,7 +343,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
     const id = data.device.id || `dev_${Math.random().toString(36).slice(2, 10)}`;
     const existing = prev.find((x) => x.id === id);
     const printer = isPrinterType(data.device.type);
-    const msrReader = data.device.type === "elo_msr";
+    const msrReader = isStripeReaderType(data.device.type);
     const minted = printer || msrReader || existing?.claimCode ? null : mintClaim();
     const hasIp = Boolean(data.device.print?.target || data.device.print?.ip);
     const msr = msrForSavedDevice(data.device.type, data.device.msr, existing?.msr);

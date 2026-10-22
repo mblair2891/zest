@@ -39,6 +39,7 @@ const TOPIC_SCREEN: Record<string, UpdateScreen> = {
   "pax-card-reader": PAYMENTS,
   "card-not-present": PAYMENTS,
   "elo-side-msr": { view: "settings", tab: "settings", label: "Devices" },
+  "usb-gift-msr": { view: "settings", tab: "settings", label: "Devices" },
   "device-roles": { view: "settings", tab: "settings", label: "Devices" },
   "printers-kds": { view: "settings", tab: "settings", label: "Devices" },
   "quickbooks-online": INTEGRATIONS,

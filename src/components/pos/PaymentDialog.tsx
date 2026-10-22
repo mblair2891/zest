@@ -110,6 +110,12 @@ import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/
 import { defaultGiftIssuer, fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import { giftNeedsManagerPin, giftSellBlockedReason, parseGiftLimits } from "@/lib/pos/gift-limits";
 import { ManagerPinDialog } from "./ManagerPinDialog";
+import { UsbGiftMsrNote } from "./EloMsrStation";
+import {
+  preferredMsrGiftAction,
+  setPreferredMsrGiftAction,
+  type MsrSwipeEvent,
+} from "@/lib/pos/elo-msr";
 import type { PaymentsStatus } from "@/lib/payments/types";
 import { uid } from "@/lib/utils";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
@@ -757,6 +763,25 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   }, [open]);
 
   useEffect(() => {
+    if (!open || method !== "gift_card") return;
+    setPreferredMsrGiftAction("redeem");
+    const onSwipe = (ev: Event) => {
+      const detail = (ev as CustomEvent<MsrSwipeEvent>).detail;
+      if (!detail?.code) return;
+      if (detail.kind !== "gift_load" && detail.kind !== "gift_redeem" && detail.kind !== "gift_balance") {
+        return;
+      }
+      setGiftCode(detail.code);
+      setGiftNote(`Swipe received · ${detail.summary}`);
+    };
+    window.addEventListener("summex-msr-swipe", onSwipe);
+    return () => {
+      window.removeEventListener("summex-msr-swipe", onSwipe);
+      if (preferredMsrGiftAction() === "redeem") setPreferredMsrGiftAction("balance");
+    };
+  }, [open, method]);
+
+  useEffect(() => {
     if (!giftOk && method === "gift_card") {
       const cfg = payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor);
       setMethod(firstEnabledMethod(cfg, wanOnline ? "card" : "cash"));
@@ -823,6 +848,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               data: {
                 locationId: loc,
                 amountCents: cents,
+                code: giftCode.trim() || undefined,
                 issuerId: issuer.id,
                 issuerKind: issuer.kind,
                 issuerName: issuer.name,
@@ -2794,6 +2820,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                     First-party ledger. Sell and redeem on this paired station with a staff PIN.
                     No public website purchase. No shipping. No third-party gift networks.
                   </p>
+                  <UsbGiftMsrNote action="redeem" />
                   <div className="space-y-2 rounded-lg border border-border p-2" data-demo="gift-sell">
                     <p className="text-xs font-medium">Sell gift card</p>
                     <Input

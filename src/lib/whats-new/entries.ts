@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_337_usb_gift_msr",
+    date: "2026-10-22",
+    title: "USB gift card MSR",
+    summary: "A magstripe reader on USB belongs to one station and loads or redeems gift cards there.",
+    body: "Devices can add a Magstripe reader for gift cards. Connection is USB. Assign the station the reader is plugged into. Gift load and redeem on that station use it. Other stations do not. There is no network address and no Bluetooth pairing. A bank card is not stored.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "usb-gift-msr",
+    tags: ["devices"],
+  },
+  {
     id: "upd_2026_10_336_floor_legend_check",
     date: "2026-10-22",
     title: "Floor legend and ticket check",

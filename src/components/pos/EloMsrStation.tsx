@@ -5,6 +5,8 @@ import {
   giftLedgerIntent,
   preferredMsrGiftAction,
   pushWedgeKey,
+  selectStationStripeReader,
+  type MsrGiftAction,
   type MsrSwipeEvent,
   type WedgeBuffer,
 } from "@/lib/pos/elo-msr";
@@ -36,15 +38,15 @@ async function describeSwipe(event: MsrSwipeEvent, locationId: string): Promise<
         ? `Balance ${formatCurrency(res.card.balanceCents)}`
         : res.error || "Card not found";
       const action = intent.op === "redeem" ? "Redeem" : "Balance";
-      return `${action} received on this tablet. ${event.summary}. ${balance}`;
+      return `${action} received on this station. ${event.summary}. ${balance}`;
     } catch (e) {
       return e instanceof Error ? e.message : "Gift lookup failed";
     }
   }
   if (intent.op === "issue") {
-    return `Load received on this tablet. ${event.summary}. Enter the amount on Gift, then sell.`;
+    return `Load received on this station. ${event.summary}. Enter the amount on Gift, then sell.`;
   }
-  return `Swipe received on this tablet. ${event.summary}`;
+  return `Swipe received on this station. ${event.summary}`;
 }
 
 /** Linked tablet: keyboard wedge plus swipes sent from Devices. */
@@ -104,11 +106,12 @@ export function EloMsrStation() {
       ev.preventDefault();
       const sid = stationIdNow();
       const rows = usePosStore.getState().locationDevices ?? [];
-      const reader = rows.find((d) => d.type === "elo_msr" && d.msr?.stationId === sid);
+      const action = preferredMsrGiftAction();
+      const reader = selectStationStripeReader(rows, sid, action);
       if (!reader) return;
       const applied = applyEloMsrSwipe(rows, reader.id, next.done, {
         handled: true,
-        giftAction: reader.msr?.role === "gift" ? preferredMsrGiftAction() : undefined,
+        giftAction: reader.type === "gift_msr" || reader.msr?.role === "gift" ? action : undefined,
       });
       if (!applied.event) return;
       usePosStore.setState({ locationDevices: applied.devices });
@@ -122,7 +125,7 @@ export function EloMsrStation() {
             locationId,
             deviceId: reader.id,
             raw: next.done,
-            giftAction: reader.msr?.role === "gift" ? preferredMsrGiftAction() : undefined,
+            giftAction: reader.type === "gift_msr" || reader.msr?.role === "gift" ? action : undefined,
             handled: true,
           },
         }).catch(() => undefined);
@@ -140,6 +143,28 @@ export function EloMsrStation() {
       data-msr-received
     >
       {line}
+    </p>
+  );
+}
+
+/** Gift load or redeem on this station names the USB reader assigned here. */
+export function UsbGiftMsrNote({ action }: { action: MsrGiftAction }) {
+  const activeDeviceId = usePosStore((s) => s.activeDeviceId);
+  const tenantLocationId = usePosStore((s) => s.tenantLocationId);
+  const devices = usePosStore((s) => s.locationDevices);
+  const stationId = useMemo(() => {
+    const pair = readStationPair();
+    if (isStationPinPath() && pair?.deviceId) return pair.deviceId;
+    if (activeDeviceId) return activeDeviceId;
+    if (pair?.deviceId) return pair.deviceId;
+    const loc = tenantLocationId || pair?.locationId || "";
+    return loc ? readPairedDeviceId(loc) || "" : "";
+  }, [activeDeviceId, tenantLocationId]);
+  const reader = selectStationStripeReader(devices ?? [], stationId, action);
+  if (reader?.type !== "gift_msr") return null;
+  return (
+    <p className="text-xs text-muted-foreground" data-usb-gift-msr>
+      This station uses the USB magstripe reader for gift cards.
     </p>
   );
 }

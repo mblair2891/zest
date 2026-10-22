@@ -22,7 +22,12 @@ import {
   type PrinterPaperMm,
 } from "@/lib/print/printer-models";
 import { normalizePrinterLink } from "@/lib/print/printer-transport";
-import { eloMsrPresence, parseMsrConfig, type MsrConfig } from "./elo-msr";
+import {
+  eloMsrPresence,
+  isStripeReaderType,
+  msrConfigForDeviceType,
+  type MsrConfig,
+} from "./elo-msr";
 
 export {
   DEFAULT_PRINTER_PORT,
@@ -60,6 +65,7 @@ export type LocationDeviceType =
   | "host_stand"
   | "terminal"
   | "elo_msr"
+  | "gift_msr"
   | "other";
 
 export type DeviceFunction =
@@ -243,7 +249,7 @@ export type LocationDevice = {
   squareDeviceCode?: string;
   squareCodeId?: string;
   squarePairStatus?: "unpaired" | "paired";
-  /** Elo side-mounted magnetic stripe reader. */
+  /** Side-mounted Elo wedge, or a USB gift-card magstripe reader. */
   msr?: MsrConfig;
   /** Owner asked the idle PIN pad to take the new role now. */
   applyRoleNow?: boolean;
@@ -265,6 +271,7 @@ export const DEVICE_TYPES: LocationDeviceType[] = [
   "host_stand",
   "terminal",
   "elo_msr",
+  "gift_msr",
   "other",
 ];
 
@@ -281,6 +288,7 @@ export const HARDWARE_DEVICE_TYPES: LocationDeviceType[] = [
   "receipt_printer",
   "order_printer",
   "elo_msr",
+  "gift_msr",
 ];
 
 export const DEVICE_FUNCTIONS: DeviceFunction[] = [
@@ -322,6 +330,7 @@ export const DEVICE_TYPE_LABEL: Record<LocationDeviceType, string> = {
   host_stand: "Host tablet",
   terminal: "Terminal",
   elo_msr: "Elo side-mounted MSR",
+  gift_msr: "Magstripe reader",
   other: "Other",
 };
 
@@ -384,7 +393,12 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
       status,
       lastSeenAt: Number(o.lastSeenAt) || Date.now(),
       serial: o.serial ? String(o.serial) : undefined,
-      claimCode: isPrinterType(type) ? undefined : o.claimCode ? String(o.claimCode) : undefined,
+      claimCode:
+        isPrinterType(type) || type === "gift_msr"
+          ? undefined
+          : o.claimCode
+            ? String(o.claimCode)
+            : undefined,
       assignment,
       print,
       receiptPrinterId:
@@ -414,7 +428,7 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
         o.squarePairStatus === "paired" || o.squarePairStatus === "unpaired"
           ? o.squarePairStatus
           : undefined,
-      msr: type === "elo_msr" ? parseMsrConfig(o.msr) : undefined,
+      msr: msrConfigForDeviceType(type, o.msr),
       applyRoleNow: o.applyRoleNow === true,
       roleRevision: Number(o.roleRevision) > 0 ? Math.round(Number(o.roleRevision)) : undefined,
       claimExpiresAt:
@@ -425,7 +439,7 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
 }
 
 export function isPairedActivatedStation(d: LocationDevice): boolean {
-  if (isPrinterType(d.type) || d.type === "terminal" || d.type === "elo_msr") return false;
+  if (isPrinterType(d.type) || d.type === "terminal" || isStripeReaderType(d.type)) return false;
   return d.status === "online" || d.status === "offline";
 }
 
@@ -558,7 +572,7 @@ export function isPrintWorkerStation(d: {
   status?: string;
   assignment?: { function?: string };
 }): boolean {
-  if (isPrinterType(d.type) || d.type === "terminal" || d.type === "elo_msr") return false;
+  if (isPrinterType(d.type) || d.type === "terminal" || isStripeReaderType(d.type)) return false;
   if (d.status === "inactive") return false;
   if (d.type === "kiosk" || d.assignment?.function === "kiosk") return false;
   return true;
@@ -626,7 +640,7 @@ export function stationPresenceStatus(
   d: LocationDevice,
   now = Date.now(),
 ): LocationDeviceStatus {
-  if (d.type === "elo_msr") return eloMsrPresence(d, now);
+  if (isStripeReaderType(d.type)) return eloMsrPresence(d, now);
   if (isPrinterDevice(d)) return d.status;
   if (d.status === "inactive") return "inactive";
   if (d.status === "pending") return "pending";
@@ -868,6 +882,7 @@ export function defaultFunctionForType(type: LocationDeviceType): DeviceFunction
     case "terminal":
       return "cashier";
     case "elo_msr":
+    case "gift_msr":
       return "cashier";
     default:
       return "floor_pos";
