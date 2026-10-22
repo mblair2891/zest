@@ -961,7 +961,7 @@ export async function markContractSigned(opts: {
   userId: string;
   prospectId: string;
   signedOn?: string;
-}): Promise<ProspectRecord> {
+}): Promise<ProspectRecord & { emailNotice: string; onboardUrl: string | null }> {
   if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
   const row = await getRow(opts.prospectId);
   if (!row) throw new Error("Prospect not found");
@@ -1000,13 +1000,17 @@ export async function markContractSigned(opts: {
   const next = await getRow(prospect.id);
   const mapped = mapProspect(next!);
   await syncCrm(mapped);
-  return mapped;
+  return {
+    ...mapped,
+    emailNotice: invite.sent ? "email sent" : "email not sent",
+    onboardUrl: invite.onboardUrl,
+  };
 }
 
 export async function startOnboardingProspect(opts: {
   userId: string;
   prospectId: string;
-}): Promise<ProspectRecord> {
+}): Promise<ProspectRecord & { emailNotice: string; onboardUrl: string | null }> {
   if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
   const row = await getRow(opts.prospectId);
   if (!row) throw new Error("Prospect not found");
@@ -1024,13 +1028,17 @@ export async function startOnboardingProspect(opts: {
   await writeAudit({
     actorUserId: opts.userId,
     action: "subscriber_owner_invited",
-    payload: { prospectId: prospect.id, userId: invite.userId, username: invite.username, resent: true },
+    payload: { prospectId: prospect.id, userId: invite.userId, username: invite.username, resent: true, sent: invite.sent },
     orgId: prospect.orgId,
   });
   const next = await getRow(prospect.id);
   const mapped = mapProspect(next!);
   await syncCrm(mapped);
-  return mapped;
+  return {
+    ...mapped,
+    emailNotice: invite.sent ? "email sent" : "email not sent",
+    onboardUrl: invite.onboardUrl,
+  };
 }
 
 export async function adminSetProspectStatus(opts: {
@@ -1273,9 +1281,26 @@ async function loadOwnerInvite(
       limit 1
     `;
     if (!rows[0]) return null;
+    let linkLabel: string | null = null;
+    let finixLabel: string | null = null;
+    let emailNotice: string | null = null;
+    try {
+      const { prospectOnboardingStatus } = await import("./onboard-link.server");
+      const status = await prospectOnboardingStatus(prospectId);
+      if (status) {
+        linkLabel = status.label;
+        finixLabel = status.finixLabel;
+        emailNotice = status.emailStatus === "sent" ? "email sent" : "email not sent";
+      }
+    } catch (err) {
+      console.warn("[prospect-onboard-status]", err);
+    }
     return {
       username: rows[0].username,
       sentAt: rows[0].invite_sent_at ? String(rows[0].invite_sent_at) : null,
+      linkLabel,
+      finixLabel,
+      emailNotice,
     };
   } catch {
     return null;

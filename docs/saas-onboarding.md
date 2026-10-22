@@ -23,8 +23,8 @@ Use invented names such as **Host Venue**, **Operator A**, **Operator B**. Do no
 1. **Get pricing** (`/get-pricing`) — optional interview or **Enter details myself**.
 2. Structured form: host + operators, two operators, Quantum Payments ack → generate quote.
 3. Sign in as the prospect (or stay Admin) and **Accept quote**.
-4. As Admin: Pipeline → **Mark contract signed**. That emails the venue owner a one-time password. Do not open their wizard.
-5. Owner logs in at `/login`, changes the password, lands on `/setup/<token>`:
+4. As Admin: Pipeline → **Mark contract signed**. That emails the venue owner a unique onboarding link. They set a password on the first visit. Do not open their wizard. If the mail key is missing, the screen says email not sent.
+5. Owner opens `/onboard/<token>`, sets a password, and for a host merchant accepts the Summex merchant agreement and starts Finix. Then `/setup/<token>` if the building is not saved yet:
    - Organization = Host Venue (legal/DBA).
    - Location = host + operators, guest-facing **Host Venue**.
    - Invite Operator A and Operator B POCs (existing tenant link).

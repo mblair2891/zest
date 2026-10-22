@@ -49,7 +49,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Dollar amounts live in Settings → Plans & billing (Get a price catalog forms). Setup defaults to $0. Processing is a note, not software $. Quotes also show: Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack. PDF, email, and CRM use the same lines. Staff stations are Android tablets running Summex Station (sideload now; Play later). Printers, drawers, and gift MSR are BYO. Live cards require Finix/Quantum readers supplied through Summex (drop-ship to the site). Customer-owned Square/Stripe/bank terminals are not supported. iPad and browser POS are not a supported house setup.",
         "Save draft, then Send quote. The account quote form scrolls — modules, monthly total, setup, and Send sit in that pane (Save/Send stay pinned at the bottom). Email and Print/PDF show monthly software, processing as a separate note (guest card rate from platform default, Quantum Payments, not mixed into software $), expires-on, Accept and Request changes. The message is from Summex noreply (MAIL_FROM, otherwise Summex <noreply@mail.summex.app>) and replies go to support@summex.app. If the mail key is missing, Send says email not sent and the message is only in the log. It does not say the email was sent.",
         "Merchant taps Accept, or Request changes, or Admin marks accepted. Status becomes accepted. Not a live tenant yet.",
-        "Platform Admin records the contract (checkbox + date) → Signed. That creates the venue-owner login and emails app.summex.app/login, username, and a one-time password from Summex noreply. They must change it on first login. If the mail key is missing, the pipeline says email not sent. OVERRIDE + reason for an admin skip of the path.",
+        "Platform Admin records the contract (checkbox + date) → Signed. That creates the venue-owner login and emails a unique onboarding link from Summex noreply. The link expires in 14 days. They set a password on the first visit. If the mail key is missing, the pipeline says email not sent and does not claim the link was emailed. OVERRIDE + reason for an admin skip of the path.",
         "Do not create the org by hand unless you are skipping the commercial path for an internal site. Do not fill the subscriber’s menus or staff.",
       ),
       warn(
@@ -73,7 +73,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       steps(
         "After quote accepted, Platform records contract signed. That emails the venue owner — not a control-plane login.",
-        "Owner logs in at app.summex.app/login, changes the one-time password, lands on the venue onboarding wizard — never the PIN pad, never platform CRM.",
+        "The owner opens the onboarding link, sets a password, and lands on venue onboarding — never the PIN pad, never platform CRM. A host merchant accepts the Summex merchant agreement and starts Finix before the dashboard. A peer venue skips those host steps. Platform can resend the link. Status is Link sent, Started, Completed, or Expired.",
         "Nine gated steps, save-and-resume: building name/address/timezone; peer vs single-operator; entity count (peer ≥ 2); service style; cash-discount rounding; QR mode; tax venue-shared vs per-entity; name each operator and invite their POC; shared device counts.",
         "After the location name, address, and contact are saved, Start Finix merchant onboarding is the next required location task. Generate the Finix onboarding form link. It is prefilled with that business name, address, and contact. Copy the link, or Email link to merchant. The form id is stored when the link is created. The identity id and merchant id are stored when the form is submitted or the merchant is created. The location shows PROVISIONING, APPROVED, UPDATE_REQUESTED, or REJECTED. Ready for live cards stays closed until APPROVED. Training and sandbox cards stay available until then. Menu stays on the selling entity. Finish → onboarding / awaiting entities.",
         "Each operator completes their own legal packet, Finix application, menu, staff PINs, and tip/closeout. Training sandbox until the owner schedules go-live.",
@@ -115,7 +115,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Get a price: Shared building — no host merchant. Entity count ≥ 2. Quote itemizes Finix/Quantum readers (qty × unit), setup, monthly modules. Android tablets only.",
-        "Quote accepted + contract signed. Email to the billing contact from Summex noreply: app.summex.app/login, username, temp password, must-change-on-first-login. Replies go to support@summex.app. If the mail key is missing, the screen says email not sent. Lands on the venue wizard.",
+        "Quote accepted + contract signed. Email to the billing contact from Summex noreply: a unique onboarding link that expires in 14 days. They set a password on the first visit. Replies go to support@summex.app. If the mail key is missing, the screen says email not sent. A peer venue has no host merchant, so that link skips host Finix and the Summex merchant agreement.",
         "Venue owner finishes the nine steps and invites each operator POC.",
         "Each operator: legal name, DBA, EIN, owners, bank, MCC (5812 / 5813 / other), required Finix application, menu, staff PINs, tip/closeout/till, optional invoices.",
         "Status per entity: invited → in progress → payments pending → ready. Venue cannot mark training-ready until every entity is at least in progress. Ready for live cards stays closed until the location Finix merchant is APPROVED, every selling entity is approved, and at least one reader is enrolled. Training and sandbox cards stay available until then.",
@@ -144,6 +144,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Host owner opens POS → Settings → Operators / Tenants.",
         "Add a tenant slot: display name, type (bar / kitchen / retail / other), POC email and phone.",
         "Send invite (email and/or SMS). The email is from Summex noreply with reply-to support@summex.app. If the mail key is missing, the screen says email not sent and you still have the link. It does not say the email was sent.",
+        "Saving an entity contact on the venue dashboard emails /onboard/… for that entity. The venue chooses the seat. That link does not open host Finix or venue settings. Resend rotates the link. Status is Link sent, Started, Completed, or Expired.",
         "POC opens /tenant/…, sets a password, completes the wizard including the payout account (Quantum Payments application). Guests never see the processor name.",
         "Host sees onboard status and Quantum Payments status (pending / approved). Tenant cannot change host billing or other tenants. Live split payouts wait until the operator application is approved; they can still be ticketed on sandbox and cash.",
       ),
@@ -239,7 +240,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Open the venue → Users (location owner, manager, or location admin — not a kitchen/server/bartender PIN).",
-        "The venue sets the scope on Users. For an entity contact, choose Entity admin (one selling entity), then Seat: Entity owner, Entity manager, or Accountant, and the selling entity. That login stays on that entity. Location admin (whole venue) is listed only when this login may create a location admin, and it is not the default. Name, email, temporary password, and force change on first login. They sign in at app.summex.app/login — never a PIN pad, never platform CRM.",
+        "The venue sets the scope on Users. For an entity contact, choose Entity admin (one selling entity), then Seat: Entity owner, Entity manager, or Accountant, and the selling entity. Saving that contact emails a unique link that expires in 14 days. They set a password on the first visit and finish only that entity. The link does not include host Finix or whole-venue settings. Location admin (whole venue) is listed only when this login may create a location admin, and it is not the default. A location admin still gets a temporary password. They sign in at app.summex.app/login — never a PIN pad, never platform CRM.",
         "Floor staff: the list shows name, role, entity, clock, and the 4-digit PIN (shown by default). Reset PIN confirms, then displays the new code. Disable keeps the row; that PIN no longer signs in.",
         "Password logins stay in a separate list. Account passwords are never shown. Isolated demo: Platform Admin may view PINs for support.",
       ),

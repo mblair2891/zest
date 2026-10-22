@@ -235,6 +235,7 @@ function AccountDetail({
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [dealAmt, setDealAmt] = useState("");
+  const [mailNote, setMailNote] = useState<string | null>(null);
 
   const load = useCallback(() => {
     void getCrmAccountFn({ data: { accountId: id } })
@@ -290,7 +291,12 @@ function AccountDetail({
           onClick={() => {
             onError(null);
             void startCrmOnboardingFn({ data: { accountId: a.id } })
-              .then(() => {
+              .then((res) => {
+                setMailNote(
+                  res.emailNotice === "email sent"
+                    ? "Email sent."
+                    : `Email not sent.${res.onboardUrl ? ` ${res.onboardUrl}` : ""}`,
+                );
                 load();
                 onChanged();
                 onOpenPipeline?.();
@@ -315,6 +321,12 @@ function AccountDetail({
         <span className="text-xs text-muted-foreground">
           Go-live is the subscriber’s job from their venue.
         </span>
+        {data.onboarding && (
+          <p className="w-full text-xs text-muted-foreground">
+            Venue onboarding: {data.onboarding.label} · Finix {data.onboarding.finixLabel} · {data.onboarding.emailNotice}
+          </p>
+        )}
+        {mailNote && <p className="w-full text-xs text-muted-foreground">{mailNote}</p>}
         {ACCOUNT_SOURCES.map((s) => (
           <Button
             key={s}

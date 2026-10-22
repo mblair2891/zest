@@ -379,6 +379,7 @@ export async function addLocationAdmin(
     role?: string;
     scope?: string;
     seat?: string;
+    phone?: string;
   },
 ): Promise<{
   userId: string;
@@ -386,6 +387,7 @@ export async function addLocationAdmin(
   tempPassword: string;
   forceChange: boolean;
   emailStatus: SendEmailResult["status"];
+  onboardUrl: string | null;
 }> {
   await requireVenueUsersAccess(actorId, input.orgId);
   const loc = await assertOrgLocation(input.orgId, input.locationId);
@@ -528,27 +530,53 @@ export async function addLocationAdmin(
     },
   });
 
-  const mail = locationAdminMail({
-    name,
-    username,
-    loginUrl: tenantConsoleLoginUrl(),
-    tempPassword: password,
-    forceChange,
-  });
   let emailStatus: SendEmailResult["status"] = "logged_only";
-  try {
-    const { sendEmail } = await import("./email.server");
-    const result = await sendEmail({
-      to: email,
-      subject: mail.subject,
-      text: mail.text,
-      html: plainTextHtml(mail.text),
-      kind: "location_admin_created",
+  let onboardUrl: string | null = null;
+  let shownPassword = password;
+  if (assignment.scope === "entity" && entityId) {
+    shownPassword = "";
+    try {
+      const { issueEntityOnboardingLink } = await import("./onboard-link.server");
+      const issued = await issueEntityOnboardingLink({
+        orgId: input.orgId,
+        locationId: input.locationId,
+        operatorId: entityId,
+        userId,
+        email,
+        name,
+        phone: input.phone,
+        scope: "entity",
+        seat,
+        createdBy: actorId,
+      });
+      emailStatus = issued.status;
+      onboardUrl = issued.status === "sent" ? null : issued.url;
+    } catch (err) {
+      console.warn("[entity-onboard-link]", err);
+      emailStatus = "failed";
+    }
+  } else {
+    const mail = locationAdminMail({
+      name,
+      username,
+      loginUrl: tenantConsoleLoginUrl(),
+      tempPassword: password,
+      forceChange,
     });
-    emailStatus = result.status;
-  } catch (err) {
-    console.warn("[location-admin-email]", err);
-    emailStatus = "failed";
+    try {
+      const { sendEmail } = await import("./email.server");
+      const result = await sendEmail({
+        to: email,
+        subject: mail.subject,
+        text: mail.text,
+        html: plainTextHtml(mail.text),
+        kind: "location_admin_created",
+      });
+      emailStatus = result.status;
+    } catch (err) {
+      console.warn("[location-admin-email]", err);
+      emailStatus = "failed";
+    }
   }
   if (emailStatus === "sent") {
     await sql`
@@ -558,7 +586,7 @@ export async function addLocationAdmin(
     `;
   }
 
-  return { userId, username, tempPassword: password, forceChange, emailStatus };
+  return { userId, username, tempPassword: shownPassword, forceChange, emailStatus, onboardUrl };
 }
 
 export async function addFloorStaff(

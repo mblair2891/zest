@@ -27,6 +27,7 @@ export const addLocationAdminFn = createServerFn({ method: "POST" })
       role?: string;
       scope?: string;
       seat?: string;
+      phone?: string;
     }) => ({
       orgId: String(d.orgId ?? "").trim(),
       locationId: String(d.locationId ?? "").trim(),
@@ -38,6 +39,7 @@ export const addLocationAdminFn = createServerFn({ method: "POST" })
       role: d.role ? String(d.role).trim() : "",
       scope: d.scope ? String(d.scope).trim().toLowerCase().slice(0, 20) : "",
       seat: d.seat ? String(d.seat).trim().toLowerCase().slice(0, 20) : "",
+      phone: d.phone ? String(d.phone).trim().slice(0, 40) : "",
     }),
   )
   .handler(async ({ context, data }) => {

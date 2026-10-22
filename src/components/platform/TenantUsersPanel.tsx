@@ -148,7 +148,7 @@ export function TenantUsersPanel({
         locationId,
         name: adminName,
         email: adminEmail,
-        tempPassword: adminPass,
+        tempPassword: assignment.scope === "entity" ? "" : adminPass,
         forceChange,
         operatorId: assignment.operatorId,
         role: assignment.role,
@@ -160,9 +160,13 @@ export function TenantUsersPanel({
         const kind = loginRoleLabel(assignment.role, assignment.operatorId);
         const mailed = r.emailStatus === "sent" ? "Email sent." : "Email not sent.";
         setNotice(
-          `${kind} added. They sign in at ${loginUrl} with ${adminEmail} — never PIN, never platform CRM. Temporary password: ${r.tempPassword}${
-            r.forceChange ? " — they must change it on first login." : ""
-          } ${mailed}`,
+          assignment.scope === "entity"
+            ? `${kind} added. An onboarding link for this entity goes to ${adminEmail}. They set a password on that link and only see this entity. ${mailed}${
+                r.emailStatus !== "sent" && r.onboardUrl ? ` ${r.onboardUrl}` : ""
+              }`
+            : `${kind} added. They sign in at ${loginUrl} with ${adminEmail} — never PIN, never platform CRM. Temporary password: ${r.tempPassword}${
+                r.forceChange ? " — they must change it on first login." : ""
+              } ${mailed}`,
         );
         setAdminName("");
         setAdminEmail("");
@@ -355,8 +359,9 @@ export function TenantUsersPanel({
           Add password login
         </p>
         <p className="text-xs text-muted-foreground">
-          The venue sets the scope. Email and temporary password. After login they land
-          on that role’s dashboard — never a PIN pad.
+          The venue sets the scope. An entity contact gets an onboarding link and sets a
+          password on the first visit. A location admin gets a temporary password. After
+          login they land on that role’s dashboard — never a PIN pad.
         </p>
         <Field
           label="Scope"
@@ -425,26 +430,30 @@ export function TenantUsersPanel({
             autoComplete="off"
           />
         </Field>
-        <Field
-          label="Temporary password"
-          hint="Leave blank to generate one. Shown once after save."
-        >
-          <Input
-            type="text"
-            value={adminPass}
-            onChange={(e) => setAdminPass(e.target.value)}
-            autoComplete="new-password"
-          />
-        </Field>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-border"
-            checked={forceChange}
-            onChange={(e) => setForceChange(e.target.checked)}
-          />
-          Force password change on first login
-        </label>
+        {adminScope === "location" && (
+          <>
+            <Field
+              label="Temporary password"
+              hint="Leave blank to generate one. Shown once after save."
+            >
+              <Input
+                type="text"
+                value={adminPass}
+                onChange={(e) => setAdminPass(e.target.value)}
+                autoComplete="new-password"
+              />
+            </Field>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-border"
+                checked={forceChange}
+                onChange={(e) => setForceChange(e.target.checked)}
+              />
+              Force password change on first login
+            </label>
+          </>
+        )}
         <Button
           type="submit"
           disabled={
@@ -454,7 +463,7 @@ export function TenantUsersPanel({
             (adminScope === "entity" && !adminEntity)
           }
         >
-          {busy ? "Saving…" : "Add password login"}
+          {busy ? "Saving…" : adminScope === "entity" ? "Email onboarding link" : "Add password login"}
         </Button>
       </form>
 

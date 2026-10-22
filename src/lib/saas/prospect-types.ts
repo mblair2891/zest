@@ -502,7 +502,13 @@ export type ProspectDetail = ProspectRecord & {
     hasOperatorIfNeeded: boolean;
     ready: boolean;
   };
-  ownerInvite?: { username: string; sentAt: string | null } | null;
+  ownerInvite?: {
+    username: string;
+    sentAt: string | null;
+    linkLabel: string | null;
+    finixLabel: string | null;
+    emailNotice: string | null;
+  } | null;
 };
 
 export type ProspectListItem = {

@@ -287,7 +287,28 @@ export async function getAccount(userId: string, accountId: string) {
     order by x.created_at desc
     limit 80
   `;
+  let onboarding: {
+    label: string;
+    finixLabel: string;
+    emailNotice: string;
+  } | null = null;
+  if (rows[0].prospect_id) {
+    try {
+      const { prospectOnboardingStatus } = await import("./onboard-link.server");
+      const status = await prospectOnboardingStatus(rows[0].prospect_id);
+      if (status) {
+        onboarding = {
+          label: status.label,
+          finixLabel: status.finixLabel,
+          emailNotice: status.emailStatus === "sent" ? "email sent" : "email not sent",
+        };
+      }
+    } catch (err) {
+      console.warn("[crm-onboard-status]", err);
+    }
+  }
   return {
+    onboarding,
     account: mapAccount(rows[0]),
     contacts: contacts.map((c): CrmContact => ({
       id: c.id,
@@ -561,9 +582,9 @@ export async function startOnboardingForAccount(userId: string, accountId: strin
       "Record the signed contract first. Then resend the venue-owner invite — platform does not fill their wizard.",
     );
   }
-  await startOnboardingProspect({ userId, prospectId });
+  const started = await startOnboardingProspect({ userId, prospectId });
   await patchAccount(userId, accountId, { stage: row.status === "training" ? "training" : "onboarding" });
-  return { prospectId };
+  return { prospectId, emailNotice: started.emailNotice, onboardUrl: started.onboardUrl };
 }
 
 export async function goLiveForAccount(userId: string, _accountId: string) {

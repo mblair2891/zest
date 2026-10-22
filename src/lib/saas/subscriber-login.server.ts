@@ -6,20 +6,14 @@ import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { getSql } from "@/lib/db";
 import { PLATFORM_ADMIN_EMAIL } from "@/lib/platform/brand";
-import { appPublicUrl } from "./flags";
-import { sendEmail } from "./email.server";
 import { isPlatformAdmin } from "./tenancy.server";
-import {
-  consoleLoginUrl,
-  generateOneTimePassword,
-  subscriberInviteCopy,
-  usernameFromEmail,
-} from "./subscriber-login";
+import { generateOneTimePassword, usernameFromEmail } from "./subscriber-login";
 
 export type SubscriberInviteResult = {
   userId: string;
   username: string;
   sent: boolean;
+  onboardUrl: string | null;
 };
 
 function ownerEmail(prospect: { email: string | null; answers: { company: { billingEmail?: string } } }): string {
@@ -147,36 +141,26 @@ export async function provisionSubscriberOwner(opts: {
     where id = ${opts.prospect.id}
   `;
 
-  const mail = subscriberInviteCopy({
-    companyName: opts.prospect.answers.company.legalName || opts.prospect.answers.company.dba || "your venue",
-    username: email,
-    password,
-    loginUrl: consoleLoginUrl(appPublicUrl()),
+  const { issueVenueOnboardingLink } = await import("./onboard-link.server");
+  const result = await issueVenueOnboardingLink({
+    prospectId: opts.prospect.id,
+    userId,
+    email,
   });
   let sent = false;
-  try {
-    const result = await sendEmail({
-      to: email,
-      subject: mail.subject,
-      text: mail.text,
-      html: mail.text
-        .split("\n\n")
-        .map((p) => `<p style="margin:0 0 12px;line-height:1.5">${escapeHtml(p).replaceAll("\n", "<br/>")}</p>`)
-        .join(""),
-      kind: "subscriber_owner_invite",
-      prospectId: opts.prospect.id,
-    });
-    sent = result.status === "sent";
-  } catch (err) {
-    console.warn("[subscriber-invite-email]", err);
-  }
+  sent = result.status === "sent";
   await sql`
     update subscriber_logins
     set invite_sent_at = ${sent ? now : null}, updated_at = ${now}
     where user_id = ${userId}
   `;
 
-  return { userId, username, sent };
+  return {
+    userId,
+    username,
+    sent,
+    onboardUrl: sent ? null : result.url,
+  };
 }
 
 export async function resendSubscriberInvite(prospectId: string): Promise<SubscriberInviteResult> {
@@ -251,10 +235,4 @@ export async function setupPathForUser(userId: string): Promise<{
   }
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
+

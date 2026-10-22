@@ -4,6 +4,12 @@ import { Input } from "@/components/ui/input";
 import { TenantInvitesPanel } from "@/components/pos/TenantInvitesPanel";
 import { GoLivePanel } from "@/components/pos/GoLiveDialog";
 import { listTenantSlotsFn } from "@/lib/saas/tenant-invite-api";
+import { addLocationAdminFn } from "@/lib/saas/tenant-users-api";
+import {
+  listLocationOnboardLinksFn,
+  resendEntityOnboardLinkFn,
+} from "@/lib/saas/onboard-link-api";
+import type { LocationOnboardLinkRow } from "@/lib/saas/onboard-link";
 import type { TenantInviteRow } from "@/lib/saas/tenant-invite";
 import {
   canMarkCardLive,
@@ -56,6 +62,8 @@ export function VenueOnboardingPanel({
   const venueName = usePosStore((s) => s.settings.name);
   const venueAddress = usePosStore((s) => s.settings.address);
   const [finixState, setFinixState] = useState<FinixMerchantState | null>(null);
+  const [entityLinks, setEntityLinks] = useState<LocationOnboardLinkRow[]>([]);
+  const [linkTick, setLinkTick] = useState(0);
   const applySerial = useChecklistLink((s) => s.applySerial);
   const applied = useChecklistLink((s) => s.applied);
   const openLink = useChecklistLink((s) => s.open);
@@ -74,6 +82,13 @@ export function VenueOnboardingPanel({
     if (!hydrated) return;
     setLayerState(storedLayer);
   }, [hydrated, locationId, storedLayer]);
+
+  useEffect(() => {
+    if (!orgId || !locationId) return;
+    void listLocationOnboardLinksFn({ data: { orgId, locationId } })
+      .then(setEntityLinks)
+      .catch(() => setEntityLinks([]));
+  }, [orgId, locationId, linkTick]);
 
   useEffect(() => {
     if (!applied) return;
@@ -420,6 +435,17 @@ export function VenueOnboardingPanel({
                   }
                 />
               </div>
+              <EntityContactLink
+                orgId={orgId}
+                locationId={locationId}
+                operatorId={e.id}
+                name={e.contactName}
+                email={e.contactEmail}
+                phone={e.contactPhone}
+                write={write && !archivedIds.includes(e.id)}
+                link={entityLinks.find((row) => row.operatorId === e.id) ?? null}
+                onSent={() => setLinkTick((n) => n + 1)}
+              />
               <ChecklistItems
                 items={e.items}
                 write={write}
@@ -458,6 +484,115 @@ export function VenueOnboardingPanel({
       <Button size="sm" variant="ghost" onClick={load}>
         Refresh checklist
       </Button>
+    </div>
+  );
+}
+
+function EntityContactLink({
+  orgId,
+  locationId,
+  operatorId,
+  name,
+  email,
+  phone,
+  write,
+  link,
+  onSent,
+}: {
+  orgId: string;
+  locationId: string;
+  operatorId: string;
+  name: string;
+  email: string;
+  phone: string;
+  write: boolean;
+  link: LocationOnboardLinkRow | null;
+  onSent: () => void;
+}) {
+  const [seat, setSeat] = useState<"owner" | "manager" | "accountant">("owner");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const ready = name.trim().length > 1 && email.includes("@");
+
+  const send = () => {
+    setBusy(true);
+    setNote(null);
+    void addLocationAdminFn({
+      data: {
+        orgId,
+        locationId,
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        operatorId,
+        scope: "entity",
+        seat,
+        tempPassword: "",
+      },
+    })
+      .then((r) => {
+        const mailed = r.emailStatus === "sent" ? "Email sent." : "Email not sent.";
+        setNote(
+          `${mailed}${r.emailStatus !== "sent" && r.onboardUrl ? ` ${r.onboardUrl}` : ""}`,
+        );
+        onSent();
+      })
+      .catch((e) => setNote(e instanceof Error ? e.message : "Could not send the link"))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="mt-3 space-y-2" data-entity-onboard-link={operatorId}>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-xs text-muted-foreground">
+          Role
+          <select
+            className="ml-2 h-8 rounded-md border border-border bg-bg px-2 text-xs"
+            value={seat}
+            disabled={!write}
+            onChange={(e) => {
+              const next = e.target.value;
+              setSeat(next === "manager" || next === "accountant" ? next : "owner");
+            }}
+          >
+            <option value="owner">Entity owner</option>
+            <option value="manager">Entity manager</option>
+            <option value="accountant">Accountant</option>
+          </select>
+        </label>
+        {write && (
+          <Button size="sm" disabled={busy || !ready} onClick={send}>
+            {busy ? "Sending…" : "Email onboarding link"}
+          </Button>
+        )}
+        {link && write && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              void resendEntityOnboardLinkFn({ data: { orgId, operatorId } })
+                .then((r) => {
+                  const mailed = r.status === "sent" ? "Email sent." : "Email not sent.";
+                  setNote(`${mailed}${r.status !== "sent" ? ` ${r.url}` : ""}`);
+                  onSent();
+                })
+                .catch((e) => setNote(e instanceof Error ? e.message : "Could not resend"))
+                .finally(() => setBusy(false));
+            }}
+          >
+            Resend link
+          </Button>
+        )}
+      </div>
+      {link && (
+        <p className="text-xs text-muted-foreground">
+          {link.label} · {link.seatLabel} · {link.email}
+          {link.emailStatus === "sent" ? "" : " · email not sent"}
+        </p>
+      )}
+      {note && <p className="text-xs text-muted-foreground">{note}</p>}
     </div>
   );
 }

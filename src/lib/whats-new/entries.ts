@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_334_onboarding_links",
+    date: "2026-10-22",
+    title: "Venue and entity onboarding links",
+    summary: "The venue contact and each entity contact open a unique link and set a password on the first visit.",
+    body: "After the contract is signed, the venue point of contact gets a unique onboarding link. It expires in 14 days. They set a password on the first visit. A host merchant accepts the Summex merchant agreement and starts Finix before the dashboard. Live cards stay closed until that merchant is APPROVED. A peer venue skips those host steps. From the venue dashboard, saving an entity contact emails that person their own link. They finish only that entity. The venue chooses the role. Platform and the venue can resend a link. Status shows Link sent, Started, Completed, or Expired, plus the Finix status. If the mail key is missing, the screen says email not sent.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "onboarding-wizard",
+    tags: ["onboarding", "users"],
+  },
+  {
     id: "upd_2026_10_333_entity_contact_scope",
     date: "2026-10-22",
     title: "Venue sets the entity contact’s scope",

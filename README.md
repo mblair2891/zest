@@ -16,7 +16,7 @@ Bootstrap identity (first run): username **Admin**, password **password**. You *
 
 - Prospect: `/get-pricing` → `/quote/$token` → accept
 - Admin: Dashboard → Pipeline (or `/pipeline`) → mark contract signed (emails the venue owner)
-- Owner: `/login` → change one-time password → their `/setup/$token` wizard
+- Owner: unique `/onboard/$token` link → set a password → venue onboarding, then `/setup/$token` when the building is not saved yet
 - POS opens without a seeded menu. Training sandbox until they schedule go-live.
 
 UI path: [`docs/saas-onboarding.md`](docs/saas-onboarding.md). Money rules: [`docs/quantum-payments-multi-operator.md`](docs/quantum-payments-multi-operator.md).

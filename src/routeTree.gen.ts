@@ -25,6 +25,7 @@ import { Route as GuideRouteImport } from './routes/guide'
 import { Route as KioskRouteImport } from './routes/kiosk'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as OnboardTokenRouteImport } from './routes/onboard.$token'
 import { Route as OnlineRouteImport } from './routes/online'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PlatformRouteImport } from './routes/platform'
@@ -149,6 +150,11 @@ const LoginRoute = LoginRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardTokenRoute = OnboardTokenRouteImport.update({
+  id: '/onboard/$token',
+  path: '/onboard/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnlineRoute = OnlineRouteImport.update({
@@ -395,6 +401,7 @@ export interface FileRoutesByFullPath {
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/onboard/$token': typeof OnboardTokenRoute
   '/online': typeof OnlineRoute
   '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRouteWithChildren
@@ -457,6 +464,7 @@ export interface FileRoutesByTo {
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/onboard/$token': typeof OnboardTokenRoute
   '/online': typeof OnlineRoute
   '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRouteWithChildren
@@ -520,6 +528,7 @@ export interface FileRoutesById {
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/onboard/$token': typeof OnboardTokenRoute
   '/online': typeof OnlineRoute
   '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRouteWithChildren
@@ -585,6 +594,7 @@ export interface FileRouteTypes {
     | '/kiosk'
     | '/login'
     | '/onboarding'
+    | '/onboard/$token'
     | '/online'
     | '/pipeline'
     | '/platform'
@@ -647,6 +657,7 @@ export interface FileRouteTypes {
     | '/kiosk'
     | '/login'
     | '/onboarding'
+    | '/onboard/$token'
     | '/online'
     | '/pipeline'
     | '/platform'
@@ -709,6 +720,7 @@ export interface FileRouteTypes {
     | '/kiosk'
     | '/login'
     | '/onboarding'
+    | '/onboard/$token'
     | '/online'
     | '/pipeline'
     | '/platform'
@@ -773,6 +785,7 @@ export interface RootRouteChildren {
   KioskRoute: typeof KioskRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
+  OnboardTokenRoute: typeof OnboardTokenRoute
   OnlineRoute: typeof OnlineRoute
   PipelineRoute: typeof PipelineRoute
   PlatformRoute: typeof PlatformRouteWithChildren
@@ -922,6 +935,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboard/$token': {
+      id: '/onboard/$token'
+      path: '/onboard/$token'
+      fullPath: '/onboard/$token'
+      preLoaderRoute: typeof OnboardTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/online': {
@@ -1342,6 +1362,7 @@ const rootRouteChildren: RootRouteChildren = {
   KioskRoute: KioskRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
+  OnboardTokenRoute: OnboardTokenRoute,
   OnlineRoute: OnlineRoute,
   PipelineRoute: PipelineRoute,
   PlatformRoute: PlatformRouteWithChildren,

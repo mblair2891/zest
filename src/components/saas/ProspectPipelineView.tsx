@@ -325,9 +325,14 @@ function ProspectAccountPage({
               size="sm"
               disabled={!contractOn}
               onClick={() =>
-                void run(() =>
-                  markContractSignedFn({ data: { prospectId: detail.id, signedOn } }),
-                )
+                void run(async () => {
+                  const signed = await markContractSignedFn({ data: { prospectId: detail.id, signedOn } });
+                  setMsg(
+                    signed.emailNotice === "email sent"
+                      ? "Email sent."
+                      : `Email not sent.${signed.onboardUrl ? ` ${signed.onboardUrl}` : ""}`,
+                  );
+                })
               }
             >
               Record contract
@@ -342,7 +347,12 @@ function ProspectAccountPage({
             variant="outline"
             onClick={() =>
               void run(async () => {
-                await startOnboardingProspectFn({ data: { prospectId: detail.id } });
+                const resent = await startOnboardingProspectFn({ data: { prospectId: detail.id } });
+                setMsg(
+                  resent.emailNotice === "email sent"
+                    ? "Email sent."
+                    : `Email not sent.${resent.onboardUrl ? ` ${resent.onboardUrl}` : ""}`,
+                );
               })
             }
           >
@@ -351,9 +361,10 @@ function ProspectAccountPage({
         )}
         {detail.ownerInvite?.username && (
           <p className="w-full text-xs text-muted-foreground">
-            Venue owner invite: {detail.ownerInvite.username}
-            {detail.ownerInvite.sentAt ? " · email sent" : " · email not sent"}
-            . They complete setup — platform does not fill menus or staff.
+            Venue onboarding: {detail.ownerInvite.linkLabel || "Not sent"}
+            {detail.ownerInvite.finixLabel ? ` · Finix ${detail.ownerInvite.finixLabel}` : ""}
+            {detail.ownerInvite.emailNotice ? ` · ${detail.ownerInvite.emailNotice}` : detail.ownerInvite.sentAt ? " · email sent" : " · email not sent"}
+            . Username {detail.ownerInvite.username}. They complete setup — platform does not fill menus or staff.
           </p>
         )}
         <Link
