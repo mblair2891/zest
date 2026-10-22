@@ -23,7 +23,7 @@ import {
   GUEST_GIFT_NOT_FOUND,
   type GuestGiftLookupResult,
 } from "./guest-view";
-import type { GiftCard, GiftCardStatus, GiftTransfer } from "@/lib/pos/types";
+import type { GiftCard, GiftCardLedgerEntry, GiftCardStatus, GiftTransfer } from "@/lib/pos/types";
 import type { GiftLiabilityRow } from "@/lib/pos/gift-issuer";
 import { giftSellBlockedReason, parseGiftLimits, type GiftLimits } from "@/lib/pos/gift-limits";
 
@@ -279,6 +279,37 @@ export async function listGiftCards(
   return { cards: rows.map(mapCard), transfers };
 }
 
+function ledgerKind(kind: string, note: string | null): GiftCardLedgerEntry["kind"] {
+  if (kind === "redeem") return "redeem";
+  if (kind === "issue" && note === "reload") return "reload";
+  if (kind === "issue") return "issue";
+  if (kind === "freeze" || kind === "void" || kind === "unfreeze") return "status";
+  return "adjust";
+}
+
+async function latestActivity(cardId: string): Promise<GiftCardLedgerEntry | undefined> {
+  const sql = await getSql();
+  const rows = await sql<LedRow>`
+    select id, card_id, kind, amount_cents, issuer_id, issuer_kind,
+           counterparty_id, counterparty_kind, tender, check_id, actor_name, note, at_ms
+    from gift_ledger
+    where card_id = ${cardId}
+    order by at_ms desc
+    limit 1
+  `;
+  const row = rows[0];
+  if (!row) return undefined;
+  return {
+    at: n(row.at_ms),
+    kind: ledgerKind(row.kind, row.note),
+    amountCents: n(row.amount_cents),
+    employeeName: row.actor_name ?? undefined,
+    reason: row.note ?? undefined,
+    beforeCents: 0,
+    afterCents: 0,
+  };
+}
+
 export async function lookupGiftCard(
   userId: string,
   locationId: string,
@@ -288,7 +319,10 @@ export async function lookupGiftCard(
   const row = await currentByHash(ctx.locationId, code);
   if (!row) return { ok: false, error: "Card not found" };
   const pin = await ensurePanPin(row, code);
-  return { ok: true, card: mapCard(row), pin };
+  const card = mapCard(row);
+  const activity = await latestActivity(row.id);
+  if (activity) card.ledger = [activity];
+  return { ok: true, card, pin };
 }
 
 export async function issueGiftCard(

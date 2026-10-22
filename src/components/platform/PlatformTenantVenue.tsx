@@ -821,6 +821,7 @@ export function PlatformTenantVenue({
                 <QuantumPaymentsSettings
                   write={kind === "entity_owner" || kind === "host_owner" || kind === "venue_admin" || audience === "platform"}
                   onOpenGift={() => setTab("gift")}
+                  scopeEntityId={audience === "entity" ? entityId || null : null}
                 />
               </>
             )}

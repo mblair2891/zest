@@ -26,6 +26,7 @@ import {
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { parseGiftLimits } from "@/lib/pos/gift-limits";
 import { formatCurrency } from "@/lib/utils";
+import { PaymentsGiftDesk } from "./PaymentsGiftDesk";
 import { jurisdictionIsReady } from "@/lib/pos/jurisdiction";
 import { paymentsRailLabel } from "@/lib/payments/training-rail";
 import { noteChecklistSave, useChecklistLink } from "@/lib/saas/checklist-link";
@@ -39,9 +40,12 @@ import { noteChecklistSave, useChecklistLink } from "@/lib/saas/checklist-link";
 export function QuantumPaymentsSettings({
   write,
   onOpenGift,
+  scopeEntityId = null,
 }: {
   write: boolean;
   onOpenGift?: () => void;
+  /** Signed-in entity admin. Their Payments screen stays on this entity. */
+  scopeEntityId?: string | null;
 }) {
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
@@ -69,7 +73,7 @@ export function QuantumPaymentsSettings({
   }, [checklistPay?.entityId, checklistPay?.itemId]);
 
   const selling = vendors.filter((v) => v.active);
-  const entityId = demoScope || pickedId;
+  const entityId = scopeEntityId || demoScope || pickedId;
   const venueLevel = peerVenue && !entityId;
 
   useEffect(() => {
@@ -343,7 +347,7 @@ export function QuantumPaymentsSettings({
         />
       ) : entity && peerVenue ? (
         <div className="space-y-3">
-          {!demoScope && (
+          {!demoScope && !scopeEntityId && (
             <Button size="sm" variant="outline" type="button" onClick={() => setPickedId(null)}>
               ← All selling entities
             </Button>
@@ -394,6 +398,7 @@ export function QuantumPaymentsSettings({
           processor reader id). SYOH tablets are not card readers.
         </p>
       )}
+      <PaymentsGiftDesk entityId={entity?.id ?? scopeEntityId ?? null} write={write} />
     </section>
   );
 }
