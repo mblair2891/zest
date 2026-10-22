@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_341_pin_gift_cards",
+    date: "2026-10-22",
+    title: "Gift cards after PIN",
+    summary: "After a staff PIN, Gift cards checks a balance, loads a new card, and reloads a card.",
+    body: "After PIN on an order or host station, Gift cards checks the balance, loads a new card, and reloads a card. Type the card number. A station with USB magstripe reader attached (gift cards) fills that field on swipe. A station without the checkbox still takes a typed number. Gift cards stays off the station menu when the venue, this entity, or this role has them off.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "gift-cards",
+    tags: ["gift"],
+  },
+  {
     id: "upd_2026_10_340_payments_gift_cards",
     date: "2026-10-22",
     title: "Gift cards on Payments",

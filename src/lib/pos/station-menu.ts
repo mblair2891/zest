@@ -120,6 +120,7 @@ export function stationMenuItems(opts: {
   const work = stationCan(cap, "floor") || stationCan(cap, "order_entry") || stationCan(cap, "togo") || stationCan(cap, "bar_tab");
   if (!work) {
     if (device === "order" && mayCreateSupplierOrder(role)) add("supplier_orders", "Orders");
+    if (opts.giftEnabled) add("gift", "Gift cards");
     add("closeout", "Close out");
     add("done", "Done");
     return out;
