@@ -82,6 +82,7 @@ import {
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { stationHomeSurface } from "@/lib/pos/station-home";
 import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
+import { categoryButtonPaint, usePrefersDark } from "@/lib/pos/service-colors";
 import { stationCan } from "@/lib/pos/station-pin-gate";
 import { DriveThroughView } from "./DriveThroughView";
 import {
@@ -193,6 +194,7 @@ export function OrderView({
   const [checkOpen, setCheckOpen] = useState(false);
   const [printMsg, setPrintMsg] = useState<string | null>(null);
   const layout = useStationLayout();
+  const menuScheme = usePrefersDark() ? "dark" : "light";
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const locationDevices = usePosStore((s) => s.locationDevices);
   const activeDeviceId = usePosStore((s) => s.activeDeviceId);
@@ -930,19 +932,29 @@ export function OrderView({
             data-order-menu
           >
         <div className="flex gap-2 overflow-x-auto p-2" data-menu-categories>
-          {cats.map((c) => (
-            <Button
-              key={c.id}
-              className="station-touch h-16 min-w-[7.5rem] shrink-0 text-lg font-semibold"
-              variant={selectedCategoryId === c.id ? "default" : "outline"}
-              onClick={() => {
-                setCategory(c.id);
-                setSearch("");
-              }}
-            >
-              {c.name}
-            </Button>
-          ))}
+          {cats.map((c) => {
+            const paint = categoryButtonPaint(c.color, menuScheme);
+            const selected = selectedCategoryId === c.id;
+            return (
+              <Button
+                key={c.id}
+                className="station-touch h-16 min-w-[7.5rem] shrink-0 border-transparent text-lg font-semibold"
+                variant="outline"
+                data-menu-swatch={paint.id}
+                style={{
+                  background: paint.bg,
+                  color: paint.ink,
+                  boxShadow: selected ? `inset 0 0 0 3px ${paint.ink}` : undefined,
+                }}
+                onClick={() => {
+                  setCategory(c.id);
+                  setSearch("");
+                }}
+              >
+                {c.name}
+              </Button>
+            );
+          })}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           <div
@@ -1469,38 +1481,52 @@ export function OrderView({
               className="h-10 sm:max-w-xs"
             />
             <div className="flex gap-1 overflow-x-auto pb-0.5">
-              <Button
-                size="sm"
-                variant={!selectedCategoryId && !search ? "default" : "outline"}
-                onClick={() => {
-                  setCategory(null);
-                  setSearch("");
-                }}
-              >
-                All
-              </Button>
-              {orderPadCategories(categories, menuItems, vendorFilter).map((c) => (
+              {(() => {
+                const allPaint = categoryButtonPaint(undefined, menuScheme);
+                const allSelected = !selectedCategoryId && !search;
+                return (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-menu-swatch={allPaint.id}
+                    style={{
+                      background: allPaint.bg,
+                      color: allPaint.ink,
+                      boxShadow: allSelected ? `inset 0 0 0 3px ${allPaint.ink}` : undefined,
+                    }}
+                    onClick={() => {
+                      setCategory(null);
+                      setSearch("");
+                    }}
+                  >
+                    All
+                  </Button>
+                );
+              })()}
+              {orderPadCategories(categories, menuItems, vendorFilter).map((c) => {
+                const paint = categoryButtonPaint(c.color, menuScheme);
+                const selected = selectedCategoryId === c.id && !search;
+                return (
                   <Button
                     key={c.id}
                     size="sm"
-                    variant={
-                      selectedCategoryId === c.id && !search
-                        ? "default"
-                        : "outline"
-                    }
+                    variant="outline"
+                    data-menu-swatch={paint.id}
                     onClick={() => {
                       setCategory(c.id);
                       setSearch("");
                     }}
-                    className="shrink-0"
+                    className="shrink-0 border-transparent"
+                    style={{
+                      background: paint.bg,
+                      color: paint.ink,
+                      boxShadow: selected ? `inset 0 0 0 3px ${paint.ink}` : undefined,
+                    }}
                   >
-                    <span
-                      className="mr-1.5 h-2 w-2 rounded-full"
-                      style={{ background: c.color }}
-                    />
                     {c.name}
                   </Button>
-                ))}
+                );
+              })}
             </div>
           </div>
         </div>

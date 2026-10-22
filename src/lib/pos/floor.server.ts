@@ -151,6 +151,7 @@ type TicketRow = {
   operator_id: string | null;
   vendor_name: string | null;
   status: string;
+  phase?: string | null;
   course: string;
   items: unknown;
   created_at_ms: number | string;
@@ -422,6 +423,7 @@ function mapTicket(row: TicketRow, now: number): FloorTicket {
     operatorId: row.operator_id,
     vendorName: row.vendor_name,
     status: asTicketStatus(row.status),
+    phase: row.phase ? String(row.phase) : undefined,
     course: asCourse(row.course),
     createdAt,
     elapsedSec: Math.max(0, Math.floor((now - createdAt) / 1000)),
@@ -1234,7 +1236,8 @@ export async function odsRecall(
   await sql`
     update pos_tickets set
       status = ${"new"},
-      bumped_at_ms = null
+      bumped_at_ms = null,
+      phase = null
     where id = ${ticket.id} and location_id = ${ctx.locationId}
   `;
   await sql`
@@ -1254,6 +1257,24 @@ export async function odsRecall(
     at: now,
   });
   return { ok: true, status: "new" };
+}
+
+export async function odsSetPhase(
+  userId: string,
+  input: OdsActionInput,
+): Promise<{ ok: true; phase: string }> {
+  const ctx = await loadFloorContext(userId, input.locationId);
+  const sql = await getSql();
+  const ticket = await loadTicketOrThrow(sql, ctx, input.ticketId);
+  const phase = clip(input.phase, 24);
+  if (ticket.status === "bumped" || ticket.status === "voided" || !phase) {
+    return { ok: true, phase: ticket.phase ? String(ticket.phase) : "" };
+  }
+  await sql`
+    update pos_tickets set phase = ${phase}
+    where id = ${ticket.id} and location_id = ${ctx.locationId}
+  `;
+  return { ok: true, phase };
 }
 
 export async function recordPayment(
@@ -1596,7 +1617,12 @@ export async function applyFloorOutboxPayload(
   if (kind === "ticket_upsert") {
     const ticketId = clip(payload.ticketId, 80);
     const status = String(payload.status ?? "");
+    const phase = clip(payload.phase, 24);
     if (!ticketId) return;
+    if (phase) {
+      await odsSetPhase(userId, { locationId: loc, ticketId, phase, clientMutationId, actor });
+      return;
+    }
     if (status === "in_progress") {
       await odsStart(userId, { locationId: loc, ticketId, clientMutationId, actor });
     } else if (status === "ready") {

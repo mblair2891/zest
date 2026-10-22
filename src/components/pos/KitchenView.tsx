@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStationTicketPolling } from "@/lib/pos/floor-sync";
-import { Check, RotateCcw, Play } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
+import { nextOdsPhase, parseOdsPhases, phaseForTicket, phasePaint } from "@/lib/pos/ods-phases";
+import { MENU_SWATCHES, usePrefersDark } from "@/lib/pos/service-colors";
+import { persistVenueRouting } from "@/lib/pos/persist-location-setup";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
@@ -43,10 +46,11 @@ export function KitchenView({ station, expo, operatorId }: Props) {
   const orders = usePosStore((s) => s.orders);
   const vendors = usePosStore((s) => s.vendors);
   const bumpTicket = usePosStore((s) => s.bumpTicket);
+  const advanceTicketPhase = usePosStore((s) => s.advanceTicketPhase);
+  const updateSettings = usePosStore((s) => s.updateSettings);
   const markPickedUp = usePosStore((s) => s.markPickedUp);
   const recallTicket = usePosStore((s) => s.recallTicket);
-  const startTicket = usePosStore((s) => s.startTicket);
-  const readyTicket = usePosStore((s) => s.readyTicket);
+  const odsScheme = usePrefersDark() ? "dark" : "light";
   const [showBumped, setShowBumped] = useState(false);
   const [filter, setFilter] = useState<TicketStatus | "all">("all");
   const [bumpPinFor, setBumpPinFor] = useState<string | null>(null);
@@ -139,6 +143,34 @@ export function KitchenView({ station, expo, operatorId }: Props) {
     expo,
   ]);
 
+  const phases = useMemo(() => parseOdsPhases(settings.odsPhases), [settings.odsPhases]);
+
+  function requestAdvance(ticketId: string) {
+    const ticket = tickets.find((row) => row.id === ticketId);
+    if (!ticket || ticket.status === "bumped" || ticket.status === "voided") return;
+    const next = nextOdsPhase(ticket, phases);
+    if (!next) return;
+    if (
+      (next.ticketStatus === "ready" || next.ticketStatus === "bumped") &&
+      settings.requirePinToBump &&
+      !isProspectDemo()
+    ) {
+      setBumpPinFor(ticketId);
+      setBumpPinError(null);
+      return;
+    }
+    advanceTicketPhase(ticketId);
+  }
+
+  function requestDeliver(ticketId: string) {
+    if (settings.requirePinToBump && !isProspectDemo()) {
+      setBumpPinFor(ticketId);
+      setBumpPinError(null);
+      return;
+    }
+    bumpTicket(ticketId);
+  }
+
   const active = tickets.filter(
     (t) =>
       (activeRail === "all"
@@ -164,6 +196,36 @@ export function KitchenView({ station, expo, operatorId }: Props) {
         <GuideLearnLink topicId="kds" compact>
           Learn
         </GuideLearnLink>
+        {hostWide && (
+          <details className="text-xs" data-ods-phases>
+            <summary className="cursor-pointer font-medium">Phases</summary>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {phases.map((phase) => (
+                <label key={phase.id} className="flex items-center gap-1">
+                  <span>{phase.label}</span>
+                  <select
+                    className="h-7 rounded-md border border-border bg-bg px-1"
+                    aria-label={`${phase.label} color`}
+                    value={MENU_SWATCHES.some((swatch) => swatch.id === phase.swatch) ? phase.swatch : "gray"}
+                    onChange={(e) => {
+                      const next = phases.map((row) =>
+                        row.id === phase.id ? { ...row, swatch: e.target.value } : row,
+                      );
+                      updateSettings({ odsPhases: next });
+                      persistVenueRouting();
+                    }}
+                  >
+                    {MENU_SWATCHES.filter((swatch) => swatch.id !== "neutral").map((swatch) => (
+                      <option key={swatch.id} value={swatch.id}>
+                        {swatch.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+          </details>
+        )}
         <Badge variant="info" className="tabular">
           {active} active
         </Badge>
@@ -263,28 +325,40 @@ export function KitchenView({ station, expo, operatorId }: Props) {
         <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
           <p className="text-lg font-medium">All clear</p>
           <p className="text-sm">
-            Tickets appear when the floor sends. Start to prepare, Bump when ready.
+            Tickets appear when the floor sends. Tap a ticket to move it through New, Started, Prep, and Ready. The last bump clears it.
           </p>
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-auto p-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {list.map((t) => (
+            {list.map((t) => {
+              const phase = phaseForTicket(t, phases);
+              const paint = phasePaint(phase, odsScheme);
+              const next = nextOdsPhase(t, phases);
+              const phaseIndex = Math.max(0, phases.findIndex((row) => row.id === phase.id));
+              return (
               <article
                 key={t.id}
+                data-ods-phase={phase.id}
                 className={cn(
-                  "flex flex-col rounded-2xl border bg-surface shadow-sm",
-                  t.status === "new" && "border-info/50",
-                  t.status === "in_progress" && "border-warn/50",
-                  t.status === "ready" && "border-success/50",
-                  t.status === "bumped" && "border-border opacity-70",
+                  "flex cursor-pointer flex-col rounded-2xl border-2 bg-surface shadow-sm [&_.text-muted-foreground]:text-current",
+                  t.status === "bumped" && "opacity-70",
                 )}
+                style={{ borderColor: paint.bg }}
+                onClick={() => {
+                  if (t.status === "bumped") return;
+                  if (expo) requestDeliver(t.id);
+                  else requestAdvance(t.id);
+                }}
               >
-                <header className="flex items-start justify-between gap-2 border-b border-border px-3 py-2">
+                <header
+                  className="flex items-start justify-between gap-2 border-b px-3 py-2"
+                  style={{ background: paint.bg, color: paint.ink, borderColor: paint.bg }}
+                >
                   <div>
                     <p className="text-lg font-semibold">
                       {t.tableLabel}
-                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      <span className="ml-2 text-sm font-normal opacity-80">
                         {t.orderNumber}
                       </span>
                     </p>
@@ -319,30 +393,18 @@ export function KitchenView({ station, expo, operatorId }: Props) {
                   <div className="text-right">
                     <p
                       className={cn(
-                        "text-xl font-semibold tabular",
+                        "rounded-md bg-surface px-1.5 text-xl font-semibold tabular",
                         elapsedColor(t.elapsedSec),
                       )}
                     >
                       {fmtElapsed(t.elapsedSec)}
                     </p>
-                    <Badge
-                      variant={
-                        t.status === "ready"
-                          ? "success"
-                          : t.status === "in_progress"
-                            ? "warn"
-                            : "info"
-                      }
-                      className="mt-1 capitalize"
-                    >
-                      {t.status === "in_progress"
-                        ? "Preparing"
-                        : t.status === "new"
-                          ? "Sent"
-                          : t.status === "bumped"
-                            ? "Delivered"
-                            : t.status.replace("_", " ")}
-                    </Badge>
+                    <p className="mt-1 text-xs font-semibold" data-ods-phase-label>
+                      {phase.label}
+                    </p>
+                    <p className="text-[10px] opacity-80" data-ods-progress>
+                      {phaseIndex + 1}/{phases.length}
+                    </p>
                   </div>
                 </header>
                 <ul className="flex-1 space-y-1.5 px-3 py-2">
@@ -355,7 +417,10 @@ export function KitchenView({ station, expo, operatorId }: Props) {
                           .find((o) => o.id === t.orderId)
                           ?.lines.find((l) => l.id === it.lineId)?.menuItemId;
                         return mid ? (
-                          <span className="ml-1 inline-block align-middle">
+                          <span
+                            className="ml-1 inline-block align-middle"
+                            onClick={(event) => event.stopPropagation()}
+                          >
                             <RecipeLookupButton menuItemId={mid} />
                           </span>
                         ) : null;
@@ -379,47 +444,28 @@ export function KitchenView({ station, expo, operatorId }: Props) {
                     </li>
                   ))}
                 </ul>
-                <footer className="flex gap-1.5 border-t border-border p-2">
-                  {t.status === "new" && !expo && (
+                <footer
+                  className="flex gap-1.5 border-t border-border p-2"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {!expo && next && t.status !== "bumped" && (
                     <Button
-                      className="flex-1"
+                      className="flex-1 border-transparent"
                       size="sm"
                       variant="outline"
-                      onClick={() => startTicket(t.id)}
-                    >
-                      <Play className="h-3.5 w-3.5" />
-                      Start
-                    </Button>
-                  )}
-                  {(t.status === "new" || t.status === "in_progress") && !expo && (
-                    <Button
-                      className="flex-1"
-                      size="sm"
-                      onClick={() => {
-                        if (settings.requirePinToBump && !isProspectDemo()) {
-                          setBumpPinFor(t.id);
-                          setBumpPinError(null);
-                          return;
-                        }
-                        readyTicket(t.id);
-                      }}
+                      data-ods-next={next.id}
+                      style={{ background: phasePaint(next, odsScheme).bg, color: phasePaint(next, odsScheme).ink }}
+                      onClick={() => requestAdvance(t.id)}
                     >
                       <Check className="h-3.5 w-3.5" />
-                      Bump
+                      {next.label}
                     </Button>
                   )}
-                  {(expo || t.status === "ready") && t.status !== "bumped" && (
+                  {expo && t.status === "ready" && (
                     <Button
                       className="flex-1"
                       size="sm"
-                      onClick={() => {
-                        if (settings.requirePinToBump && !isProspectDemo()) {
-                          setBumpPinFor(t.id);
-                          setBumpPinError(null);
-                          return;
-                        }
-                        bumpTicket(t.id);
-                      }}
+                      onClick={() => requestDeliver(t.id)}
                     >
                       <Check className="h-3.5 w-3.5" />
                       Delivered
@@ -438,7 +484,8 @@ export function KitchenView({ station, expo, operatorId }: Props) {
                   )}
                 </footer>
               </article>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -463,12 +510,8 @@ export function KitchenView({ station, expo, operatorId }: Props) {
                   setBumpPinError("PIN locked. Ask a manager to reset.");
                   return;
                 }
-                const ticket = tickets.find((x) => x.id === bumpPinFor);
-                if (ticket && (ticket.status === "new" || ticket.status === "in_progress") && !expo) {
-                  readyTicket(bumpPinFor);
-                } else {
-                  bumpTicket(bumpPinFor);
-                }
+                if (expo) bumpTicket(bumpPinFor);
+                else advanceTicketPhase(bumpPinFor);
                 setBumpPinFor(null);
               }}
             />

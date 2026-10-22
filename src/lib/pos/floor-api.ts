@@ -224,6 +224,21 @@ export const odsRecallFn = createServerFn({ method: "POST" })
     return odsRecall(context.userId, data);
   });
 
+export const odsSetPhaseFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: OdsActionInput) => ({
+    locationId: loc(d.locationId),
+    ticketId: clip(d.ticketId, 80),
+    phase: clip(d.phase, 24),
+    clientMutationId: d.clientMutationId ? clip(d.clientMutationId, 80) : undefined,
+    actor: d.actor,
+  }))
+  .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "ods.start");
+    const { odsSetPhase } = await import("./floor.server");
+    return odsSetPhase(context.userId, data);
+  });
+
 export const recordCheckPaymentFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: RecordPaymentInput) => ({

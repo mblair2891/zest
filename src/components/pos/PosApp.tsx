@@ -33,6 +33,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getPosBootstrapFn } from "@/lib/saas/api";
 import { tablesFromCount, type TenantMenuMode } from "@/lib/pos/starter-seed";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
+import { parseOdsPhases } from "@/lib/pos/ods-phases";
 import { parseQrMode } from "@/lib/pos/qr-table";
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
@@ -508,6 +509,9 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               serversAtHostStand: Boolean(setup.serversAtHostStand),
               orderMayOpenBarTabs: setup.orderMayOpenBarTabs !== false,
               separateCourseTickets: Boolean(setup.separateCourseTickets),
+              odsPhases: Array.isArray(setup.odsPhases)
+                ? parseOdsPhases(setup.odsPhases)
+                : usePosStore.getState().settings.odsPhases,
               serviceStyle:
                 setup.serviceStyle === "counter" ||
                 setup.serviceStyle === "hybrid" ||

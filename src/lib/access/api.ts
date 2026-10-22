@@ -1131,6 +1131,7 @@ function publishSetupSlice(setup: LocationSetup) {
     serversAtHostStand: setup.serversAtHostStand,
     orderMayOpenBarTabs: setup.orderMayOpenBarTabs,
     separateCourseTickets: setup.separateCourseTickets,
+    odsPhases: setup.odsPhases,
     timezone: setup.timezone,
     stationUpdates: setup.stationUpdates,
     taxRates: setup.taxRates,

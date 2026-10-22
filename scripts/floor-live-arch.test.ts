@@ -74,7 +74,7 @@ test("published wall stays a dark segment on the wood, in its plan box", () => {
   assert.match(view, /data-floor-sheet=/);
   assert.match(view, /variant="live"/);
   assert.match(view, /mode="status"/);
-  assert.match(view, /hollow=\{st === "empty"\}/);
+  assert.match(view, /hollow=\{paint\.dotted\}/);
   const css = readFileSync("src/styles.css", "utf8");
   assert.doesNotMatch(css, /\.floor-wood/);
 });

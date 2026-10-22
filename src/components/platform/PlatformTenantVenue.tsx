@@ -30,6 +30,7 @@ import type { PackageId } from "@/lib/pos/packages";
 import type { SaasLocation, SaasOrganization } from "@/lib/pos/saas-types";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { cn } from "@/lib/utils";
+import { parseOdsPhases } from "@/lib/pos/ods-phases";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseQrMode } from "@/lib/pos/qr-table";
 import {
@@ -503,6 +504,9 @@ export function PlatformTenantVenue({
           serversAtHostStand: Boolean(setup.serversAtHostStand),
           orderMayOpenBarTabs: setup.orderMayOpenBarTabs !== false,
           separateCourseTickets: Boolean(setup.separateCourseTickets),
+          odsPhases: Array.isArray(setup.odsPhases)
+            ? parseOdsPhases(setup.odsPhases)
+            : st.settings.odsPhases,
           lifecycleStatus:
             (access.location.lifecycleStatus as
               | "training"

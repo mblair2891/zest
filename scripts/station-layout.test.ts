@@ -69,11 +69,11 @@ test("a phone and an 8 inch portrait handheld use the one-hand layout", () => {
   assert.equal(stationLayoutFromSize(1280, 800).smallForm, false);
   assert.equal(stationLayoutFromSize(1024, 768).smallForm, false);
   assert.equal(stationLayoutFromSize(1920, 1080).smallForm, false);
-  assert.equal(handheldStatusFill("empty"), "#ffffff");
-  assert.equal(handheldStatusFill("sat_no_order"), "#2563eb");
-  assert.equal(handheldStatusFill("ordered_drinks"), "#2563eb");
-  assert.equal(handheldStatusFill("ordered_food"), "#059669");
-  assert.equal(handheldStatusFill("closed_not_cleaned"), "#e11d48");
+  assert.equal(handheldStatusFill("empty"), "#f7f6f3");
+  assert.equal(handheldStatusFill("sat_no_order"), "#f3eee4");
+  assert.equal(handheldStatusFill("ordered_drinks"), "#eab308");
+  assert.equal(handheldStatusFill("ordered_food"), "#eab308");
+  assert.equal(handheldStatusFill("closed_not_cleaned"), "#fda4af");
 });
 
 test("floor, check, and menu adapt on a small form and the tablet screens stay", () => {
@@ -86,7 +86,7 @@ test("floor, check, and menu adapt on a small form and the tablet screens stay",
   assert.match(floor, /data-floor-view-toggle/);
   assert.match(floor, /data-floor-view="list"/);
   assert.match(floor, /largeTaps=\{layout\.smallForm\}/);
-  assert.match(floor, /handheldStatusFill/);
+  assert.match(floor, /tableServicePaint/);
   assert.match(floor, /data-check-actions=\{handheld \? "sticky" : undefined\}/);
   assert.match(order, /layout\.width >= 640 && !layout\.smallForm/);
   assert.match(order, /data-order-actions=\{layout\.smallForm \? "sticky" : undefined\}/);

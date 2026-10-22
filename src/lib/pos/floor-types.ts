@@ -122,6 +122,7 @@ export type FloorTicket = {
   destinationName?: string;
   printerId?: string;
   status: TicketStatus;
+  phase?: string;
   course: Course;
   createdAt: number;
   elapsedSec: number;
@@ -211,6 +212,7 @@ export type SendToStationsInput = {
 export type OdsActionInput = {
   locationId: string;
   ticketId: string;
+  phase?: string;
   clientMutationId?: string;
   actor?: FloorActor;
 };

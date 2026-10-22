@@ -38,6 +38,7 @@ import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseTaxRates } from "@/lib/pos/tax-rates";
 import { parseStationUpdates } from "@/lib/pos/station-updates";
 import { parseJurisdiction, jurisdictionIsReady, normalizeState, commitPlaceText } from "@/lib/pos/jurisdiction";
+import { parseOdsPhases } from "@/lib/pos/ods-phases";
 import { parseVenueTimezone } from "@/lib/pos/venue-time";
 import { canEditVenueProfile, sameContactEmail } from "./venue-profile";
 import { parseItem86 } from "@/lib/pos/item-86";
@@ -219,6 +220,7 @@ function parseSetup(raw: unknown): LocationSetup {
       ? o.orderDestinations.filter((x): x is string => typeof x === "string").map((x) => x.slice(0, 40))
       : [],
     separateCourseTickets: Boolean(o.separateCourseTickets),
+    odsPhases: Array.isArray(o.odsPhases) ? parseOdsPhases(o.odsPhases) : undefined,
     voiceControlEnabledByRole:
       o.voiceControlEnabledByRole && typeof o.voiceControlEnabledByRole === "object"
         ? (o.voiceControlEnabledByRole as Record<string, boolean>)

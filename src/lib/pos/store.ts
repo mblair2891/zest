@@ -342,6 +342,8 @@ import {
   parseFloorStatusConfig,
   tableFlash,
 } from "./floor-status";
+import { nextOdsPhase, parseOdsPhases } from "./ods-phases";
+import { MENU_SWATCHES } from "./service-colors";
 import { canOpenBarTabOnStool, isBarRailSeat } from "./bar-tab";
 import { makeTableQrToken, parseQrMode, qrTokenMatchesLocation } from "./qr-table";
 import {
@@ -3955,6 +3957,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const tickets = get().tickets.map((t: any) => t.id === ticketId ? {
 			...t,
 			status: "bumped",
+			phase: "bumped",
 			bumpedAt: Date.now()
 		} : t);
 		set({ tickets });
@@ -3986,6 +3989,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		set({ tickets: get().tickets.map((t: any) => t.id === ticketId ? {
 			...t,
 			status: "new",
+			phase: undefined,
 			bumpedAt: void 0
 		} : t) });
 		floorSync("recall", ticketId);
@@ -3995,6 +3999,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		set({ tickets: get().tickets.map((t: any) => t.id === ticketId ? {
 			...t,
 			status: "in_progress",
+			phase: t.phase && t.phase !== "new" ? t.phase : "started",
 			startedAt: t.startedAt ?? Date.now(),
 		} : t) });
 		floorSync("start", ticketId);
@@ -4008,6 +4013,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const tickets = get().tickets.map((t: any) => t.id === ticketId ? {
 			...t,
 			status: "ready",
+			phase: "ready",
 		} : t);
 		set({ tickets });
 		floorSync("ready", ticketId);
@@ -4029,6 +4035,32 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			}
 		}
 	},
+	setTicketPhase: (ticketId: string, phase: string) => {
+		const ticket = get().tickets.find((t: any) => t.id === ticketId);
+		if (!ticket || ticket.status === "bumped" || ticket.status === "voided") return;
+		set({
+			tickets: get().tickets.map((t: any) => (t.id === ticketId ? { ...t, phase } : t)),
+		});
+		floorSync("phase", ticketId);
+	},
+	advanceTicketPhase: (ticketId: string) => {
+		const ticket = get().tickets.find((t: any) => t.id === ticketId);
+		if (!ticket || ticket.status === "bumped" || ticket.status === "voided") return;
+		const phases = parseOdsPhases(get().settings?.odsPhases);
+		const next = nextOdsPhase(ticket, phases);
+		if (!next) return;
+		if (next.ticketStatus === "bumped") {
+			get().bumpTicket(ticketId);
+			return;
+		}
+		if (next.ticketStatus === "ready") {
+			get().readyTicket(ticketId);
+			get().setTicketPhase(ticketId, next.id);
+			return;
+		}
+		if (ticket.status === "new") get().startTicket(ticketId);
+		get().setTicketPhase(ticketId, next.id);
+	},
 	deliverReadyTicketsForTable: (tableId) => {
 		const order = get().orders.find((o: any) => o.tableId === tableId && o.status === "open")
 			?? get().orders.find((o: any) => o.tableId === tableId);
@@ -4038,7 +4070,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (!ready.length) return;
 		const tickets = get().tickets.map((t: any) =>
 			t.orderId === order.id && t.status === "ready"
-				? { ...t, status: "bumped", bumpedAt: now }
+				? { ...t, status: "bumped", phase: "bumped", bumpedAt: now }
 				: t,
 		);
 		set({ tickets });
@@ -4622,7 +4654,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const emp = get().getCurrentEmployee();
 		if (emp?.role === "vendor_operator") return { id: "" };
 		const id = uid("cat");
-		const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#A61B1B", "#5C5C5C"];
+		const colors = MENU_SWATCHES.filter((swatch) => swatch.id !== "neutral").map((swatch) => swatch.id);
 		const dest = destinationForGroup({
 			name: name.trim() || "Category",
 			station: station ?? "kitchen",

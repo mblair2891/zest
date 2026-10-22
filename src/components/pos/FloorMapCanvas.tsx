@@ -68,8 +68,13 @@ export type FloorMapItem = {
   ink: string;
   /** Pipeline status. Stools use the same colors as tables. */
   status?: string;
-  /** Empty tables stay in the pipeline. The live map paints them solid. */
+  /** Empty tables stay in the pipeline. A dotted edge marks an empty table. */
   hollow?: boolean;
+  dotted?: boolean;
+  edge?: string;
+  serverInitials?: string;
+  serverColor?: string;
+  tone?: string;
   flashing: boolean;
   dim: boolean;
   /** Joined table numbers, drawn smaller on the same fill. */
@@ -311,6 +316,10 @@ export function FloorMapCanvas({
                   hollow={Boolean(item.hollow)}
                   ink={item.ink}
                   marked={!arch && selectedId === item.table.id}
+                  dotted={Boolean(item.dotted)}
+                  edge={item.edge}
+                  serverInitials={item.serverInitials}
+                  serverColor={item.serverColor}
                   className="h-full w-full"
                 />
               );
@@ -322,6 +331,7 @@ export function FloorMapCanvas({
               data-floor-label={num}
               data-floor-seat={stool ? "tile" : "table"}
               data-floor-pipeline={item.status ?? ""}
+              data-floor-tone={item.tone ?? ""}
               data-floor-tap={enlarge ? String(HANDHELD_MIN_TAP_PX) : undefined}
               aria-label={stool ? `Seat ${num}` : `Table ${num}`}
               onClick={() => {

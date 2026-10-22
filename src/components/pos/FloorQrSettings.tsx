@@ -388,6 +388,12 @@ export function FloorQrSettings({ write }: { write: boolean }) {
         </div>
       </div>
 
+      <p className="text-sm text-muted-foreground" data-floor-service-colors>
+        The live floor uses service colors. An empty table is a dotted outline. Items held or not
+        sent are red, sent items are yellow, and fulfilled items are green. The selected table is
+        blue. Another server’s table is gray. These pickers stay on the status list.
+      </p>
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[28rem] text-left text-sm">
           <thead>

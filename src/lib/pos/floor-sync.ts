@@ -24,6 +24,7 @@ import {
   odsBumpFn,
   odsReadyFn,
   odsRecallFn,
+  odsSetPhaseFn,
   odsStartFn,
   recordCheckPaymentFn,
   sendToStationsFn,
@@ -270,6 +271,7 @@ function floorTicketToKitchen(t: FloorTicket): KitchenTicket {
     destinationName: t.destinationName,
     printerId: t.printerId,
     status: t.status,
+    phase: t.phase,
     course: t.course,
     createdAt: t.createdAt,
     elapsedSec: t.elapsedSec,
@@ -302,7 +304,12 @@ export function applyOpenFloor(floor: OpenFloor): void {
   const mergedOrders = mergeOpenOrders(s.orders, serverOrders, now, LOCAL_GRACE_MS);
 
   const serverTickets = floor.tickets.map(floorTicketToKitchen);
-  const mergedTickets = mergeOpenTickets(s.tickets, serverTickets, now, LOCAL_GRACE_MS);
+  const mergedTickets = mergeOpenTickets(s.tickets, serverTickets, now, LOCAL_GRACE_MS).map((ticket) => {
+    if (ticket.phase) return ticket;
+    const prev = s.tickets.find((row) => row.id === ticket.id);
+    if (prev?.phase && prev.status === ticket.status) return { ...ticket, phase: prev.phase };
+    return ticket;
+  });
   const heldTables = releasedTableIds();
 
   const tables = s.tables.map((tb) => {
@@ -706,6 +713,24 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
             actor: who,
           },
         });
+      },
+    );
+    return;
+  }
+
+  if (kind === "phase") {
+    const ticketId = id;
+    if (!ticketId) return;
+    const ticket = s.tickets.find((t) => t.id === ticketId);
+    const phase = ticket?.phase ?? "";
+    if (!phase) return;
+    await runOrQueue(
+      "ticket_upsert",
+      `phase · ${ticketId.slice(-6)}`,
+      "Ticket phase is live across devices when online",
+      { locationId, ticketId, phase, status: ticket?.status, actor: who },
+      async () => {
+        await odsSetPhaseFn({ data: { locationId, ticketId, phase, actor: who } });
       },
     );
     return;

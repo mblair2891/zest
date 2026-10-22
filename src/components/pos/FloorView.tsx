@@ -69,7 +69,13 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
 import { canAccessView, canAccessViewForEmployee } from "@/lib/pos/rbac";
 import { entityFloorEditorId } from "@/lib/pos/entity-floor";
-import { handheldStatusFill, useStationLayout } from "@/lib/ui/station-layout";
+import { useStationLayout } from "@/lib/ui/station-layout";
+import {
+  otherServerTable,
+  serverInitials,
+  tableServicePaint,
+  usePrefersDark,
+} from "@/lib/pos/service-colors";
 import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
@@ -218,6 +224,7 @@ export function FloorView({
   const canBusClean = stationCan(cap, "bus_clean") || canStatus;
 
   const layout = useStationLayout();
+  const scheme = usePrefersDark() ? "dark" : "light";
   const [floorList, setFloorList] = useState(false);
   const [seatOpen, setSeatOpen] = useState(false);
   const [seatTarget, setSeatTarget] = useState<Table | null>(null);
@@ -553,26 +560,51 @@ export function FloorView({
   };
 
   const showFloorList = layout.smallForm && floorList;
-  const statusFill = (st: string) => {
-    if (layout.smallForm) return handheldStatusFill(st);
-    if (st === "reserved") return "#e8e6e1";
-    return floorCfg.colors[st as FloorPipelineStatus] ?? "#ffffff";
+  const paintTable = (table: (typeof tables)[number], selected: boolean) => {
+    const order =
+      orders.find((row) => row.id === table.orderId && row.status === "open") ??
+      orders.find((row) => row.tableId === table.id && row.status === "open");
+    const st = effectiveTablePipeline(table, orders, tickets, floorCfg);
+    const serverId = table.serverId || order?.serverId;
+    return tableServicePaint({
+      pipeline: st,
+      selected,
+      otherServer: otherServerTable({
+        role: emp?.role,
+        employeeId: emp?.id,
+        serverId,
+      }),
+      lines: order?.lines ?? [],
+      tickets: order ? tickets.filter((row) => row.orderId === order.id) : [],
+      scheme,
+    });
+  };
+  const serverMark = (serverId?: string) => {
+    const person = employees.find((row) => row.id === serverId);
+    if (!person) return { initials: "", color: "" };
+    return { initials: serverInitials(person.name), color: person.color || "#57534e" };
   };
   const floorListRows = painted.filter((t) => !isArchitectureKind(t.kind));
   const mapItems: FloorMapItem[] = mapOnly
     ? painted.map((t) => {
         const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
-        const fill = statusFill(st);
+        const paint = paintTable(t, floorFocusTableId === t.id);
+        const mark = serverMark(t.serverId);
         const orderAcc = tableAccess(t.id, "order");
         const seatAcc = tableAccess(t.id, "seat");
         const dim =
           locked && !orderAcc.ok && orderAcc.code !== "view_only" && !seatAcc.ok;
         return {
           table: t,
-          fill,
-          ink: contrastInk(fill),
+          fill: paint.fill,
+          ink: paint.ink,
+          edge: paint.edge,
           status: st,
-          hollow: layout.smallForm ? false : st === "empty",
+          tone: paint.tone,
+          hollow: paint.dotted,
+          dotted: paint.dotted,
+          serverInitials: mark.initials,
+          serverColor: mark.color,
           flashing: tableFlash(t, floorCfg, clock || Date.now(), st),
           dim,
           joined: clusterNumbers(tables, t.id).joined,
@@ -584,22 +616,28 @@ export function FloorView({
     <div className="min-h-0 flex-1 overflow-y-auto bg-[#f6f3ec]" data-floor-view="list">
       {floorListRows.map((t) => {
         const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
-        const fill = statusFill(st);
+        const paint = paintTable(t, floorFocusTableId === t.id || detailLive?.id === t.id);
         const seat = t.kind === "barstool" || t.shape === "bar";
+        const listInk = scheme === "dark" ? "#fafaf9" : "#1c1917";
         return (
           <button
             key={t.id}
             type="button"
             data-floor-list-row={t.label}
+            data-floor-tone={paint.tone}
             className="flex min-h-14 w-full items-center gap-3 border-b border-black/10 px-3 text-left"
             onClick={() => onTableClick(t)}
           >
             <span
-              className="h-5 w-5 shrink-0 rounded-full border border-black/20"
-              style={{ background: fill }}
+              className="h-5 w-5 shrink-0 rounded-full border-2"
+              style={{
+                background: paint.dotted ? "transparent" : paint.fill,
+                borderColor: paint.edge,
+                borderStyle: paint.dotted ? "dotted" : "solid",
+              }}
             />
             <span className="min-w-0 flex-1">
-              <span className="block text-lg font-semibold leading-tight text-[#1c1917]">
+              <span className="block text-lg font-semibold leading-tight" style={{ color: listInk }}>
                 {seat ? "Seat" : "Table"} {t.label}
               </span>
               <span className="block text-sm text-[#1c1917]/70">{pipelineLabel(st)}</span>
@@ -905,8 +943,11 @@ export function FloorView({
           >
             {visible.map((t) => {
               const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
-              const fill = statusFill(st);
-              const ink = contrastInk(fill);
+              const selected = detailLive?.id === t.id || floorFocusTableId === t.id;
+              const paint = paintTable(t, selected);
+              const mark = serverMark(t.serverId);
+              const fill = paint.fill;
+              const ink = paint.ink;
               const cluster = clusterNumbers(tables, t.id);
               const flashing = tableFlash(t, floorCfg, clock || Date.now(), st);
               const orderAcc = tableAccess(t.id, "order");
@@ -978,6 +1019,7 @@ export function FloorView({
                     }
                   }}
                   data-table-id={t.id}
+                  data-floor-tone={paint.tone}
                   data-floor-tap={layout.smallForm ? "48" : undefined}
                   style={{
                     left: `${t.x}%`,
@@ -1004,7 +1046,11 @@ export function FloorView({
                     joined={cluster.joined}
                     rotation={t.rotation ?? 0}
                     mode="status"
-                    hollow={layout.smallForm ? false : st === "empty"}
+                    hollow={paint.dotted}
+                    dotted={paint.dotted}
+                    edge={paint.edge}
+                    serverInitials={mark.initials}
+                    serverColor={mark.color}
                     ink={ink}
                     marked={marked}
                   />

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from "react";
+import { tableServicePaint } from "../pos/service-colors";
 
 /**
  * Station chrome by physical viewport — not by PIN role.
@@ -88,17 +89,18 @@ export function isSmallForm(width: number, height: number): boolean {
 }
 
 /**
- * Four fills for a small floor map. Empty stays white. Seated work is blue.
- * Food on the table is green. Closed · needs bus is red. Saved tablet colors stay put.
+ * Small-floor fill uses the same service colors as the tablet map.
+ * Empty is a light chip. Sent work is yellow. Fulfilled food is green.
  */
 export function handheldStatusFill(status: string): string {
-  if (status === "empty") return "#ffffff";
-  if (status === "reserved") return "#e7e5e4";
-  if (status === "closed_not_cleaned") return "#e11d48";
-  if (status === "ordered_food" || status === "food_delivered" || status === "food_completed") {
-    return "#059669";
-  }
-  return "#2563eb";
+  return tableServicePaint({
+    pipeline: status,
+    selected: false,
+    otherServer: false,
+    lines: [],
+    tickets: [],
+    scheme: "light",
+  }).fill;
 }
 
 export function stationLayoutFromSize(width: number, height: number): StationLayout {

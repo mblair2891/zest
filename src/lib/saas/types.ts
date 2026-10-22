@@ -65,6 +65,8 @@ export type LocationSetup = {
   orderDestinations?: string[];
   /** Cut a paper ticket per course when those lines share destination + printer. Default off. */
   separateCourseTickets?: boolean;
+  /** Kitchen and bar order-display steps. */
+  odsPhases?: { id: string; label: string; ticketStatus: string; swatch: string }[];
   /** Venue print jobs (QR / kiosk / online / dashboard test) for a docked station or print agent. */
   stationPrintQueue?: import("@/lib/print/station-print-queue").StationPrintQueued[];
   /** Optional shared secret for scripts/print-agent.mjs venue subscribe. */

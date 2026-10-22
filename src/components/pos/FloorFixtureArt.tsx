@@ -4,6 +4,7 @@ import type { Table } from "@/lib/pos/types";
 import { asBoothKind } from "@/lib/pos/floor-booth";
 import { uprightCounterDeg } from "@/lib/pos/floor-architecture";
 import { joinedNumberLine } from "@/lib/pos/floor-fit";
+import { contrastInk } from "@/lib/pos/floor-status";
 import { diningTableOutline, railStoolCenters, seatingScale } from "@/lib/pos/floor-seating";
 import { BoothNumber, FloorBoothGlyph, FloorBoothMark } from "@/components/pos/FloorBoothMark";
 import { FloorCouchGlyph, FloorCouchMark } from "@/components/pos/FloorCouchMark";
@@ -25,6 +26,10 @@ export function FloorFixtureArt({
   ink,
   hairline = false,
   marked = false,
+  dotted = false,
+  edge,
+  serverInitials,
+  serverColor,
 }: {
   table: Pick<Table, "kind" | "shape" | "w" | "h" | "seats" | "rotation">;
   tableFill: string;
@@ -46,6 +51,11 @@ export function FloorFixtureArt({
   hairline?: boolean;
   /** Open check or combine target. A heavier edge on the shape, not a square ring. */
   marked?: boolean;
+  /** Empty table: dotted edge and a light fill. */
+  dotted?: boolean;
+  edge?: string;
+  serverInitials?: string;
+  serverColor?: string;
 }) {
   const booth = asBoothKind(table.kind, table.shape);
   const couch = table.kind === "couch";
@@ -65,6 +75,10 @@ export function FloorFixtureArt({
         hollow={hollow}
         ink={ink}
         marked={marked}
+        dotted={dotted}
+        edge={edge}
+        serverInitials={serverInitials}
+        serverColor={serverColor}
         w={table.w}
         h={table.h}
       >
@@ -180,6 +194,10 @@ function StatusFixture({
   hollow = false,
   ink,
   marked = false,
+  dotted = false,
+  edge,
+  serverInitials,
+  serverColor,
   w,
   h,
 }: {
@@ -196,12 +214,17 @@ function StatusFixture({
   hollow?: boolean;
   ink?: string;
   marked?: boolean;
+  dotted?: boolean;
+  edge?: string;
+  serverInitials?: string;
+  serverColor?: string;
   w: number;
   h: number;
 }) {
-  const edge = "#1c1917";
+  const rim = serverColor || edge || "#1c1917";
   const paint = tableFill && tableFill !== "none" && tableFill !== "transparent" ? tableFill : "#f7f4ee";
   const number = ink || "#1c1917";
+  const badge = serverColor || "#57534e";
   const shape = couch ? "couch" : booth ? "booth" : bar ? "stool" : round ? "round" : "rect";
   const raw = diningTableOutline(round);
   const mark = raw.round
@@ -222,6 +245,7 @@ function StatusFixture({
       data-floor-status-shape={shape}
       data-floor-fill="solid"
       data-floor-stroke="edge"
+      data-floor-edge={dotted ? "dotted" : "solid"}
       data-floor-empty={hollow ? "1" : "0"}
       data-floor-nubs="0"
     >
@@ -233,13 +257,13 @@ function StatusFixture({
         aria-hidden
       >
         {couch ? (
-          <FloorCouchGlyph fill={paint} outline={edge} solid />
+          <FloorCouchGlyph fill={paint} outline={rim} solid />
         ) : booth ? (
           <FloorBoothGlyph
             kind={booth}
             tableFill={paint}
             benchFill={paint}
-            outline={edge}
+            outline={rim}
             w={w}
             h={h}
             solid
@@ -251,7 +275,7 @@ function StatusFixture({
             rx={mark.rx}
             ry={mark.ry}
             fill={paint}
-            stroke={edge}
+            stroke={rim}
             strokeWidth={2.5}
             vectorEffect="non-scaling-stroke"
           />
@@ -263,7 +287,7 @@ function StatusFixture({
             height={mark.height}
             rx={mark.rx}
             fill={paint}
-            stroke={edge}
+            stroke={rim}
             strokeWidth={2.5}
             vectorEffect="non-scaling-stroke"
           />
@@ -275,7 +299,7 @@ function StatusFixture({
             rx={mark.rx}
             ry={mark.ry}
             fill="none"
-            stroke={edge}
+            stroke={rim}
             strokeWidth={4}
             vectorEffect="non-scaling-stroke"
           />
@@ -288,7 +312,7 @@ function StatusFixture({
             height={mark.height}
             rx={mark.rx}
             fill="none"
-            stroke={edge}
+            stroke={rim}
             strokeWidth={4}
             vectorEffect="non-scaling-stroke"
           />
@@ -324,6 +348,22 @@ function StatusFixture({
               {party}
             </span>
           ) : null}
+        </span>
+      ) : null}
+      {serverInitials ? (
+        <span
+          data-floor-server={serverInitials}
+          className="pointer-events-none absolute right-[4%] top-[4%] z-10 grid place-items-center rounded-full font-bold leading-none"
+          style={{
+            width: "32cqmin",
+            height: "32cqmin",
+            fontSize: "14cqmin",
+            background: badge,
+            color: contrastInk(badge),
+            transform: `rotate(${-rotation}deg)`,
+          }}
+        >
+          {serverInitials}
         </span>
       ) : null}
       {children}

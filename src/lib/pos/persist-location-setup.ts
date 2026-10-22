@@ -71,6 +71,7 @@ export function persistVenueRouting(): void {
           locationId: ctx.locationId,
           setup: {
             separateCourseTickets: Boolean(settings.separateCourseTickets),
+            odsPhases: settings.odsPhases,
             configVersion: bumpConfigVersion(),
           },
         },

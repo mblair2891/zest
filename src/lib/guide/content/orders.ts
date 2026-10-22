@@ -14,6 +14,9 @@ export const ORDER_TOPICS: GuideTopic[] = [
       why(
         "Routing, settlement, and allergens all hang off the menu. A missing modifier or operator tag shows up as a wrong ticket or a wrong payout.",
       ),
+      p(
+        "Tables use service colors: an empty table is a dotted outline, items held or not sent are red, sent items are yellow, fulfilled items are green, the selected table is blue, and another server's table is gray. Each menu category can use its own button color, and a category with no color stays neutral. On the kitchen and bar order displays, a ticket moves through New, Started, Prep, and Ready, and the last bump clears it as before. Each phase has its own color.",
+      ),
       steps(
         "Every entity menu includes Open Food and Open Liquor. They stay on the order pad for every entity, including All. Tap one and a keypad asks for the amount, including cents. Confirm adds that exact amount as both the cash price and the card price. Cash discount and rounding do not change it. The card pay screen and the amount authorized use that exact amount. No preset price is required. Open Food prints on the food order printer and belongs to the food entity. Open Liquor prints on the bar order printer and belongs to the bar entity. Either can be added to any check. A menu item marked Open price uses the same keypad and keeps that item’s selling entity. They are not archived, deleted, or replaced by a menu upload or a well book.",
         "Each selling entity has an Inventory page. It lists that entity's menu items and ingredients with the current on-hand quantity, the unit, and the last counted or received date. Search and filter narrow the list. Entering a count updates the on-hand quantity. Items with zero stock are marked. An ingredient at or under its minimum is marked low. A menu item at 1 or 2 is marked low. The page is available to the entity's manager and to any role the location grants inventory access.",
@@ -141,11 +144,15 @@ export const ORDER_TOPICS: GuideTopic[] = [
       why(
         "Bump is the contract between station and floor. If bump is skipped, tables never go Up and food dies in the window.",
       ),
+      p(
+        "Tables use service colors: an empty table is a dotted outline, items held or not sent are red, sent items are yellow, fulfilled items are green, the selected table is blue, and another server's table is gray. Each menu category can use its own button color, and a category with no color stays neutral. On the kitchen and bar order displays, a ticket moves through New, Started, Prep, and Ready, and the last bump clears it as before. Each phase has its own color.",
+      ),
       shot(
         "Kitchen order display with All operators / stall filters, Start, and Bump.",
         "ODS ticket columns with Start and Bump.",
       ),
       steps(
+        "Tap a ticket, or its phase button, to move it one step: New, Started, Prep, then Ready. Each phase has its own color. The last bump clears the ticket the same way as before. Prep does not print and does not notify.",
         "Send from the floor. Tickets land on the kitchen or bar ODS for that station and operator — including a second tablet and a kitchen display, not only this station.",
         "Start when you begin prep (Preparing). Bump when the plate/drink is ready. Those actions persist on the location; the originating POS shows Ready without a refresh wait longer than a few seconds.",
         "The originating server’s device toasts, chimes, and vibrates (where the platform allows). The table pulses Up.",

@@ -314,6 +314,8 @@ export interface RestaurantSettings {
    * destination + printer. Default off (single-line kitchen: one slip).
    */
   separateCourseTickets?: boolean;
+  /** Kitchen and bar order-display steps. Empty uses New, Started, Prep, Ready, Bumped. */
+  odsPhases?: { id: string; label: string; ticketStatus: "new" | "in_progress" | "ready" | "bumped"; swatch: string }[];
   /** Host policy: which access levels may use the mic. */
   voiceControlEnabledByRole?: Partial<Record<EmployeeRole, boolean>>;
   floorStatusConfig?: import("./floor-status").FloorStatusConfig;
@@ -749,6 +751,8 @@ export interface KitchenTicket {
   destinationName?: string;
   printerId?: string;
   status: TicketStatus;
+  /** Step inside the ticket status. New, Started, Prep, and Ready share the line. */
+  phase?: string;
   course: Course;
   createdAt: number;
   elapsedSec: number;

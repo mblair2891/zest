@@ -19,6 +19,7 @@ import { parseStationUpdates } from "./station-updates";
 import { parseBrandLogoMap } from "@/lib/brand/logos";
 import { parseRevenueShare } from "@/lib/pos/revenue-share";
 import { parsePaxReaders, type PaxReader } from "@/lib/payments/pax-d135";
+import { parseOdsPhases } from "@/lib/pos/ods-phases";
 
 export const STATION_PUBLISH_STATE_KEY = "summex-station-publish-state-v1";
 
@@ -43,6 +44,7 @@ export type StationPublishSetup = {
   serversAtHostStand?: boolean;
   orderMayOpenBarTabs?: boolean;
   separateCourseTickets?: boolean;
+  odsPhases?: { id: string; label: string; ticketStatus: string; swatch: string }[];
   timezone?: string;
   stationUpdates?: object;
   taxRates?: object[];
@@ -258,6 +260,9 @@ export function applyStationPublish(
     }
     if ("separateCourseTickets" in setup) {
       settings.separateCourseTickets = Boolean(setup.separateCourseTickets);
+    }
+    if (Array.isArray(setup.odsPhases)) {
+      settings.odsPhases = parseOdsPhases(setup.odsPhases);
     }
     if (typeof setup.timezone === "string" && setup.timezone.trim()) {
       settings.timezone = setup.timezone.trim();

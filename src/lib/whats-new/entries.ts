@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_331_toast_colors",
+    date: "2026-10-21",
+    title: "Toast-style colors",
+    summary: "Tables, menu categories, and order-display phases use their own colors.",
+    body: "Tables use service colors: an empty table is a dotted outline, items held or not sent are red, sent items are yellow, fulfilled items are green, the selected table is blue, and another server's table is gray. Each menu category can use its own button color, and a category with no color stays neutral. On the kitchen and bar order displays, a ticket moves through New, Started, Prep, and Ready, and the last bump clears it as before. Each phase has its own color.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_330_handheld",
     date: "2026-10-21",
     title: "Handheld layout",

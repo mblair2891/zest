@@ -32,6 +32,7 @@ import { isDrinkEntity, omitWellBuildFromList } from "@/lib/pos/well-book";
 import { isOpenMenuItem } from "@/lib/pos/open-items";
 import { WellBookCard } from "@/components/pos/WellBookCard";
 import { NaDrinkAdd } from "@/components/pos/NaDrinkAdd";
+import { MENU_SWATCHES, categoryButtonPaint, usePrefersDark } from "@/lib/pos/service-colors";
 
 export function MenuAdminView() {
   const categories = usePosStore((s) => s.categories);
@@ -63,6 +64,7 @@ export function MenuAdminView() {
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const host = isHostPrivileged(emp);
+  const menuScheme = usePrefersDark() ? "dark" : "light";
 
   const demoScope = usePosStore((s) =>
     s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null,
@@ -348,14 +350,41 @@ export function MenuAdminView() {
           );
           if (!items.length) return null;
           const dest = destinationForGroup(cat);
+          const paint = categoryButtonPaint(cat.color, menuScheme);
           return (
             <section key={cat.id} className="mb-6">
               <h3 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-medium">
                 <span
                   className="h-2.5 w-2.5 rounded-full"
-                  style={{ background: cat.color }}
+                  data-menu-swatch={paint.id}
+                  style={{ background: paint.bg }}
                 />
                 {cat.name}
+                {host && (
+                  <span className="flex flex-wrap gap-1" data-menu-swatches>
+                    {MENU_SWATCHES.map((swatch) => {
+                      const chip = categoryButtonPaint(swatch.id, menuScheme);
+                      const on = paint.id === swatch.id;
+                      return (
+                        <button
+                          key={swatch.id}
+                          type="button"
+                          aria-label={`${cat.name} ${swatch.label}`}
+                          className="h-6 w-6 rounded-full border border-border"
+                          data-menu-swatch={swatch.id}
+                          style={{
+                            background: chip.bg,
+                            boxShadow: on ? `inset 0 0 0 2px ${chip.ink}` : undefined,
+                          }}
+                          onClick={() => {
+                            updateCategory(cat.id, { color: swatch.id });
+                            persistLocationCatalog("menu");
+                          }}
+                        />
+                      );
+                    })}
+                  </span>
+                )}
                 {host && (
                   <>
                     <select
