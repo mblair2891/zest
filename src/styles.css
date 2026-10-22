@@ -212,6 +212,239 @@
   color: #1a1a1a;
 }
 
+/* Unpaired station. Fits a landscape tablet and stays readable in glare. */
+.station-pair-screen {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  width: 100%;
+  min-height: 100dvh;
+  padding: calc(1.25rem + var(--grok-banner-h, 0px)) 1.25rem 5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: #f4f5f7;
+  color: #0a0a0a;
+}
+
+.station-pair-card {
+  box-sizing: border-box;
+  width: min(34rem, 100%);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+  padding: 1.75rem 1.5rem 1.25rem;
+  border: 2px solid #1a1a1a;
+  border-radius: 1.25rem;
+  background: #ffffff;
+  color: #0a0a0a;
+}
+
+.station-pair-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.station-pair-mark {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.station-pair-kicker {
+  margin: 0.85rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #1a1a1a;
+}
+
+.station-pair-title {
+  margin: 0.4rem 0 0;
+  font-size: clamp(2.15rem, 5vw, 2.85rem);
+  line-height: 1.15;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: #0a0a0a;
+}
+
+.station-pair-copy {
+  margin: 0.85rem 0 0;
+  max-width: 28rem;
+  font-size: 1.125rem;
+  line-height: 1.45;
+  color: #1a1a1a;
+}
+
+.station-pair-notice {
+  margin: 0.85rem 0 0;
+  max-width: 28rem;
+  padding: 0.75rem 0.9rem;
+  border: 2px solid #1a1a1a;
+  border-radius: 0.75rem;
+  background: #fff4d6;
+  color: #1a1a1a;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.station-pair-form {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.station-pair-code {
+  height: 4.5rem;
+  padding: 0 0.9rem;
+  border: 2px solid #1a1a1a !important;
+  background: #ffffff !important;
+  color: #0a0a0a !important;
+  font-size: clamp(1.5rem, 8cqi, 2.15rem);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.station-pair-code::placeholder {
+  color: #3f3f3f;
+  letter-spacing: 0.08em;
+}
+
+.station-pair-error {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+  color: #a61b1b;
+}
+
+.station-pair-submit {
+  height: 4rem;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.station-pair-submit:disabled {
+  opacity: 1;
+  background: #e7e5e4 !important;
+  color: #1a1a1a !important;
+}
+
+.station-pair-secondary {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.station-pair-scan {
+  height: 3rem;
+  font-size: 1rem;
+  border: 2px solid #1a1a1a !important;
+  background: #ffffff !important;
+  color: #0a0a0a !important;
+}
+
+.station-pair-roles {
+  border-top: 1px solid #d4d1c9;
+  padding-top: 0.65rem;
+  text-align: left;
+}
+
+.station-pair-roles summary {
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.station-pair-roles ul {
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.station-pair-roles li {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: #1a1a1a;
+}
+
+.station-pair-legal {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #1a1a1a;
+  text-align: center;
+}
+
+.station-pair-legal a {
+  color: #1a1a1a;
+}
+
+@media (orientation: landscape) and (min-width: 800px) {
+  .station-pair-card {
+    width: min(60rem, 100%);
+    display: grid;
+    grid-template-columns: minmax(16rem, 1fr) minmax(18rem, 1fr);
+    grid-template-areas:
+      "intro form"
+      "secondary secondary";
+    column-gap: 2rem;
+    row-gap: 1rem;
+    align-items: center;
+    padding: 1.5rem 1.75rem 1.15rem;
+  }
+
+  .station-pair-intro {
+    grid-area: intro;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .station-pair-form {
+    grid-area: form;
+  }
+
+  .station-pair-secondary {
+    grid-area: secondary;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+  }
+
+  .station-pair-scan {
+    width: auto;
+    min-width: 14rem;
+    flex: 0 0 auto;
+  }
+
+  .station-pair-roles {
+    flex: 1 1 16rem;
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .station-pair-legal {
+    flex: 1 1 100%;
+  }
+
+  .station-pair-copy,
+  .station-pair-notice {
+    max-width: none;
+  }
+}
+
 .station-pin-body {
   display: flex;
   flex-direction: column;

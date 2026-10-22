@@ -121,89 +121,92 @@ export function StationPairScreen({
   }, [initialCode]);
 
   return (
-    <div
-      className="flex min-h-[100dvh] flex-col items-center justify-center bg-bg px-4 pt-[var(--grok-banner-h,0px)] text-center"
-      data-demo="station-pair"
-    >
-      <SummexMark className="mb-4 h-12 w-12" />
-      <p className="text-[11px] font-semibold tracking-[0.28em] text-muted-foreground">
-        SUMMEX STATION
-      </p>
-      <h1 className="mt-3 text-xl font-semibold tracking-tight">Pair this tablet</h1>
-      {notice ? (
-        <p className="mt-3 max-w-sm text-sm text-muted-foreground" data-setup-notice>
-          {notice}
-        </p>
-      ) : null}
-      <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-        Type the one-time pair code from Devices (for example K7VY5R). No scan required.
-        After pair, this screen is PIN only.
-      </p>
+    <div className="station-pair-screen" data-demo="station-pair">
+      <div className="station-pair-card">
+        <div className="station-pair-intro">
+          <SummexMark className="station-pair-mark" />
+          <p className="station-pair-kicker">SUMMEX STATION</p>
+          <h1 className="station-pair-title">Pair this tablet</h1>
+          {notice ? (
+            <p className="station-pair-notice" data-setup-notice>
+              {notice}
+            </p>
+          ) : null}
+          <p className="station-pair-copy">
+            Type the one-time pair code from Devices (for example K7VY5R). No scan required.
+            After pair, this screen is PIN only.
+          </p>
+        </div>
 
-      <form
-        className="mt-6 w-full max-w-sm space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit(code);
-        }}
-      >
-        <Input
-          autoFocus
-          autoCapitalize="characters"
-          autoCorrect="off"
-          spellCheck={false}
-          inputMode="text"
-          enterKeyHint="go"
-          placeholder="K7VY5R"
-          aria-label="Venue pair code"
-          value={code}
-          onChange={(e) => setCode(normalizeClaimCode(e.target.value))}
-          className="h-14 text-center font-mono text-2xl tracking-[0.35em]"
-        />
-        {error && !scanOpen && <p className="text-sm text-danger">{error}</p>}
-        <Button type="submit" className="h-12 w-full" disabled={busy || code.length < 4}>
-          {busy ? "Pairing…" : "Pair"}
-        </Button>
-      </form>
-
-      {!scanOpen ? (
-        <Button
-          type="button"
-          variant="ghost"
-          className="mt-3 text-xs text-muted-foreground"
-          onClick={() => {
-            setError(null);
-            setScanOpen(true);
+        <form
+          className="station-pair-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit(code);
           }}
         >
-          Scan QR (optional)
-        </Button>
-      ) : (
-        <QrScanPanel
-          busy={busy}
-          error={error}
-          onRaw={(raw) => void submit(raw)}
-          onBack={() => {
-            setError(null);
-            setScanOpen(false);
-          }}
-        />
-      )}
+          <Input
+            autoFocus
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            inputMode="text"
+            enterKeyHint="go"
+            placeholder="K7VY5R"
+            aria-label="Venue pair code"
+            value={code}
+            onChange={(e) => setCode(normalizeClaimCode(e.target.value))}
+            className="station-pair-code text-center font-mono"
+            data-pair-code
+          />
+          {error && !scanOpen && <p className="station-pair-error">{error}</p>}
+          <Button type="submit" className="station-pair-submit w-full" disabled={busy || code.length < 4}>
+            {busy ? "Pairing…" : "Pair"}
+          </Button>
+        </form>
 
-      <p className="mt-8 text-xs text-muted-foreground">
-        {COPYRIGHT_LINE}{" "}
-        <a href={PRIVACY_URL} className="underline" target="_blank" rel="noreferrer">
-          Privacy
-        </a>
-      </p>
-      <ul className="mt-4 max-w-sm space-y-1 text-left text-xs text-muted-foreground">
-        {(Object.keys(DEVICE_ROLE_LABEL) as Array<keyof typeof DEVICE_ROLE_LABEL>).map((id) => (
-          <li key={id}>
-            <span className="font-medium text-foreground">{DEVICE_ROLE_LABEL[id]}.</span>{" "}
-            {DEVICE_ROLE_BLURB[id]}
-          </li>
-        ))}
-      </ul>
+        <div className="station-pair-secondary">
+          {!scanOpen ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="station-pair-scan w-full"
+              onClick={() => {
+                setError(null);
+                setScanOpen(true);
+              }}
+            >
+              Scan QR (optional)
+            </Button>
+          ) : (
+            <QrScanPanel
+              busy={busy}
+              error={error}
+              onRaw={(raw) => void submit(raw)}
+              onBack={() => {
+                setError(null);
+                setScanOpen(false);
+              }}
+            />
+          )}
+          <details className="station-pair-roles">
+            <summary>Order, Order Display, Host, Kiosk</summary>
+            <ul>
+              {(Object.keys(DEVICE_ROLE_LABEL) as Array<keyof typeof DEVICE_ROLE_LABEL>).map((id) => (
+                <li key={id}>
+                  <span className="font-semibold">{DEVICE_ROLE_LABEL[id]}.</span> {DEVICE_ROLE_BLURB[id]}
+                </li>
+              ))}
+            </ul>
+          </details>
+          <p className="station-pair-legal">
+            {COPYRIGHT_LINE}{" "}
+            <a href={PRIVACY_URL} className="underline" target="_blank" rel="noreferrer">
+              Privacy
+            </a>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -275,7 +278,7 @@ function QrScanPanel({
   }, []);
 
   return (
-    <div className="mt-6 w-full max-w-sm space-y-3">
+    <div className="w-full space-y-3">
       <video
         ref={videoRef}
         className="aspect-square w-full rounded-2xl border border-border bg-black object-cover"

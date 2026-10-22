@@ -56,6 +56,9 @@ test("pair screen is a code field plus submit — scan is optional", () => {
   assert.match(pairUi, /No scan required/);
   assert.match(pairUi, /STATION_PAIR_INVALID/);
   assert.match(pairUi, /Scan QR \(optional\)/);
+  assert.match(pairUi, /station-pair-code/);
+  assert.match(pairUi, /station-pair-roles/);
+  assert.match(pairUi, /Pair this tablet/);
   assert.doesNotMatch(pairUi, /\/login/);
   const api = readFileSync("src/lib/access/api.ts", "utf8");
   assert.match(api, /STATION_PAIR_INVALID/);
