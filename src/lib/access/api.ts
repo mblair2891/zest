@@ -38,6 +38,7 @@ import { parseFloorPlan } from "@/lib/saas/location-catalog";
 import { commitPlaceText } from "@/lib/pos/jurisdiction";
 import { publishOwnerBlock } from "@/lib/pos/room-owner";
 import { seedDefaultPrinterAssignments } from "@/lib/print/printer-assignment";
+import { jsonSafe } from "@/lib/pos/json-safe";
 
 function mintClaim(): { claimCode: string; claimExpiresAt: number } {
   return { claimCode: makeClaimCode(), claimExpiresAt: nextClaimExpiry() };
@@ -881,9 +882,12 @@ export const pairStationFn = createServerFn({ method: "POST" })
       .slice(0, 12),
     browserDeviceId: d.browserDeviceId ? String(d.browserDeviceId).trim().slice(0, 80) : "",
   }))
-  .handler(async ({ data }) => {
-    if (data.claimCode.length < 4) throw new Error("Enter the code from Devices");
-    const { getSql } = await import("@/lib/db");
+  .handler(async ({ data }) => pairStationByClaim(data));
+
+/** Claim-code pair. Plain data, safe to JSON.stringify. No login. */
+export async function pairStationByClaim(data: { claimCode: string; browserDeviceId: string }) {
+  if (data.claimCode.length < 4) throw new Error("Enter the code from Devices");
+  const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     const { deviceRoleFromFunction } = await import("@/lib/pos/device-roles");
     const { parseLocationDevices } = await import("@/lib/pos/location-devices");
@@ -1075,7 +1079,7 @@ export const pairStationFn = createServerFn({ method: "POST" })
       }
     }
 
-    return {
+    return jsonSafe({
       pair: {
         locationId: hit.location_id,
         orgId: hit.org_id,
@@ -1110,8 +1114,8 @@ export const pairStationFn = createServerFn({ method: "POST" })
       openDemo: false as const,
       trainingRoster: pack2.seededRoster || pack2.staff.some((s) => s.id.startsWith("emp_tr_")),
       publish,
-    };
-  });
+    });
+}
 
 function publishSetupSlice(setup: LocationSetup) {
   return {
@@ -1170,8 +1174,11 @@ export const getPairedStationFn = createServerFn({ method: "POST" })
     locationId: loc(d.locationId),
     deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
   }))
-  .handler(async ({ data }) => {
-    if (!data.deviceId) throw new Error("This tablet is not paired.");
+  .handler(async ({ data }) => loadPairedStation(data));
+
+/** Already-paired tablet. Same bootstrap shape, no claim code. */
+export async function loadPairedStation(data: { locationId: string; deviceId: string }) {
+  if (!data.deviceId) throw new Error("This tablet is not paired.");
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     const rows = await sql<{
@@ -1236,7 +1243,7 @@ export const getPairedStationFn = createServerFn({ method: "POST" })
       publishedByName: "House",
       setup: publishSetupSlice(pack.setup),
     };
-    return {
+    return jsonSafe({
       pair: {
         locationId: data.locationId,
         orgId: locRow.org_id,
@@ -1271,8 +1278,8 @@ export const getPairedStationFn = createServerFn({ method: "POST" })
       openDemo: false as const,
       trainingRoster: pack.seededRoster || pack.staff.some((s) => s.id.startsWith("emp_tr_")),
       publish,
-    };
-  });
+    });
+}
 
 export const getStationStateFn = createServerFn({ method: "POST" })
   .validator((d: { locationId: string; deviceId: string }) => ({

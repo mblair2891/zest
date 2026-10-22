@@ -48,6 +48,9 @@ test("a parse error becomes the setup sentence", () => {
   assert.equal(staffSetupMessage("Unexpected end of JSON input"), SETUP_READ_MESSAGE);
   assert.equal(staffSetupMessage("Enter the code from Devices"), null);
   assert.equal(staffSetupMessage("Forbidden"), null);
+  assert.equal(staffSetupMessage("Seroval Error (step: 3)"), SETUP_READ_MESSAGE);
+  assert.equal(staffSetupMessage("Seroval Error (specific: 1)"), SETUP_READ_MESSAGE);
+  assert.doesNotMatch(staffSetupMessage("Seroval Error (step: 3)") || "", /Seroval/);
 });
 
 test("server function JSON still parses and a bad body does not", async () => {

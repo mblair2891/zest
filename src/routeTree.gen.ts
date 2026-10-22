@@ -57,6 +57,9 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
 import { Route as ApiPaymentsWebhookRouteImport } from './routes/api/payments/webhook'
 import { Route as ApiPrintJobsRouteImport } from './routes/api/print/jobs'
+import { Route as ApiQuickbooksCallbackRouteImport } from './routes/api/quickbooks/callback'
+import { Route as ApiQuickbooksNightlyRouteImport } from './routes/api/quickbooks/nightly'
+import { Route as ApiStationPairRouteImport } from './routes/api/station/pair'
 import { Route as ApiWebhooksDeliveryRouteImport } from './routes/api/webhooks/delivery'
 import { Route as ApiWebhooksSquareRouteImport } from './routes/api/webhooks/square'
 import { Route as AppVenueTypeRouteImport } from './routes/app.venue.$type'
@@ -67,8 +70,6 @@ import { Route as PlatformTenantsOrgIdRouteImport } from './routes/platform.tena
 import { Route as WaitlistOptOutTokenRouteImport } from './routes/waitlist.opt-out.$token'
 import { Route as ApiPaymentsFinixWebhookRouteImport } from './routes/api/payments/finix/webhook'
 import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe/webhook'
-import { Route as ApiQuickbooksCallbackRouteImport } from './routes/api/quickbooks/callback'
-import { Route as ApiQuickbooksNightlyRouteImport } from './routes/api/quickbooks/nightly'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -310,6 +311,21 @@ const ApiPrintJobsRoute = ApiPrintJobsRouteImport.update({
   path: '/api/print/jobs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiQuickbooksCallbackRoute = ApiQuickbooksCallbackRouteImport.update({
+  id: '/api/quickbooks/callback',
+  path: '/api/quickbooks/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiQuickbooksNightlyRoute = ApiQuickbooksNightlyRouteImport.update({
+  id: '/api/quickbooks/nightly',
+  path: '/api/quickbooks/nightly',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStationPairRoute = ApiStationPairRouteImport.update({
+  id: '/api/station/pair',
+  path: '/api/station/pair',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksDeliveryRoute = ApiWebhooksDeliveryRouteImport.update({
   id: '/api/webhooks/delivery',
   path: '/api/webhooks/delivery',
@@ -361,16 +377,6 @@ const ApiPaymentsStripeWebhookRoute =
     path: '/api/payments/stripe/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiQuickbooksCallbackRoute = ApiQuickbooksCallbackRouteImport.update({
-  id: '/api/quickbooks/callback',
-  path: '/api/quickbooks/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiQuickbooksNightlyRoute = ApiQuickbooksNightlyRouteImport.update({
-  id: '/api/quickbooks/nightly',
-  path: '/api/quickbooks/nightly',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -421,6 +427,9 @@ export interface FileRoutesByFullPath {
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
   '/api/print/jobs': typeof ApiPrintJobsRoute
+  '/api/quickbooks/callback': typeof ApiQuickbooksCallbackRoute
+  '/api/quickbooks/nightly': typeof ApiQuickbooksNightlyRoute
+  '/api/station/pair': typeof ApiStationPairRoute
   '/api/webhooks/delivery': typeof ApiWebhooksDeliveryRoute
   '/api/webhooks/square': typeof ApiWebhooksSquareRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
@@ -431,8 +440,6 @@ export interface FileRoutesByFullPath {
   '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
   '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
-  '/api/quickbooks/callback': typeof ApiQuickbooksCallbackRoute
-  '/api/quickbooks/nightly': typeof ApiQuickbooksNightlyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -481,6 +488,9 @@ export interface FileRoutesByTo {
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
   '/api/print/jobs': typeof ApiPrintJobsRoute
+  '/api/quickbooks/callback': typeof ApiQuickbooksCallbackRoute
+  '/api/quickbooks/nightly': typeof ApiQuickbooksNightlyRoute
+  '/api/station/pair': typeof ApiStationPairRoute
   '/api/webhooks/delivery': typeof ApiWebhooksDeliveryRoute
   '/api/webhooks/square': typeof ApiWebhooksSquareRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
@@ -491,8 +501,6 @@ export interface FileRoutesByTo {
   '/platform/tenants': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
   '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
-  '/api/quickbooks/callback': typeof ApiQuickbooksCallbackRoute
-  '/api/quickbooks/nightly': typeof ApiQuickbooksNightlyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -544,6 +552,9 @@ export interface FileRoutesById {
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
   '/api/print/jobs': typeof ApiPrintJobsRoute
+  '/api/quickbooks/callback': typeof ApiQuickbooksCallbackRoute
+  '/api/quickbooks/nightly': typeof ApiQuickbooksNightlyRoute
+  '/api/station/pair': typeof ApiStationPairRoute
   '/api/webhooks/delivery': typeof ApiWebhooksDeliveryRoute
   '/api/webhooks/square': typeof ApiWebhooksSquareRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
@@ -554,8 +565,6 @@ export interface FileRoutesById {
   '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
   '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
-  '/api/quickbooks/callback': typeof ApiQuickbooksCallbackRoute
-  '/api/quickbooks/nightly': typeof ApiQuickbooksNightlyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -608,6 +617,9 @@ export interface FileRouteTypes {
     | '/api/billing/webhook'
     | '/api/payments/webhook'
     | '/api/print/jobs'
+    | '/api/quickbooks/callback'
+    | '/api/quickbooks/nightly'
+    | '/api/station/pair'
     | '/api/webhooks/delivery'
     | '/api/webhooks/square'
     | '/app/venue/$type'
@@ -618,8 +630,6 @@ export interface FileRouteTypes {
     | '/platform/tenants/'
     | '/api/payments/finix/webhook'
     | '/api/payments/stripe/webhook'
-    | '/api/quickbooks/callback'
-    | '/api/quickbooks/nightly'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -668,6 +678,9 @@ export interface FileRouteTypes {
     | '/api/billing/webhook'
     | '/api/payments/webhook'
     | '/api/print/jobs'
+    | '/api/quickbooks/callback'
+    | '/api/quickbooks/nightly'
+    | '/api/station/pair'
     | '/api/webhooks/delivery'
     | '/api/webhooks/square'
     | '/app/venue/$type'
@@ -678,8 +691,6 @@ export interface FileRouteTypes {
     | '/platform/tenants'
     | '/api/payments/finix/webhook'
     | '/api/payments/stripe/webhook'
-    | '/api/quickbooks/callback'
-    | '/api/quickbooks/nightly'
   id:
     | '__root__'
     | '/'
@@ -730,6 +741,9 @@ export interface FileRouteTypes {
     | '/api/billing/webhook'
     | '/api/payments/webhook'
     | '/api/print/jobs'
+    | '/api/quickbooks/callback'
+    | '/api/quickbooks/nightly'
+    | '/api/station/pair'
     | '/api/webhooks/delivery'
     | '/api/webhooks/square'
     | '/app/venue/$type'
@@ -740,8 +754,6 @@ export interface FileRouteTypes {
     | '/platform/tenants/'
     | '/api/payments/finix/webhook'
     | '/api/payments/stripe/webhook'
-    | '/api/quickbooks/callback'
-    | '/api/quickbooks/nightly'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -788,13 +800,14 @@ export interface RootRouteChildren {
   ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
   ApiPaymentsWebhookRoute: typeof ApiPaymentsWebhookRoute
   ApiPrintJobsRoute: typeof ApiPrintJobsRoute
+  ApiQuickbooksCallbackRoute: typeof ApiQuickbooksCallbackRoute
+  ApiQuickbooksNightlyRoute: typeof ApiQuickbooksNightlyRoute
+  ApiStationPairRoute: typeof ApiStationPairRoute
   ApiWebhooksDeliveryRoute: typeof ApiWebhooksDeliveryRoute
   ApiWebhooksSquareRoute: typeof ApiWebhooksSquareRoute
   WaitlistOptOutTokenRoute: typeof WaitlistOptOutTokenRoute
   ApiPaymentsFinixWebhookRoute: typeof ApiPaymentsFinixWebhookRoute
   ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
-  ApiQuickbooksCallbackRoute: typeof ApiQuickbooksCallbackRoute
-  ApiQuickbooksNightlyRoute: typeof ApiQuickbooksNightlyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1135,6 +1148,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPrintJobsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/quickbooks/callback': {
+      id: '/api/quickbooks/callback'
+      path: '/api/quickbooks/callback'
+      fullPath: '/api/quickbooks/callback'
+      preLoaderRoute: typeof ApiQuickbooksCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/quickbooks/nightly': {
+      id: '/api/quickbooks/nightly'
+      path: '/api/quickbooks/nightly'
+      fullPath: '/api/quickbooks/nightly'
+      preLoaderRoute: typeof ApiQuickbooksNightlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/station/pair': {
+      id: '/api/station/pair'
+      path: '/api/station/pair'
+      fullPath: '/api/station/pair'
+      preLoaderRoute: typeof ApiStationPairRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/delivery': {
       id: '/api/webhooks/delivery'
       path: '/api/webhooks/delivery'
@@ -1203,20 +1237,6 @@ declare module '@tanstack/react-router' {
       path: '/api/payments/stripe/webhook'
       fullPath: '/api/payments/stripe/webhook'
       preLoaderRoute: typeof ApiPaymentsStripeWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/quickbooks/callback': {
-      id: '/api/quickbooks/callback'
-      path: '/api/quickbooks/callback'
-      fullPath: '/api/quickbooks/callback'
-      preLoaderRoute: typeof ApiQuickbooksCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/quickbooks/nightly': {
-      id: '/api/quickbooks/nightly'
-      path: '/api/quickbooks/nightly'
-      fullPath: '/api/quickbooks/nightly'
-      preLoaderRoute: typeof ApiQuickbooksNightlyRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -1349,13 +1369,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingWebhookRoute: ApiBillingWebhookRoute,
   ApiPaymentsWebhookRoute: ApiPaymentsWebhookRoute,
   ApiPrintJobsRoute: ApiPrintJobsRoute,
+  ApiQuickbooksCallbackRoute: ApiQuickbooksCallbackRoute,
+  ApiQuickbooksNightlyRoute: ApiQuickbooksNightlyRoute,
+  ApiStationPairRoute: ApiStationPairRoute,
   ApiWebhooksDeliveryRoute: ApiWebhooksDeliveryRoute,
   ApiWebhooksSquareRoute: ApiWebhooksSquareRoute,
   WaitlistOptOutTokenRoute: WaitlistOptOutTokenRoute,
   ApiPaymentsFinixWebhookRoute: ApiPaymentsFinixWebhookRoute,
   ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
-  ApiQuickbooksCallbackRoute: ApiQuickbooksCallbackRoute,
-  ApiQuickbooksNightlyRoute: ApiQuickbooksNightlyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

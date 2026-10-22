@@ -52,8 +52,9 @@ import {
   readOrCreateBrowserDeviceId,
   writePairedDeviceId,
 } from "@/lib/pos/location-devices";
-import { heartbeatLocationDeviceFn, getPairedStationFn, pairStationFn, publishLocationFn } from "@/lib/access/api";
+import { heartbeatLocationDeviceFn, getPairedStationFn, publishLocationFn } from "@/lib/access/api";
 import { readStationPair } from "@/lib/pos/station-pair";
+import { postStationPair } from "@/lib/pos/station-pair-exchange";
 import { kickStationToPair } from "@/lib/pos/station-kick";
 import { applyStationPublish, parseStationPublish } from "@/lib/pos/station-publish";
 import { StationPublishWatcher } from "@/components/pos/StationPublishWatcher";
@@ -220,12 +221,10 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           }) as unknown as ReturnType<typeof getPosBootstrapFn>;
         }
         if (pair?.claimCode) {
-          return pairStationFn({
-            data: {
-              claimCode: pair.claimCode,
-              browserDeviceId: readOrCreateBrowserDeviceId(loc || "station"),
-            },
-          }) as unknown as ReturnType<typeof getPosBootstrapFn>;
+          return postStationPair(
+            pair.claimCode,
+            readOrCreateBrowserDeviceId(loc || "station"),
+          ) as unknown as ReturnType<typeof getPosBootstrapFn>;
         }
         if (user) return getPosBootstrapFn({ data: { locationId: loc } });
         return getPosBootstrapFn({ data: { locationId: loc } });

@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SummexMark } from "@/components/brand/SummexMark";
 import { COPYRIGHT_LINE, PRIVACY_URL } from "@/lib/platform/brand";
-import { pairStationFn } from "@/lib/access/api";
 import { staffSetupMessage } from "@/lib/pos/setup-response";
+import { postStationPair } from "@/lib/pos/station-pair-exchange";
 import { readOrCreateBrowserDeviceId } from "@/lib/pos/location-devices";
 import {
   STATION_PAIR_INVALID,
@@ -68,10 +68,12 @@ export function StationPairScreen({
     setBusy(true);
     setError(null);
     try {
-      const res = await pairStationFn({
-        data: { claimCode: claim, browserDeviceId: readBrowserId() },
-      });
-      writeStationPair(res.pair);
+      const res = await postStationPair(claim, readBrowserId());
+      const row: StationPairRecord = {
+        ...res.pair,
+        venueType: res.pair.venueType as StationPairRecord["venueType"],
+      };
+      writeStationPair(row);
       saveTenantPosContext({
         orgId: res.pair.orgId,
         locationId: res.pair.locationId,
@@ -98,7 +100,7 @@ export function StationPairScreen({
         /* snapshot is best-effort; PosApp hydrates next */
       }
       requestKioskLock();
-      onPaired(res.pair);
+      onPaired(row);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
       const setup = staffSetupMessage(msg);
@@ -161,7 +163,7 @@ export function StationPairScreen({
           />
           {error && !scanOpen && <p className="station-pair-error">{error}</p>}
           <Button type="submit" className="station-pair-submit w-full" disabled={busy || code.length < 4}>
-            {busy ? "Pairing…" : "Pair"}
+            {busy ? "Pairing…" : error ? "Try again" : "Pair"}
           </Button>
         </form>
 

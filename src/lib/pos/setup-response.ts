@@ -14,14 +14,23 @@ export function setupLogSample(body: string): string {
     .slice(0, 240);
 }
 
+export type SetupLogHeaders = {
+  serialized?: string | null;
+  length?: string | null;
+};
+
 export function logSetupPayload(
   where: string,
   status: number,
   body: string,
   contentType = "",
+  headers?: SetupLogHeaders,
 ): void {
   const type = contentType.trim() || "unknown";
-  console.error(`[setup] ${where} status=${status} type=${type} body=${setupLogSample(body)}`);
+  const suffix = headers
+    ? ` serialized=${(headers.serialized ?? "").trim()} length=${(headers.length ?? "").trim()}`
+    : "";
+  console.error(`[setup] ${where} status=${status} type=${type} body=${setupLogSample(body)}${suffix}`);
 }
 
 /** Starts and ends like one JSON value, and is not two values stuck together. */
@@ -106,7 +115,7 @@ export function staffSetupMessage(message: string): string | null {
   if (!text) return null;
   if (text === SETUP_READ_MESSAGE) return SETUP_READ_MESSAGE;
   if (
-    /unexpected token|unexpected end of json|unexpected non-whitespace|in json at position|failed to fetch dynamically imported module|failed to load module script|disallowed mime type|is not valid json/i.test(
+    /unexpected token|unexpected end of json|unexpected non-whitespace|in json at position|failed to fetch dynamically imported module|failed to load module script|disallowed mime type|is not valid json|seroval/i.test(
       text,
     )
   ) {
