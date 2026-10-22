@@ -668,7 +668,11 @@ export interface PosStore {
   }) => ActionResult;
   tenantLocationId?: string | null;
   loginAsOwner: (name: string) => ActionResult;
-  loginAsBackOffice: (name: string, role: "owner" | "manager" | "accountant") => ActionResult;
+  loginAsBackOffice: (
+    name: string,
+    role: "owner" | "manager" | "accountant",
+    operatorId?: string | null,
+  ) => ActionResult;
   loginAsEntityAdmin: (
     name: string,
     operatorId: string,

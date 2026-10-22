@@ -26,16 +26,22 @@ import {
   updateTenantUserFn,
 } from "@/lib/saas/tenant-users-api";
 import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
+import { noteChecklistSave } from "@/lib/saas/checklist-link";
 import {
   TENANT_FLOOR_ROLES,
-  TENANT_LOGIN_ROLES,
   TENANT_USERS_EMPTY,
+  assignableAdminScopes,
+  canAssignLocationAdmin,
   floorRoleLabel,
   formatFloorPinForAdmin,
   loginRoleLabel,
-  membershipRoleForPasswordSeat,
+  parsePasswordSeat,
   parseTenantAdminScope,
+  resolvePasswordAssignment,
+  scopeFromMembership,
+  seatFromMembership,
   tenantConsoleLoginUrl,
+  type PasswordSeat,
   type TenantAdminScope,
   type TenantUserRow,
 } from "@/lib/saas/tenant-users";
@@ -48,10 +54,22 @@ export function TenantUsersPanel({
   orgId,
   locationId,
   operators,
+  actor,
+  entityContact = false,
+  contactEntityId,
 }: {
   orgId: string;
   locationId: string;
   operators: Array<{ id: string; dba: string }>;
+  /** Who is filling this in. The contact does not choose a higher scope. */
+  actor?: {
+    isPlatformAdmin?: boolean;
+    membershipRole?: string | null;
+    operatorId?: string | null;
+  };
+  /** Opened from the entity contact checklist task. */
+  entityContact?: boolean;
+  contactEntityId?: string | null;
 }) {
   const loginUrl = tenantConsoleLoginUrl();
   const demoScope = useDemoOperatingEntityId();
@@ -64,9 +82,18 @@ export function TenantUsersPanel({
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPass, setAdminPass] = useState("");
   const [forceChange, setForceChange] = useState(true);
-  const [adminScope, setAdminScope] = useState<TenantAdminScope>("location");
-  const [adminEntity, setAdminEntity] = useState("");
-  const [adminSeat, setAdminSeat] = useState<"owner" | "manager" | "accountant">("owner");
+  const [adminScope, setAdminScope] = useState<TenantAdminScope>("entity");
+  const [adminEntity, setAdminEntity] = useState(contactEntityId || "");
+  const [adminSeat, setAdminSeat] = useState<PasswordSeat>("owner");
+  const allowLocationAdmin = canAssignLocationAdmin({
+    isPlatformAdmin: actor?.isPlatformAdmin,
+    membershipRole: actor?.membershipRole,
+    operatorId: actor?.operatorId,
+  });
+  const scopeOptions = useMemo(
+    () => assignableAdminScopes({ canAssignLocationAdmin: allowLocationAdmin }),
+    [allowLocationAdmin],
+  );
 
   const [staffDraft, setStaffDraft] = useState<StaffPayDraft>(EMPTY_STAFF_PAY);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
@@ -90,11 +117,31 @@ export function TenantUsersPanel({
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!scopeOptions.includes(adminScope)) setAdminScope(scopeOptions[0] || "entity");
+  }, [scopeOptions, adminScope]);
+
+  useEffect(() => {
+    if (contactEntityId) setAdminEntity((cur) => cur || contactEntityId);
+  }, [contactEntityId]);
+
   const addAdmin = (e: FormEvent) => {
     e.preventDefault();
-    setBusy(true);
     setError(null);
     setNotice(null);
+    let assignment: ReturnType<typeof resolvePasswordAssignment>;
+    try {
+      assignment = resolvePasswordAssignment({
+        scope: adminScope,
+        seat: adminSeat,
+        operatorId: adminScope === "entity" ? adminEntity : null,
+        allowLocationAdmin,
+      });
+    } catch (err) {
+      setError(errMessage(err));
+      return;
+    }
+    setBusy(true);
     void addLocationAdminFn({
       data: {
         orgId,
@@ -103,15 +150,14 @@ export function TenantUsersPanel({
         email: adminEmail,
         tempPassword: adminPass,
         forceChange,
-        operatorId: adminScope === "entity" && adminSeat !== "accountant" ? adminEntity || null : adminScope === "entity" ? adminEntity || null : null,
-        role: membershipRoleForPasswordSeat({ scope: adminScope, seat: adminSeat }),
+        operatorId: assignment.operatorId,
+        role: assignment.role,
+        scope: assignment.scope,
+        seat: adminSeat,
       },
     })
       .then((r) => {
-        const kind = loginRoleLabel(
-          membershipRoleForPasswordSeat({ scope: adminScope, seat: adminSeat }),
-          adminScope === "entity" ? adminEntity : null,
-        );
+        const kind = loginRoleLabel(assignment.role, assignment.operatorId);
         const mailed = r.emailStatus === "sent" ? "Email sent." : "Email not sent.";
         setNotice(
           `${kind} added. They sign in at ${loginUrl} with ${adminEmail} — never PIN, never platform CRM. Temporary password: ${r.tempPassword}${
@@ -122,10 +168,51 @@ export function TenantUsersPanel({
         setAdminEmail("");
         setAdminPass("");
         setForceChange(true);
-        setAdminScope("location");
-        setAdminEntity("");
+        setAdminScope("entity");
+        setAdminSeat("owner");
+        setAdminEntity(contactEntityId || "");
+        if (
+          entityContact &&
+          assignment.scope === "entity" &&
+          (!contactEntityId || assignment.operatorId === contactEntityId)
+        ) {
+          noteChecklistSave({ tab: "people", focus: "entity-contact" });
+        }
         load();
       })
+      .catch((err) => setError(errMessage(err)))
+      .finally(() => setBusy(false));
+  };
+
+  const saveLoginAssignment = (
+    u: TenantUserRow,
+    next: { scope: TenantAdminScope; seat: PasswordSeat; homeEntityId: string | null },
+  ) => {
+    setError(null);
+    try {
+      resolvePasswordAssignment({
+        scope: next.scope,
+        seat: next.seat,
+        operatorId: next.homeEntityId,
+        allowLocationAdmin,
+      });
+    } catch (err) {
+      setError(errMessage(err));
+      return;
+    }
+    setBusy(true);
+    void updateTenantUserFn({
+      data: {
+        orgId,
+        locationId,
+        kind: "login",
+        id: u.id,
+        scope: next.scope,
+        seat: next.seat,
+        homeEntityId: next.scope === "entity" ? next.homeEntityId : null,
+      },
+    })
+      .then(() => load())
       .catch((err) => setError(errMessage(err)))
       .finally(() => setBusy(false));
   };
@@ -239,7 +326,8 @@ export function TenantUsersPanel({
           Users
         </p>
         <p className="mt-1 text-xs text-muted-foreground" data-checklist-focus="entity-contact" tabIndex={-1}>
-          Location owner, manager, and location admin. Floor PINs are the 4-digit
+          The venue sets the scope for an entity contact. Entity admin, entity manager,
+          and accountant stay on that selling entity. Floor PINs are the 4-digit
           station credential — listed here, not a password. Kitchen, server, and
           bartender PINs cannot open this tab. Password logins stay separate; account
           passwords are never shown. Isolated demo: Platform Admin may view PINs for
@@ -267,20 +355,33 @@ export function TenantUsersPanel({
           Add password login
         </p>
         <p className="text-xs text-muted-foreground">
-          Email and temporary password. After login they land on that role’s dashboard
-          — never a PIN pad.
+          The venue sets the scope. Email and temporary password. After login they land
+          on that role’s dashboard — never a PIN pad.
         </p>
-        <Field label="Scope">
+        <Field
+          label="Scope"
+          hint={
+            entityContact
+              ? "Entity contact. Scope starts on this selling entity."
+              : "Entity scope stays on one selling entity."
+          }
+        >
           <SelectField
             value={adminScope}
             onChange={(v) => {
               const next = parseTenantAdminScope(v);
               setAdminScope(next);
               if (next === "location") setAdminEntity("");
+              else if (!adminEntity && contactEntityId) setAdminEntity(contactEntityId);
             }}
           >
-            <option value="location">Location admin (whole venue)</option>
-            <option value="entity">Entity admin (one selling entity)</option>
+            {scopeOptions.map((scope) => (
+              <option key={scope} value={scope}>
+                {scope === "entity"
+                  ? "Entity admin (one selling entity)"
+                  : "Location admin (whole venue)"}
+              </option>
+            ))}
           </SelectField>
         </Field>
         <Field label="Seat">
@@ -292,10 +393,10 @@ export function TenantUsersPanel({
           >
             <option value="owner">{adminScope === "entity" ? "Entity owner" : "Owner"}</option>
             <option value="manager">{adminScope === "entity" ? "Entity manager" : "Manager"}</option>
-            <option value="accountant">Accountant</option>
+            <option value="accountant">{adminScope === "entity" ? "Entity accountant" : "Accountant"}</option>
           </SelectField>
         </Field>
-        {adminScope === "entity" && adminSeat !== "accountant" && (
+        {adminScope === "entity" && (
           <Field label="Selling entity" hint="Required. They only manage this brand.">
             <SelectField value={adminEntity} onChange={setAdminEntity}>
               <option value="">Choose entity</option>
@@ -350,7 +451,7 @@ export function TenantUsersPanel({
             busy ||
             !adminName ||
             !adminEmail ||
-            (adminScope === "entity" && adminSeat !== "accountant" && !adminEntity)
+            (adminScope === "entity" && !adminEntity)
           }
         >
           {busy ? "Saving…" : "Add password login"}
@@ -593,62 +694,103 @@ export function TenantUsersPanel({
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
-                    value={u.role}
-                    disabled={busy}
-                    onChange={(e) => {
-                      const role = e.target.value;
-                      const homeEntityId =
-                        role === "vendor"
-                          ? u.homeEntityId || operators[0]?.id || null
-                          : role === "owner"
-                            ? null
-                            : undefined;
-                      setBusy(true);
-                      void updateTenantUserFn({
-                        data: {
-                          orgId,
-                          locationId,
-                          kind: "login",
-                          id: u.id,
-                          role,
-                          homeEntityId,
-                        },
-                      })
-                        .then(() => load())
-                        .catch((err) => setError(errMessage(err)))
-                        .finally(() => setBusy(false));
-                    }}
-                  >
-                    {TENANT_LOGIN_ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {loginRoleLabel(r)}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
-                    value={u.homeEntityId || ""}
-                    disabled={busy}
-                    onChange={(e) => {
-                      const homeEntityId = e.target.value || null;
-                      setBusy(true);
-                      void updateTenantUserFn({
-                        data: { orgId, locationId, kind: "login", id: u.id, homeEntityId },
-                      })
-                        .then(() => load())
-                        .catch((err) => setError(errMessage(err)))
-                        .finally(() => setBusy(false));
-                    }}
-                  >
-                    <option value="">Whole venue</option>
-                    {operators.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.dba}
-                      </option>
-                    ))}
-                  </select>
+                  {(() => {
+                    const rowScope =
+                      u.adminScope ??
+                      scopeFromMembership({ operatorId: u.homeEntityId });
+                    const rowSeat = seatFromMembership(u.role);
+                    const locked = rowScope === "location" && !scopeOptions.includes("location");
+                    if (locked) {
+                      return (
+                        <span className="text-xs text-muted-foreground">
+                          {loginRoleLabel(u.role, u.homeEntityId)}
+                          {u.homeEntityName ? ` · ${u.homeEntityName}` : ""}
+                        </span>
+                      );
+                    }
+                    return (
+                      <>
+                        <select
+                          className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
+                          value={rowScope}
+                          disabled={busy}
+                          aria-label="Scope"
+                          onChange={(e) => {
+                            const scope = parseTenantAdminScope(e.target.value);
+                            const home =
+                              scope === "entity"
+                                ? u.homeEntityId || operators[0]?.id || ""
+                                : "";
+                            if (scope === "entity" && !home) {
+                              setError("Choose a selling entity for an entity contact.");
+                              return;
+                            }
+                            saveLoginAssignment(u, {
+                              scope,
+                              seat: rowSeat,
+                              homeEntityId: scope === "entity" ? home : null,
+                            });
+                          }}
+                        >
+                          {scopeOptions.map((scope) => (
+                            <option key={scope} value={scope}>
+                              {scope === "entity"
+                                ? "Entity admin (one selling entity)"
+                                : "Location admin (whole venue)"}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
+                          value={rowSeat}
+                          disabled={busy}
+                          aria-label="Seat"
+                          onChange={(e) => {
+                            const seat = parsePasswordSeat(e.target.value);
+                            if (rowScope === "entity" && !u.homeEntityId) {
+                              setError("Choose a selling entity for an entity contact.");
+                              return;
+                            }
+                            saveLoginAssignment(u, {
+                              scope: rowScope,
+                              seat,
+                              homeEntityId: rowScope === "entity" ? u.homeEntityId || null : null,
+                            });
+                          }}
+                        >
+                          <option value="owner">{rowScope === "entity" ? "Entity owner" : "Owner"}</option>
+                          <option value="manager">{rowScope === "entity" ? "Entity manager" : "Manager"}</option>
+                          <option value="accountant">
+                            {rowScope === "entity" ? "Entity accountant" : "Accountant"}
+                          </option>
+                        </select>
+                        {rowScope === "entity" ? (
+                          <select
+                            className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
+                            value={u.homeEntityId || ""}
+                            disabled={busy}
+                            aria-label="Selling entity"
+                            onChange={(e) => {
+                              const homeEntityId = e.target.value;
+                              if (!homeEntityId) return;
+                              saveLoginAssignment(u, {
+                                scope: "entity",
+                                seat: rowSeat,
+                                homeEntityId,
+                              });
+                            }}
+                          >
+                            <option value="">Choose entity</option>
+                            {operators.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.dba}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
+                      </>
+                    );
+                  })()}
                   <Button
                     type="button"
                     size="sm"

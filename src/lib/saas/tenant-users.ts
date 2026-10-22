@@ -70,7 +70,84 @@ export function parseTenantLoginRole(raw: string): MembershipRole {
 }
 
 export function parseTenantAdminScope(raw: string): TenantAdminScope {
-  return raw.trim().toLowerCase() === "entity" ? "entity" : "location";
+  const v = raw.trim().toLowerCase();
+  if (v === "entity") return "entity";
+  if (v === "location") return "location";
+  throw new Error("Choose a scope.");
+}
+
+export type PasswordSeat = "owner" | "manager" | "accountant";
+
+/** Platform admin, or a location owner with no selling entity. Not a location manager. */
+export function canAssignLocationAdmin(opts: {
+  isPlatformAdmin?: boolean;
+  membershipRole?: string | null;
+  operatorId?: string | null;
+}): boolean {
+  if (opts.isPlatformAdmin) return true;
+  const op = String(opts.operatorId || "").trim();
+  if (op && op !== "host") return false;
+  return String(opts.membershipRole || "").trim().toLowerCase() === "owner";
+}
+
+/** Entity scope first. Location admin only when this login may create one. */
+export function assignableAdminScopes(opts: {
+  canAssignLocationAdmin: boolean;
+}): TenantAdminScope[] {
+  return opts.canAssignLocationAdmin ? ["entity", "location"] : ["entity"];
+}
+
+/** Entity contact / Users never starts on whole-venue location admin. */
+export function defaultAdminScope(): TenantAdminScope {
+  return "entity";
+}
+
+export function seatFromMembership(role?: string | null): PasswordSeat {
+  const r = String(role || "").trim().toLowerCase();
+  if (r === "accountant") return "accountant";
+  if (r === "manager") return "manager";
+  return "owner";
+}
+
+export function parsePasswordSeat(raw: string | undefined, role?: string): PasswordSeat {
+  const v = String(raw || "").trim().toLowerCase();
+  if (v === "owner" || v === "manager" || v === "accountant") return v;
+  return seatFromMembership(role);
+}
+
+/** Access scope. A selling entity on the membership wins over a stale label. */
+export function scopeFromMembership(opts: {
+  operatorId?: string | null;
+  adminScope?: string | null;
+}): TenantAdminScope {
+  const op = String(opts.operatorId || "").trim();
+  if (op && op !== "host") return "entity";
+  return String(opts.adminScope || "").trim().toLowerCase() === "entity" ? "entity" : "location";
+}
+
+/**
+ * Venue-chosen scope + seat. Entity owner is the entity admin role with that
+ * selling entity. It is never a location owner with no entity.
+ */
+export function resolvePasswordAssignment(opts: {
+  scope: TenantAdminScope;
+  seat: PasswordSeat;
+  operatorId?: string | null;
+  allowLocationAdmin: boolean;
+}): { role: MembershipRole; operatorId: string | null; scope: TenantAdminScope } {
+  if (opts.scope === "location") {
+    if (!opts.allowLocationAdmin) {
+      throw new Error("This venue cannot assign Location admin (whole venue).");
+    }
+    const role: MembershipRole =
+      opts.seat === "accountant" ? "accountant" : opts.seat === "manager" ? "manager" : VENUE_OWNER_ROLE;
+    return { role, operatorId: null, scope: "location" };
+  }
+  const operatorId = String(opts.operatorId || "").trim();
+  if (!operatorId) throw new Error("Choose a selling entity for an entity contact.");
+  const role: MembershipRole =
+    opts.seat === "accountant" ? "accountant" : opts.seat === "manager" ? "manager" : ENTITY_ADMIN_ROLE;
+  return { role, operatorId, scope: "entity" };
 }
 
 export function tenantLoginRoleForScope(scope: TenantAdminScope): MembershipRole {
@@ -87,6 +164,7 @@ export function parseTenantFloorRole(raw: string): EmployeeRole {
 }
 
 export function loginRoleLabel(role: string, operatorId?: string | null): string {
+  if (role === "accountant" && operatorId) return "Entity accountant";
   if (role === "accountant") return "Accountant";
   if (role === "vendor" || role === "entity_admin" || role === "vendor_operator") {
     return "Entity owner";
@@ -140,6 +218,8 @@ export type TenantUserRow = {
   mustChangePassword?: boolean;
   homeEntityId?: string | null;
   homeEntityName?: string | null;
+  /** Venue-chosen password scope. Entity keeps a selling entity on the membership. */
+  adminScope?: TenantAdminScope;
   locationId?: string | null;
   /** Floor PIN for venue admin. Never a Better Auth password. */
   pin?: string | null;

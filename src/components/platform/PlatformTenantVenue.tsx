@@ -385,7 +385,11 @@ export function PlatformTenantVenue({
         peerVenue: access.location.operatingModel === "peer_venue",
       });
       if (dashKind === "accountant") {
-        usePosStore.getState().loginAsBackOffice(displayName, "accountant");
+        usePosStore.getState().loginAsBackOffice(
+          displayName,
+          "accountant",
+          scopedOperatorId || null,
+        );
       } else if (dashKind === "entity_manager" && (entityId || scopedOperatorId)) {
         usePosStore.getState().loginAsEntityAdmin(displayName, entityId || scopedOperatorId || "", {
           seat: "manager",
@@ -821,6 +825,19 @@ export function PlatformTenantVenue({
                 orgId={orgReadyId || orgId}
                 locationId={activeLoc}
                 operators={ops}
+                actor={{
+                  isPlatformAdmin: audience === "platform",
+                  membershipRole,
+                  operatorId: scopedOperatorId,
+                }}
+                entityContact={
+                  checklistLink?.itemId === "poc" || checklistLink?.focus === "entity-contact"
+                }
+                contactEntityId={
+                  checklistLink?.itemId === "poc" || checklistLink?.focus === "entity-contact"
+                    ? checklistLink?.entityId
+                    : undefined
+                }
               />
             )}
 

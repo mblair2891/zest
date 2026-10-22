@@ -12,10 +12,14 @@ import {
   formatFloorPinForAdmin,
   generateFloorPin,
   isPlatformAdminEmail,
+  assignableAdminScopes,
+  canAssignLocationAdmin,
+  defaultAdminScope,
   loginRoleLabel,
   parseTenantAdminScope,
   parseTenantFloorRole,
   parseTenantLoginRole,
+  resolvePasswordAssignment,
   tenantConsoleLoginUrl,
   tenantLoginRoleForScope,
 } from "../src/lib/saas/tenant-users.ts";
@@ -32,7 +36,91 @@ test("entity_admin maps to vendor membership, labeled Entity admin", () => {
   assert.equal(loginRoleLabel("owner", "op_bar"), "Entity owner");
   assert.equal(loginRoleLabel("manager", "op_bar"), "Entity manager");
   assert.equal(loginRoleLabel("accountant"), "Accountant");
+  assert.equal(loginRoleLabel("accountant", "op_bar"), "Entity accountant");
   assert.equal(loginRoleLabel("owner"), "Location admin");
+});
+
+test("venue sets entity contact scope and entity admin is not location admin", () => {
+  assert.equal(defaultAdminScope(), "entity");
+  assert.deepEqual(assignableAdminScopes({ canAssignLocationAdmin: false }), ["entity"]);
+  assert.deepEqual(assignableAdminScopes({ canAssignLocationAdmin: true }), ["entity", "location"]);
+  assert.equal(canAssignLocationAdmin({ membershipRole: "manager" }), false);
+  assert.equal(canAssignLocationAdmin({ membershipRole: "owner" }), true);
+  assert.equal(canAssignLocationAdmin({ membershipRole: "owner", operatorId: "op_bar" }), false);
+  assert.equal(canAssignLocationAdmin({ isPlatformAdmin: true, membershipRole: "manager" }), true);
+
+  const entityAdmin = resolvePasswordAssignment({
+    scope: "entity",
+    seat: "owner",
+    operatorId: "op_steam",
+    allowLocationAdmin: true,
+  });
+  assert.equal(entityAdmin.role, "vendor");
+  assert.equal(entityAdmin.operatorId, "op_steam");
+  assert.equal(entityAdmin.scope, "entity");
+  assert.notEqual(entityAdmin.role, "owner");
+
+  const entityManager = resolvePasswordAssignment({
+    scope: "entity",
+    seat: "manager",
+    operatorId: "op_steam",
+    allowLocationAdmin: false,
+  });
+  assert.equal(entityManager.role, "manager");
+  assert.equal(entityManager.operatorId, "op_steam");
+
+  const entityAccountant = resolvePasswordAssignment({
+    scope: "entity",
+    seat: "accountant",
+    operatorId: "op_steam",
+    allowLocationAdmin: false,
+  });
+  assert.equal(entityAccountant.role, "accountant");
+  assert.equal(entityAccountant.operatorId, "op_steam");
+
+  assert.throws(
+    () =>
+      resolvePasswordAssignment({
+        scope: "location",
+        seat: "owner",
+        allowLocationAdmin: false,
+      }),
+    /Location admin/,
+  );
+  assert.throws(
+    () =>
+      resolvePasswordAssignment({
+        scope: "entity",
+        seat: "owner",
+        operatorId: "",
+        allowLocationAdmin: true,
+      }),
+    /selling entity/,
+  );
+
+  const locationAdmin = resolvePasswordAssignment({
+    scope: "location",
+    seat: "owner",
+    allowLocationAdmin: true,
+  });
+  assert.equal(locationAdmin.role, "owner");
+  assert.equal(locationAdmin.operatorId, null);
+
+  const dash = readFileSync("src/lib/saas/password-dash.ts", "utf8");
+  assert.match(dash, /if \(op\) \{\s*if \(role === "manager"\) return "entity_manager";/);
+  const tabs = dash.slice(dash.indexOf("export function passwordDashTabs"));
+  const entityOwnerTabs = tabs.slice(tabs.indexOf('case "entity_owner"'), tabs.indexOf('case "entity_manager"'));
+  assert.doesNotMatch(entityOwnerTabs, /\["people", "Users"\]/);
+  assert.doesNotMatch(entityOwnerTabs, /\["devices", "Devices"\]/);
+  const entityManagerTabs = tabs.slice(
+    tabs.indexOf('case "entity_manager"'),
+    tabs.indexOf('case "host_manager"'),
+  );
+  assert.doesNotMatch(entityManagerTabs, /\["people", "Users"\]/);
+
+  const grants = readFileSync("src/lib/access/entity-grants.ts", "utf8");
+  assert.match(grants, /if \(emp\.role === "accountant" && !emp\.operatorId\) return null;/);
+  assert.match(grants, /if \(emp\.operatorId && emp\.operatorId !== HOST_SCOPE\) return emp\.operatorId;/);
 });
 
 test("venue_owner maps to location admin owner, never platform_admin", () => {
@@ -100,6 +188,9 @@ test("Users tab copy is an add form, not a circle back to the platform", () => {
   assert.match(panel, /Entity manager/);
   assert.match(panel, /Accountant/);
   assert.match(panel, /Entity admin \(one selling entity\)/);
+  assert.match(panel, /The venue sets the scope/);
+  assert.match(panel, /resolvePasswordAssignment/);
+  assert.match(panel, /default state is entity|useState<TenantAdminScope>\("entity"\)/);
   assert.match(panel, /Add floor staff/);
   assert.match(panel, /Force password change on first login/);
   assert.match(panel, /never a PIN pad/);
@@ -174,4 +265,11 @@ test("guide Users topic covers PIN list, reset confirm, disable", () => {
   assert.match(roles, /Reset PIN asks before overwrite/);
   assert.match(roles, /Disable leaves the row visible/);
   assert.match(roles, /kitchen, server, bartender/i);
+  assert.match(roles, /The venue sets the scope/);
+  assert.match(roles, /does not gain the whole venue/);
+  const server = readFileSync("src/lib/saas/tenant-users.server.ts", "utf8");
+  assert.match(server, /resolvePasswordAssignment/);
+  assert.match(server, /admin_scope/);
+  const migration = readFileSync("migrations/0069_membership_admin_scope.sql", "utf8");
+  assert.match(migration, /admin_scope/);
 });

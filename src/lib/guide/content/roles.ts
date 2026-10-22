@@ -83,6 +83,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Reset PIN asks before overwrite, generates a new 4-digit code, and displays it immediately.",
         "Disable leaves the row visible. That PIN no longer authenticates.",
         "Password logins (owner email) sit on the same tab in a separate list. Account passwords are never shown.",
+        "The venue sets the scope for an entity contact. Choose Entity admin for that selling entity, then Entity owner, Entity manager, or Accountant, and the selling entity. Location admin (whole venue) is not the default. It is offered only when this login may create a location admin. An entity admin does not gain the whole venue. They sign in and see that entity only.",
         "Devices is a different tab: Add device still shows the pair QR or code. Delete a station slot lives on Devices, not Users.",
       ),
       steps(

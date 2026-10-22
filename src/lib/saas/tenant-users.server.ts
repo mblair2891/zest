@@ -16,11 +16,18 @@ import {
   ENTITY_ADMIN_ROLE,
   VENUE_OWNER_ROLE,
   assertNotPlatformAdminRole,
+  canAssignLocationAdmin,
   generateFloorPin,
   isPlatformAdminEmail,
+  parsePasswordSeat,
+  parseTenantAdminScope,
   parseTenantFloorRole,
   parseTenantLoginRole,
+  resolvePasswordAssignment,
+  scopeFromMembership,
   tenantConsoleLoginUrl,
+  type PasswordSeat,
+  type TenantAdminScope,
   type TenantUserKind,
   type TenantUserRow,
 } from "./tenant-users";
@@ -41,6 +48,20 @@ async function requireVenueUsersAccess(userId: string, orgId: string): Promise<v
   const access = await requireMembership(userId, orgId, ["owner", "manager"]);
   if (access.operatorId) {
     throw new ForbiddenError("Entity admins cannot manage venue users");
+  }
+}
+
+/** Whole-venue location admin: platform admin, or a location owner with no entity. */
+async function actorMayAssignLocationAdmin(userId: string, orgId: string): Promise<boolean> {
+  if (await isPlatformAdmin(userId)) return true;
+  try {
+    const access = await requireMembership(userId, orgId, ["owner", "manager"]);
+    return canAssignLocationAdmin({
+      membershipRole: access.role,
+      operatorId: access.operatorId,
+    });
+  } catch {
+    return false;
   }
 }
 
@@ -164,8 +185,9 @@ export async function listTenantUsers(
     name: string | null;
     must_change: boolean | null;
     operator_id: string | null;
+    admin_scope: string | null;
   }>`
-    select m.id, m.user_id, m.role, m.status, m.location_id, m.operator_id,
+    select m.id, m.user_id, m.role, m.status, m.location_id, m.operator_id, m.admin_scope,
            u.email, u.name, s.must_change_password as must_change
     from memberships m
     join "user" u on u.id = m.user_id
@@ -302,6 +324,10 @@ export async function listTenantUsers(
     locationId: m.location_id,
     homeEntityId: m.operator_id,
     homeEntityName: m.operator_id ? (opName.get(m.operator_id) ?? m.operator_id) : null,
+    adminScope: scopeFromMembership({
+      operatorId: m.operator_id,
+      adminScope: m.admin_scope,
+    }),
   }));
 
   const floor: TenantUserRow[] = staff.map((s) => {
@@ -351,6 +377,8 @@ export async function addLocationAdmin(
     forceChange?: boolean;
     operatorId?: string | null;
     role?: string;
+    scope?: string;
+    seat?: string;
   },
 ): Promise<{
   userId: string;
@@ -376,7 +404,22 @@ export async function addLocationAdmin(
   }
 
   const sql = await getSql();
-  const entityId = input.operatorId?.trim() || null;
+  const allowLocationAdmin = await actorMayAssignLocationAdmin(actorId, input.orgId);
+  const requestedScope = String(input.scope || "").trim();
+  const scope: TenantAdminScope = requestedScope
+    ? parseTenantAdminScope(requestedScope)
+    : input.operatorId?.trim()
+      ? "entity"
+      : "location";
+  const seat: PasswordSeat = parsePasswordSeat(input.seat, input.role);
+  const assignment = resolvePasswordAssignment({
+    scope,
+    seat,
+    operatorId: input.operatorId,
+    allowLocationAdmin,
+  });
+  const entityId = assignment.operatorId;
+  const memRole = assignment.role;
   if (entityId) {
     const op = await sql<{ id: string }>`
       select id from operators
@@ -385,23 +428,6 @@ export async function addLocationAdmin(
       limit 1
     `;
     if (!op[0]) throw new Error("Selling entity not found on this venue.");
-  }
-  let memRole: import("./types").MembershipRole = entityId
-    ? ENTITY_ADMIN_ROLE
-    : VENUE_OWNER_ROLE;
-  if (input.role) {
-    try {
-      memRole = parseTenantLoginRole(input.role);
-    } catch {
-      /* keep derived role */
-    }
-  }
-  if (memRole === "accountant") {
-    /* venue or entity accountant */
-  } else if (entityId && memRole === VENUE_OWNER_ROLE) {
-    memRole = ENTITY_ADMIN_ROLE;
-  } else if (!entityId && memRole === ENTITY_ADMIN_ROLE) {
-    memRole = VENUE_OWNER_ROLE;
   }
   const byEmail = await sql<{ id: string }>`
     select id from "user" where lower(email) = ${email} limit 1
@@ -461,15 +487,18 @@ export async function addLocationAdmin(
       set status = ${"active"},
           role = ${memRole},
           location_id = ${input.locationId},
-          operator_id = ${entityId}
+          operator_id = ${entityId},
+          admin_scope = ${assignment.scope}
       where id = ${existing[0].id}
     `;
   } else {
     await sql`
-      insert into memberships (id, user_id, org_id, location_id, role, status, operator_id)
+      insert into memberships (
+        id, user_id, org_id, location_id, role, status, operator_id, admin_scope
+      )
       values (
         ${newId("mem")}, ${userId}, ${input.orgId}, ${input.locationId},
-        ${memRole}, ${"active"}, ${entityId}
+        ${memRole}, ${"active"}, ${entityId}, ${assignment.scope}
       )
     `;
   }
@@ -493,6 +522,8 @@ export async function addLocationAdmin(
       locationId: input.locationId,
       role: memRole,
       operatorId: entityId,
+      scope: assignment.scope,
+      seat,
       demo: loc.isDemo,
     },
   });
@@ -643,6 +674,8 @@ export async function updateTenantUser(
     role?: string;
     status?: "active" | "disabled";
     homeEntityId?: string | null;
+    scope?: string;
+    seat?: string;
     firstName?: string;
     lastName?: string;
     displayName?: string;
@@ -679,21 +712,78 @@ export async function updateTenantUser(
     if (row.role === "platform_admin" || (await isPlatformAdmin(row.user_id))) {
       throw new Error("Cannot create a second platform Admin.");
     }
-    const nextRole = input.role ? parseTenantLoginRole(input.role) : undefined;
-    if (nextRole) assertNotPlatformAdminRole(nextRole);
     const nextStatus =
       input.status === "disabled" ? "revoked" : input.status === "active" ? "active" : undefined;
-    let role = nextRole ?? row.role;
-    let operatorId =
-      input.homeEntityId === undefined ? row.operator_id : input.homeEntityId || null;
-    if (nextRole === VENUE_OWNER_ROLE) operatorId = null;
-    else if (!nextRole && input.homeEntityId !== undefined) {
-      role = operatorId ? ENTITY_ADMIN_ROLE : VENUE_OWNER_ROLE;
+    const touchesAssignment =
+      Boolean(input.scope || input.seat || input.role) || input.homeEntityId !== undefined;
+    if (!touchesAssignment) {
+      if (nextStatus) {
+        await sql`
+          update memberships set status = ${nextStatus} where id = ${row.id}
+        `;
+      }
+      return { ok: true };
+    }
+
+    const allowLocationAdmin = await actorMayAssignLocationAdmin(actorId, input.orgId);
+    let role = row.role;
+    let operatorId = row.operator_id;
+    let adminScope: TenantAdminScope = scopeFromMembership({ operatorId: row.operator_id });
+    if (input.scope || input.seat) {
+      const scope = input.scope
+        ? parseTenantAdminScope(input.scope)
+        : scopeFromMembership({ operatorId: row.operator_id });
+      const seat = parsePasswordSeat(input.seat, input.role || row.role);
+      const nextOp =
+        input.homeEntityId === undefined ? row.operator_id : input.homeEntityId || null;
+      const assignment = resolvePasswordAssignment({
+        scope,
+        seat,
+        operatorId: nextOp,
+        allowLocationAdmin,
+      });
+      role = assignment.role;
+      operatorId = assignment.operatorId;
+      adminScope = assignment.scope;
+    } else {
+      const nextRole = input.role ? parseTenantLoginRole(input.role) : undefined;
+      if (nextRole) assertNotPlatformAdminRole(nextRole);
+      role = nextRole ?? row.role;
+      operatorId =
+        input.homeEntityId === undefined ? row.operator_id : input.homeEntityId || null;
+      if (nextRole === VENUE_OWNER_ROLE) operatorId = null;
+      else if (!nextRole && input.homeEntityId !== undefined) {
+        role = operatorId ? ENTITY_ADMIN_ROLE : VENUE_OWNER_ROLE;
+      }
+      if (role === VENUE_OWNER_ROLE) operatorId = null;
+      const resultingScope: TenantAdminScope = operatorId ? "entity" : "location";
+      const seat: PasswordSeat =
+        role === "manager" ? "manager" : role === "accountant" ? "accountant" : "owner";
+      if (
+        resultingScope === "location" ||
+        role === ENTITY_ADMIN_ROLE ||
+        role === VENUE_OWNER_ROLE ||
+        role === "manager" ||
+        role === "accountant"
+      ) {
+        const assignment = resolvePasswordAssignment({
+          scope: resultingScope,
+          seat,
+          operatorId,
+          allowLocationAdmin,
+        });
+        role = assignment.role;
+        operatorId = assignment.operatorId;
+        adminScope = assignment.scope;
+      } else if (!allowLocationAdmin && !operatorId) {
+        throw new Error("This venue cannot assign Location admin (whole venue).");
+      } else {
+        adminScope = resultingScope;
+      }
     }
     if (role === ENTITY_ADMIN_ROLE && !operatorId) {
       throw new Error("Choose a selling entity for an entity admin.");
     }
-    if (role === VENUE_OWNER_ROLE) operatorId = null;
     if (operatorId) {
       const op = await sql<{ id: string }>`
         select id from operators
@@ -707,7 +797,8 @@ export async function updateTenantUser(
       update memberships
       set role = ${role},
           status = ${nextStatus ?? row.status},
-          operator_id = ${operatorId}
+          operator_id = ${operatorId},
+          admin_scope = ${adminScope}
       where id = ${row.id}
     `;
     return { ok: true };

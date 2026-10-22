@@ -25,6 +25,8 @@ export const addLocationAdminFn = createServerFn({ method: "POST" })
       forceChange?: boolean;
       operatorId?: string | null;
       role?: string;
+      scope?: string;
+      seat?: string;
     }) => ({
       orgId: String(d.orgId ?? "").trim(),
       locationId: String(d.locationId ?? "").trim(),
@@ -34,6 +36,8 @@ export const addLocationAdminFn = createServerFn({ method: "POST" })
       forceChange: d.forceChange !== false,
       operatorId: d.operatorId ? String(d.operatorId).trim().slice(0, 80) : null,
       role: d.role ? String(d.role).trim() : "",
+      scope: d.scope ? String(d.scope).trim().toLowerCase().slice(0, 20) : "",
+      seat: d.seat ? String(d.seat).trim().toLowerCase().slice(0, 20) : "",
     }),
   )
   .handler(async ({ context, data }) => {
@@ -102,6 +106,8 @@ export const updateTenantUserFn = createServerFn({ method: "POST" })
       role?: string;
       status?: string;
       homeEntityId?: string | null;
+      scope?: string;
+      seat?: string;
       firstName?: string;
       lastName?: string;
       displayName?: string;
@@ -129,6 +135,8 @@ export const updateTenantUserFn = createServerFn({ method: "POST" })
           : d.homeEntityId
             ? String(d.homeEntityId).trim().slice(0, 80)
             : null,
+      scope: d.scope ? String(d.scope).trim().toLowerCase().slice(0, 20) : undefined,
+      seat: d.seat ? String(d.seat).trim().toLowerCase().slice(0, 20) : undefined,
       firstName: d.firstName === undefined ? undefined : String(d.firstName).trim().slice(0, 80),
       lastName: d.lastName === undefined ? undefined : String(d.lastName).trim().slice(0, 80),
       displayName: d.displayName === undefined ? undefined : String(d.displayName).trim().slice(0, 80),

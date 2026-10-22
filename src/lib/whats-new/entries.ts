@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_333_entity_contact_scope",
+    date: "2026-10-22",
+    title: "Venue sets the entity contact’s scope",
+    summary: "On Users, the venue chooses the entity contact’s scope. Entity admin stays on that selling entity.",
+    body: "On the entity contact and on Users, the venue sets the scope. The choices are entity admin for that selling entity, entity manager, or accountant for that entity. Seat is still Owner, Manager, or Accountant. Location admin for the whole venue is not the default. It is offered only when this login may create a location admin. Saving entity admin does not make them a location admin. They sign in and see that entity only. A platform admin can still assign a wider scope.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "venue-users",
+    tags: ["onboarding", "users"],
+  },
+  {
     id: "upd_2026_10_332_finix_location_onboarding",
     date: "2026-10-22",
     title: "Finix merchant onboarding starts early",

@@ -5981,19 +5981,31 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		});
 		return { ok: true };
 	},
-	loginAsBackOffice: (name: string, role: "owner" | "manager" | "accountant") => {
+	loginAsBackOffice: (name: string, role: "owner" | "manager" | "accountant", operatorId?: string | null) => {
 		if (role === "owner") return get().loginAsOwner(name);
-		const id = `emp_bo_${role}`;
+		const op = String(operatorId || "").trim();
+		const id = op ? `emp_bo_${role}_${op}` : `emp_bo_${role}`;
 		const existing =
 			get().employees.find((e: any) => e.id === id) ??
-			get().employees.find((e: any) => e.role === role && e.active && !e.operatorId);
+			(op
+				? get().employees.find((e: any) => e.role === role && e.operatorId === op && e.active)
+				: get().employees.find((e: any) => e.role === role && e.active && !e.operatorId));
 		const emp = existing
-			? { ...existing, name: name.trim() || existing.name || role, role, clockedIn: true, clockInAt: Date.now(), active: true }
+			? {
+					...existing,
+					name: name.trim() || existing.name || role,
+					role,
+					operatorId: op || undefined,
+					clockedIn: true,
+					clockInAt: Date.now(),
+					active: true,
+				}
 			: {
 					id,
 					name: name.trim() || (role === "accountant" ? "Accountant" : "Manager"),
 					pin: "0000",
 					role,
+					operatorId: op || undefined,
 					color: "#2C4A6E",
 					clockedIn: true,
 					clockInAt: Date.now(),
