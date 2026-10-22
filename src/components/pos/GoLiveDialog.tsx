@@ -108,17 +108,23 @@ function GoLiveDialog({
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
 
-  const persist = (status: string, extra?: { goLiveAt?: string | null }) => {
-    if (isProspectDemo() || !orgId || !locId) return;
-    void saveLifecycleFn({
-      data: {
-        orgId,
-        locationId: locId,
-        lifecycleStatus: status,
-        goLiveChoices: choices,
-        goLiveAt: extra?.goLiveAt ?? null,
-      },
-    }).catch(() => undefined);
+  const persist = async (status: string, extra?: { goLiveAt?: string | null }): Promise<boolean> => {
+    if (isProspectDemo() || !orgId || !locId) return true;
+    try {
+      await saveLifecycleFn({
+        data: {
+          orgId,
+          locationId: locId,
+          lifecycleStatus: status,
+          goLiveChoices: choices,
+          goLiveAt: extra?.goLiveAt ?? null,
+        },
+      });
+      return true;
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "This location is not ready to go live");
+      return false;
+    }
   };
 
   return (
@@ -177,24 +183,36 @@ function GoLiveDialog({
         <Button
           onClick={() => {
             setErr(null);
-            if (mode === "now") {
-              const r = goLiveNow({ confirm, choices });
+            void (async () => {
+              if (mode === "now") {
+                if (confirm.trim().toUpperCase() !== "GO LIVE NOW") {
+                  setErr("Type GO LIVE NOW to confirm");
+                  return;
+                }
+                const saved = await persist("live");
+                if (!saved) return;
+                const r = goLiveNow({ confirm, choices });
+                if (!r.ok) {
+                  setErr(r.error ?? "Failed");
+                  return;
+                }
+                onOpenChange(false);
+                return;
+              }
+              const at = when ? Date.parse(when) : NaN;
+              if (!Number.isFinite(at) || at < Date.now() + 30_000) {
+                setErr("Pick a time at least 30 seconds ahead, or Go live now");
+                return;
+              }
+              const saved = await persist("scheduled_live", { goLiveAt: new Date(at).toISOString() });
+              if (!saved) return;
+              const r = scheduleGoLive(at, choices);
               if (!r.ok) {
                 setErr(r.error ?? "Failed");
                 return;
               }
-              persist("live");
               onOpenChange(false);
-              return;
-            }
-            const at = when ? Date.parse(when) : NaN;
-            const r = scheduleGoLive(at, choices);
-            if (!r.ok) {
-              setErr(r.error ?? "Failed");
-              return;
-            }
-            persist("scheduled_live", { goLiveAt: new Date(at).toISOString() });
-            onOpenChange(false);
+            })();
           }}
         >
           {mode === "now" ? "Confirm go live" : "Save schedule"}

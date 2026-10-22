@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_332_finix_location_onboarding",
+    date: "2026-10-22",
+    title: "Finix merchant onboarding starts early",
+    summary: "The location checklist starts the Finix onboarding form after the basics. Live cards wait until APPROVED.",
+    body: "Start Finix merchant onboarding sits near the top of the location checklist, after the name, address, and contact. A location admin or a platform admin generates a Finix onboarding form link. The form is prefilled with the business name, address, and contact. Copy or Email link to merchant sends that link. The form id is stored when the link is created. The identity id and merchant id are stored when the form is submitted or the merchant is created. The location shows PROVISIONING, APPROVED, UPDATE_REQUESTED, or REJECTED. Ready for live cards stays closed until APPROVED. Training and sandbox cards stay available until then.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "platform",
+    topicId: "onboarding-wizard",
+    tags: ["payments", "onboarding"],
+  },
+  {
     id: "upd_2026_10_331_toast_colors",
     date: "2026-10-21",
     title: "Toast-style colors",

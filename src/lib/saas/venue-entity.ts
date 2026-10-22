@@ -119,7 +119,15 @@ export function canMarkTrainingReady(
 export function canMarkCardLive(opts: {
   entities: Array<{ status: EntityOnboardStatus | string; finixApproved?: boolean }>;
   readerEnrolled: boolean;
+  /** When set, the location merchant must be APPROVED before live cards. */
+  locationFinixApproved?: boolean;
 }): { ok: boolean; reason?: string } {
+  if (opts.locationFinixApproved === false) {
+    return {
+      ok: false,
+      reason: "Finix merchant must be APPROVED before this location is ready for live cards.",
+    };
+  }
   if (!opts.entities.length) {
     return { ok: false, reason: "Add at least one selling entity" };
   }

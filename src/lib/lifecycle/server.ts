@@ -42,6 +42,11 @@ export async function saveLifecycleForLocation(
   if (data.goLiveChoices) setup.goLiveChoices = data.goLiveChoices;
 
   const life = data.lifecycleStatus ?? setup.lifecycleStatus ?? "training";
+  if (String(life) === "live" || String(life) === "scheduled_live") {
+    const { locationLiveCardBlock } = await import("@/lib/payments/location-finix-form.server");
+    const blocked = await locationLiveCardBlock(data.locationId);
+    if (blocked) throw new Error(blocked);
+  }
   if (String(life) === "live") {
     setup.paxReaders = markPaxReadersForLiveSwitch(parsePaxReaders(setup.paxReaders));
   } else if (previous === "live") {

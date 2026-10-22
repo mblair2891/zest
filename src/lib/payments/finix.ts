@@ -351,6 +351,37 @@ export async function createMerchant(identityId: string): Promise<FinixMerchant>
   };
 }
 
+/** Sandbox Onboarding Form. Does not require the webhook secret. */
+export async function postSandboxOnboardingForm(
+  body: Record<string, unknown>,
+): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; error?: string }> {
+  return finixFetch("sandbox", "POST", "/onboarding_forms", body, {
+    requireWebhook: false,
+    application: false,
+  });
+}
+
+export async function getSandboxOnboardingForm(
+  formId: string,
+): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; error?: string }> {
+  return finixFetch("sandbox", "GET", `/onboarding_forms/${encodeURIComponent(formId)}`, undefined, {
+    requireWebhook: false,
+    application: false,
+  });
+}
+
+export async function getSandboxIdentityMerchants(
+  identityId: string,
+): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; error?: string }> {
+  return finixFetch(
+    "sandbox",
+    "GET",
+    `/identities/${encodeURIComponent(identityId)}/merchants`,
+    undefined,
+    { requireWebhook: false, application: false },
+  );
+}
+
 export async function onboardingLink(opts: {
   identityId: string;
   returnUrl?: string;

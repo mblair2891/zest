@@ -54,6 +54,8 @@ Optional (not a training blocker): `RESEND_API_KEY` / `EMAIL_FROM` so quotes and
 
 Do **not** pretend live Visa works until all of these are true.
 
+- [ ] Location checklist **Start Finix merchant onboarding** has a Finix onboarding form link. The form id is stored. After the merchant submits, the identity id and merchant id are stored on the location.
+- [ ] Location Finix status is **APPROVED**. Ready for live cards and Go live stay closed on PROVISIONING, UPDATE_REQUESTED, and REJECTED. Training and sandbox cards stay available until then.
 - [ ] Location lifecycle **live** (Go live now / schedule; type `GO LIVE NOW`)
 - [ ] Host Quantum Payments application **approved** on the live rail
 - [ ] Operators who should receive card share: application **approved**

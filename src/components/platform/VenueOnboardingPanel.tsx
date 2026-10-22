@@ -29,6 +29,9 @@ import {
 import { useChecklistLink } from "@/lib/saas/checklist-link";
 import { useOnboardingStore } from "@/lib/saas/onboarding-state";
 import { usePosStore } from "@/lib/pos/store";
+import { FinixLocationOnboardingCard } from "@/components/payments/FinixLocationOnboardingCard";
+import type { FinixMerchantState } from "@/lib/payments/location-finix-form";
+import { checklistStatusForFinix } from "@/lib/payments/location-finix-form";
 
 export function VenueOnboardingPanel({
   orgId,
@@ -50,6 +53,9 @@ export function VenueOnboardingPanel({
   const [archivedIds, setArchivedIds] = useState<string[]>([]);
   const peer = usePosStore((s) => Boolean(s.settings.peerVenue || s.settings.operatingModel === "peer_venue"));
   const readerId = usePosStore((s) => s.settings.quantumReaderId);
+  const venueName = usePosStore((s) => s.settings.name);
+  const venueAddress = usePosStore((s) => s.settings.address);
+  const [finixState, setFinixState] = useState<FinixMerchantState | null>(null);
   const applySerial = useChecklistLink((s) => s.applySerial);
   const applied = useChecklistLink((s) => s.applied);
   const openLink = useChecklistLink((s) => s.open);
@@ -74,6 +80,7 @@ export function VenueOnboardingPanel({
     setLayer((cur) => {
       if (!cur) return cur;
       if (applied.scope === "location") {
+        if (applied.itemId === "finix_onboard" && finixState !== "APPROVED") return cur;
         return {
           ...cur,
           location: {
@@ -92,7 +99,7 @@ export function VenueOnboardingPanel({
       };
     });
     useChecklistLink.getState().clearApplied();
-  }, [applySerial, applied, setLayer]);
+  }, [applySerial, applied, finixState, setLayer]);
 
   const openItem = (scope: "location" | "entity", entityId: string | undefined, item: CheckItem) => {
     const target = checklistTaskTarget(scope, item.id);
@@ -161,6 +168,7 @@ export function VenueOnboardingPanel({
   const live = canMarkCardLive({
     entities,
     readerEnrolled: Boolean(readerId),
+    locationFinixApproved: finixState === "APPROVED",
   });
   const activeLayer = layer
     ? {
@@ -168,7 +176,11 @@ export function VenueOnboardingPanel({
         entities: layer.entities.filter((e) => !archivedIds.includes(e.id)),
       }
     : null;
-  const block = activeLayer ? goLiveChecklistBlock(activeLayer) : "Loading checklist";
+  const finixBlock =
+    finixState === "APPROVED"
+      ? null
+      : "Finix merchant must be APPROVED before this location is ready for live cards.";
+  const block = finixBlock ?? (activeLayer ? goLiveChecklistBlock(activeLayer) : "Loading checklist");
   const snap: VenueEntitySnap = {
     archived: false,
     entities: (activeLayer?.entities ?? []).map((e) => ({
@@ -276,16 +288,63 @@ export function VenueOnboardingPanel({
               Location contact is required on a peer venue. It is operational only.
             </p>
           )}
+          <FinixLocationOnboardingCard
+            locationId={locationId}
+            write={write}
+            businessName={venueName}
+            contactName={layer.location.contactName}
+            contactEmail={layer.location.contactEmail}
+            contactPhone={layer.location.contactPhone}
+            address={venueAddress}
+            onSnapshot={(next) => {
+              setFinixState(next?.merchantState ?? null);
+              if (!next) return;
+              const mapped = checklistStatusForFinix(next.merchantState, Boolean(next.linkUrl));
+              setLayer((cur) => {
+                if (!cur) return cur;
+                const item = cur.location.items.find((i) => i.id === "finix_onboard");
+                if (!item || (item.status === mapped.status && (item.blocker ?? "") === (mapped.blocker ?? ""))) {
+                  return cur;
+                }
+                return {
+                  ...cur,
+                  location: {
+                    ...cur.location,
+                    items: cur.location.items.map((i) =>
+                      i.id === "finix_onboard"
+                        ? { ...i, status: mapped.status, blocker: mapped.blocker }
+                        : i,
+                    ),
+                  },
+                };
+              });
+            }}
+          />
           <ChecklistItems
             items={layer.location.items}
             write={write}
+            finixState={finixState}
             onOpen={(item) => openItem("location", undefined, item)}
-            onStatus={(id, status) =>
+            onStatus={(id, status) => {
+              if (id === "finix_onboard" && status === "blocked") {
+                setLayer({
+                  ...layer,
+                  location: {
+                    ...layer.location,
+                    items: setItemBlocker(
+                      setItemStatus(layer.location.items, id, "blocked"),
+                      id,
+                      "Finix merchant must be APPROVED before this location is ready for live cards.",
+                    ),
+                  },
+                });
+                return;
+              }
               setLayer({
                 ...layer,
                 location: { ...layer.location, items: setItemStatus(layer.location.items, id, status) },
-              })
-            }
+              });
+            }}
             onBlocker={(id, blocker) =>
               setLayer({
                 ...layer,
@@ -406,12 +465,14 @@ export function VenueOnboardingPanel({
 function ChecklistItems({
   items,
   write,
+  finixState,
   onOpen,
   onStatus,
   onBlocker,
 }: {
   items: CheckItem[];
   write: boolean;
+  finixState?: FinixMerchantState | null;
   onOpen: (item: CheckItem) => void;
   onStatus: (id: string, status: CheckItemStatus) => void;
   onBlocker: (id: string, blocker: string) => void;
@@ -434,7 +495,14 @@ function ChecklistItems({
             value={item.status}
             disabled={!write}
             aria-label={`${item.label} status`}
-            onChange={(e) => onStatus(item.id, e.target.value as CheckItemStatus)}
+            onChange={(e) => {
+              const next = e.target.value as CheckItemStatus;
+              if (item.id === "finix_onboard" && next === "done" && finixState !== "APPROVED") {
+                onStatus(item.id, "blocked");
+                return;
+              }
+              onStatus(item.id, next);
+            }}
           >
             {CHECK_STATUSES.map((s) => (
               <option key={s} value={s}>

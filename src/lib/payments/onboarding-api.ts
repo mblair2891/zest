@@ -132,6 +132,73 @@ export const getFinixWebhookDeskFn = createServerFn({ method: "GET" })
     return loadFinixWebhookDesk();
   });
 
+export const getLocationFinixOnboardingFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId?: string }) => ({ locationId: loc(d.locationId) }))
+  .handler(async ({ context, data }) => {
+    const { getLocationFinixOnboarding } = await import("./location-finix-form.server");
+    return getLocationFinixOnboarding(context.userId, data.locationId);
+  });
+
+export const generateLocationFinixFormFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    locationId?: string;
+    returnUrl?: string;
+    businessName?: string;
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    line1?: string;
+    city?: string;
+    region?: string;
+    postalCode?: string;
+  }) => ({
+    locationId: loc(d.locationId),
+    returnUrl: d.returnUrl ? String(d.returnUrl).slice(0, 240) : undefined,
+    prefill: {
+      businessName: String(d.businessName ?? "").trim().slice(0, 120),
+      contactName: String(d.contactName ?? "").trim().slice(0, 80),
+      email: String(d.email ?? "").trim().slice(0, 120),
+      phone: String(d.phone ?? "").trim().slice(0, 20),
+      line1: String(d.line1 ?? "").trim().slice(0, 160),
+      city: String(d.city ?? "").trim().slice(0, 80),
+      region: String(d.region ?? "").trim().slice(0, 2),
+      postalCode: String(d.postalCode ?? "").trim().slice(0, 12),
+    },
+  }))
+  .handler(async ({ context, data }) => {
+    const { generateLocationOnboardingForm } = await import("./location-finix-form.server");
+    return generateLocationOnboardingForm(context.userId, data);
+  });
+
+export const refreshLocationFinixFormFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId?: string }) => ({ locationId: loc(d.locationId) }))
+  .handler(async ({ context, data }) => {
+    const { refreshLocationFinixOnboarding } = await import("./location-finix-form.server");
+    return refreshLocationFinixOnboarding(context.userId, data.locationId);
+  });
+
+export const emailLocationFinixFormFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId?: string; to?: string }) => ({
+    locationId: loc(d.locationId),
+    to: d.to ? String(d.to).trim().slice(0, 120) : undefined,
+  }))
+  .handler(async ({ context, data }) => {
+    const { emailLocationOnboardingLink } = await import("./location-finix-form.server");
+    return emailLocationOnboardingLink(context.userId, data);
+  });
+
+export const markLocationReadyForLiveCardsFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId?: string }) => ({ locationId: loc(d.locationId) }))
+  .handler(async ({ context, data }) => {
+    const { markLocationReadyForLiveCards } = await import("./location-finix-form.server");
+    return markLocationReadyForLiveCards(context.userId, data.locationId);
+  });
+
 export const getProcessorRailStatusFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .handler(async () => {

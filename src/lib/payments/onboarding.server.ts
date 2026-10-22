@@ -831,6 +831,8 @@ export async function applyFinixWebhook(event: {
          or finix_identity_id = ${entityId}
     `;
   }
+  const { applyLocationFinixWebhook } = await import("./location-finix-form.server");
+  await applyLocationFinixWebhook(event);
   const { applyFinixRailEvent } = await import("./finix-webhook.server");
   const rail = await applyFinixRailEvent(event);
   try {

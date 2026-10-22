@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { GoLivePanel } from "./GoLiveDialog";
 import { useLifecycleStore } from "@/lib/lifecycle/store";
 import { saveLifecycleFn } from "@/lib/lifecycle/api";
@@ -7,6 +8,8 @@ import { useSaasStore } from "@/lib/pos/saas-store";
 import { isProspectDemo } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { Badge } from "@/components/ui/badge";
+import { getLocationFinixOnboardingFn } from "@/lib/payments/onboarding-api";
+import { LIVE_CARDS_BLOCK } from "@/lib/payments/location-finix-form";
 
 export function LifecycleSettings() {
   const status = useLifecycleStore((s) => s.status);
@@ -20,6 +23,27 @@ export function LifecycleSettings() {
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const write = emp?.role === "owner" || emp?.role === "manager";
+  const [finixBlock, setFinixBlock] = useState<string | null>(
+    isProspectDemo() || !locId ? null : LIVE_CARDS_BLOCK,
+  );
+
+  useEffect(() => {
+    if (isProspectDemo() || !locId) {
+      setFinixBlock(null);
+      return;
+    }
+    let cancelled = false;
+    void getLocationFinixOnboardingFn({ data: { locationId: locId } })
+      .then((row) => {
+        if (!cancelled) setFinixBlock(row.merchantState === "APPROVED" ? null : LIVE_CARDS_BLOCK);
+      })
+      .catch(() => {
+        if (!cancelled) setFinixBlock(LIVE_CARDS_BLOCK);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locId]);
 
   const persist = (patch: {
     trainingTrackInventory?: boolean;
@@ -112,7 +136,7 @@ export function LifecycleSettings() {
           </ul>
         </div>
       )}
-      {emp?.role === "owner" && <GoLivePanel />}
+      {emp?.role === "owner" && <GoLivePanel blockedReason={finixBlock} />}
     </section>
   );
 }
