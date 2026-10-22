@@ -14,8 +14,8 @@ import {
   logFinixConnectDiagnostic,
   paxConnectActivityTrace,
   paxSdkConnectActivityResult,
-  normalizePaxLink,
   normalizePaxSerial,
+  readerLink,
   paxAutoConnectPlan,
   paxScanPresentation,
   paxScanRowLabel,
@@ -128,7 +128,7 @@ function assignedReaderNow(): { station: LocationDevice | null; reader: PaxReade
 function requestAssignedReaderConnect(reason: "launch" | "devices" | "usb"): void {
   const found = assignedReaderNow();
   if (!found) return;
-  const kind = normalizePaxLink(found.reader.link);
+  const kind = readerLink(found.reader);
   if (kind === "network") return;
   if (reason === "usb" && kind !== "usb") return;
   const key = `${reason}:${found.reader.serial}`;
@@ -312,7 +312,7 @@ async function connectPaxRow(input: {
         password: creds.password,
         mid: creds.mid,
         env: creds.env,
-        link: normalizePaxLink(decision.reader.link),
+        link: readerLink(decision.reader),
       }),
     );
     const sdkTrace = finixSdkTraceFromConnect(connected);
@@ -334,7 +334,7 @@ async function connectPaxRow(input: {
       return false;
     }
     await logConnect(sdk, activity);
-    if (normalizePaxLink(decision.reader.link) === "bluetooth") {
+    if (readerLink(decision.reader) === "bluetooth") {
       rememberPaxBluetooth({
         serial: decision.reader.serial,
         address: row.address,
@@ -399,7 +399,7 @@ async function connectPaxRow(input: {
 async function runAssignedReaderConnect(serial: string): Promise<void> {
   const found = assignedReaderNow();
   if (!found || found.reader.serial !== serial) return;
-  const kind = normalizePaxLink(found.reader.link);
+  const kind = readerLink(found.reader);
   if (kind === "network") return;
   const link = getPaxStationLink();
   let usbAttached: boolean | null = null;
@@ -631,7 +631,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
   const station = devices.find((device) => device.id === stationId) ?? null;
   const connectedSerial = link.phase === "connected" ? link.reader?.serial ?? "" : "";
   const assigned = readerForSerial(link.readers, String(station?.cardReaderId ?? ""));
-  const usbMode = assigned?.link === "usb";
+  const usbMode = readerLink(assigned) === "usb";
   const [usbAttached, setUsbAttached] = useState<boolean | null>(null);
   useEffect(() => {
     if (!usbMode) {
@@ -643,7 +643,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
       void usbReaderAttached().then((attached) => {
         if (cancel) return;
         setUsbAttached(attached);
-        if (!attached && getPaxStationLink().phase === "connected" && getPaxStationLink().reader?.link === "usb") {
+        if (!attached && getPaxStationLink().phase === "connected" && readerLink(getPaxStationLink().reader) === "usb") {
           failPaxConnect(CARD_READER_USB_NOT_CONNECTED);
           return;
         }

@@ -55,8 +55,8 @@ import {
   logFinixConnectDiagnostic,
   paxConnectActivityTrace,
   paxSdkConnectActivityResult,
-  normalizePaxLink,
   payEntityStatusText,
+  readerLink,
   payReaderStatusText,
   paymentUsesConnectedReader,
   paxScanPresentation,
@@ -273,7 +273,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     const found = serial ? pool.find((row) => row.serial.replace(/\s+/g, "") === serial) : undefined;
     return found ?? pax.reader ?? null;
   }, [stationRow?.cardReaderId, settings.paxReaders, pax.readers, pax.reader]);
-  const cardLink = normalizePaxLink(assignedReader?.link);
+  const cardLink = readerLink(assignedReader);
   const [payEntityBanner, setPayEntityBanner] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cardHold, setCardHold] = useState<string | null>(null);
@@ -400,7 +400,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         if (cancel) return;
         setUsbAttached(attached);
         const live = getPaxStationLink();
-        if (!attached && live.phase === "connected" && normalizePaxLink(live.reader?.link) === "usb") {
+        if (!attached && live.phase === "connected" && readerLink(live.reader) === "usb") {
           failPaxConnect(CARD_READER_USB_NOT_CONNECTED);
         }
       });
@@ -672,7 +672,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             password: creds.password,
             mid: creds.mid,
             env: creds.env,
-            link: normalizePaxLink(decision.reader.link),
+            link: readerLink(decision.reader),
           }),
         );
         const sdkTrace = finixSdkTraceFromConnect(connected);

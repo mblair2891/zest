@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_335_d135_bluetooth",
+    date: "2026-10-22",
+    title: "D135 readers connect only by Bluetooth",
+    summary: "A Finix D135 does not ask for a connection type. It stays on Bluetooth.",
+    body: "On Devices, a Finix D135 card reader connects only by Bluetooth. Add card reader and Open do not show a connection choice. A reader already saved as Network or USB is still Bluetooth. Printers still choose Ethernet or USB.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_334_onboarding_links",
     date: "2026-10-22",
     title: "Venue and entity onboarding links",

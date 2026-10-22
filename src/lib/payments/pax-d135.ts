@@ -166,7 +166,33 @@ export function normalizePaxLink(raw: unknown): PaxReaderLink {
   return "bluetooth";
 }
 
-export function readerLink(reader: { link?: PaxReaderLink | null } | null | undefined): PaxReaderLink {
+/** Finix D135 readers talk over Bluetooth only. Another model can still offer a choice. */
+export function isBluetoothOnlyCardReader(model: unknown): boolean {
+  const text = String(model ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+  if (!text) return false;
+  return text === PAX_MODEL || text.includes("D135");
+}
+
+/** Empty for a Bluetooth-only reader, so Devices does not show a connection dropdown. */
+export function cardReaderConnectionChoices(
+  model: unknown,
+): { id: PaxReaderLink; label: string }[] {
+  if (isBluetoothOnlyCardReader(model)) return [];
+  return PAX_READER_LINKS;
+}
+
+/**
+ * Connection the station uses.
+ * A D135 stays Bluetooth even when an older row says USB or Network.
+ * A reader with no model keeps the saved connection.
+ */
+export function readerLink(
+  reader: { link?: PaxReaderLink | null; model?: string | null } | null | undefined,
+): PaxReaderLink {
+  if (isBluetoothOnlyCardReader(reader?.model)) return "bluetooth";
   return normalizePaxLink(reader?.link);
 }
 
@@ -299,7 +325,7 @@ export function parsePaxReaders(raw: unknown): PaxReader[] {
       finixMerchantId,
       model: PAX_MODEL,
       env,
-      link: normalizePaxLink(o.link),
+      link: readerLink({ model: PAX_MODEL, link: normalizePaxLink(o.link) }),
       ...(sandboxDeviceId ? { sandboxDeviceId } : {}),
       ...(liveDeviceId ? { liveDeviceId } : {}),
       ...(o.needsLiveReenroll === true ? { needsLiveReenroll: true } : {}),
@@ -1342,7 +1368,7 @@ export function paxAutoConnectPlan(input: {
   }
   const held = normalizePaxSerial(String(input.connectedSerial ?? ""));
   if (input.phase === "connected" && held === assigned.serial) return "skip";
-  const link = normalizePaxLink(assigned.link);
+  const link = readerLink(assigned);
   if (link === "network") return "skip";
   if (link === "usb") return input.usbAttached === true ? "usb" : "skip";
   if (String(input.rememberedAddress ?? "").trim()) return "direct";
@@ -1421,12 +1447,12 @@ export function placePaxReader(input: {
     finixMerchantId: input.merchantId,
     model: PAX_MODEL,
     env: "sandbox",
-    link: normalizePaxLink(input.link),
+    link: readerLink({ model: PAX_MODEL, link: input.link }),
   };
   return { ok: true, readers: [...input.readers, reader], reader };
 }
 
-/** Change Bluetooth, Network, or USB. The serial and the Finix device id stay. */
+/** Saves a connection when the model offers one. A D135 stays Bluetooth. */
 export function setPaxReaderLink(input: {
   readers: PaxReader[];
   id: string;
@@ -1434,7 +1460,7 @@ export function setPaxReaderLink(input: {
 }): { ok: true; readers: PaxReader[]; reader: PaxReader } | { ok: false; message: string } {
   const current = input.readers.find((r) => r.id === input.id);
   if (!current) return { ok: false, message: PAX_MSG.notRegistered };
-  const link = normalizePaxLink(input.link);
+  const link = readerLink({ model: current.model, link: input.link });
   const reader: PaxReader = { ...current, link };
   if (readerLink(current) === link) return { ok: true, readers: input.readers, reader };
   return {
@@ -1802,7 +1828,9 @@ export async function runAndroidPaxSale(input: {
   if (!input.locationLive && input.reader && input.reader.env === "live") {
     return { ok: false, message: PAX_MSG.liveOnSandbox, charged: false, keepIdempotency: true };
   }
-  const link = normalizePaxLink(input.link ?? input.reader?.link);
+  const link = input.reader
+    ? readerLink({ model: input.reader.model, link: input.link ?? input.reader.link })
+    : normalizePaxLink(input.link);
   const usb = usbCardStep({ link, usbAttached: input.usbAttached, step: "authorize" });
   if (!usb.ok) return { ok: false, message: usb.message, charged: false, keepIdempotency: true };
   if (link !== "usb" && input.bluetoothOff) {

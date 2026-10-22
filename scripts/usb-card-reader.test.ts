@@ -9,6 +9,8 @@ import {
   CARD_READER_USB_NOT_CONNECTED,
   PAX_MODEL,
   PAX_MSG,
+  cardReaderConnectionChoices,
+  isBluetoothOnlyCardReader,
   normalizePaxLink,
   parsePaxReaders,
   payReaderStatusText,
@@ -51,7 +53,7 @@ function saleBridge(calls: { n: number }) {
   };
 }
 
-test("a saved reader with no connection stays on Bluetooth", () => {
+test("a D135 stays Bluetooth without a re-save, including an older USB or Network row", () => {
   const parsed = parsePaxReaders([
     {
       id: "pax_old",
@@ -60,11 +62,27 @@ test("a saved reader with no connection stays on Bluetooth", () => {
       entityId: "ent_bar",
       finixDeviceId: "DVsandbox1",
       finixMerchantId: "MUabc",
+      link: "usb",
+    },
+    {
+      id: "pax_net",
+      name: "Bar 2",
+      serial: "1890297423",
+      entityId: "ent_bar",
+      finixDeviceId: "DVsandbox2",
+      finixMerchantId: "MUabc",
+      link: "network",
     },
   ]);
   assert.equal(parsed[0]?.link, "bluetooth");
+  assert.equal(parsed[1]?.link, "bluetooth");
+  assert.equal(readerLink(parsed[0]), "bluetooth");
+  assert.equal(isBluetoothOnlyCardReader(PAX_MODEL), true);
+  assert.deepEqual(cardReaderConnectionChoices(PAX_MODEL), []);
+  assert.equal(cardReaderConnectionChoices("OTHER").length, 3);
   assert.equal(normalizePaxLink("wifi"), "bluetooth");
   assert.equal(normalizePaxLink("USB"), "usb");
+  assert.equal(readerLink({ link: "usb" }), "usb");
   const placed = placePaxReader({
     readers: [],
     name: "Patio",
@@ -79,11 +97,12 @@ test("a saved reader with no connection stays on Bluetooth", () => {
   });
   assert.equal(placed.ok, true);
   if (!placed.ok) return;
-  assert.equal(placed.reader.link, "usb");
+  assert.equal(placed.reader.link, "bluetooth");
   const changed = setPaxReaderLink({ readers: placed.readers, id: "pax_patio", link: "network" });
   assert.equal(changed.ok, true);
   if (!changed.ok) return;
-  assert.equal(readerLink(changed.reader), "network");
+  assert.equal(readerLink(changed.reader), "bluetooth");
+  assert.equal(changed.reader.link, "bluetooth");
 });
 
 test("USB unplugged blocks authorize, capture, and void", async () => {
@@ -100,7 +119,7 @@ test("USB unplugged blocks authorize, capture, and void", async () => {
     checkId: "chk_usb_off",
     amountCents: 102,
     locationLive: false,
-    reader: { ...reader, link: "usb" },
+    reader: null,
     sellingEntityId: "ent_bar",
     alreadyCaptured: false,
     settingUp: false,
@@ -137,6 +156,37 @@ test("USB unplugged blocks authorize, capture, and void", async () => {
   assert.equal(calls.n, 0);
 });
 
+test("a D135 saved as USB still takes a card over Bluetooth", async () => {
+  const calls = { n: 0 };
+  const bridge = saleBridge(calls);
+  const sale = await runAndroidPaxSale({
+    checkId: "chk_d135_bt",
+    amountCents: 102,
+    locationLive: false,
+    reader: { ...reader, link: "usb" },
+    sellingEntityId: "ent_bar",
+    alreadyCaptured: false,
+    settingUp: false,
+    connected: true,
+    bluetoothOff: false,
+    link: "usb",
+    usbAttached: false,
+    bridge,
+  });
+  assert.equal(sale.ok, true);
+  if (!sale.ok) return;
+  assert.equal(sale.transferId, "TR_usb");
+  assert.equal(
+    payReaderStatusText({
+      link: readerLink({ ...reader, link: "usb" }),
+      usbAttached: false,
+      phase: "connected",
+      message: "",
+    }),
+    PAX_MSG.ready,
+  );
+});
+
 test("USB attached authorizes, captures, and voids on the Finix bridge", async () => {
   const calls = { n: 0 };
   const bridge = saleBridge(calls);
@@ -144,7 +194,7 @@ test("USB attached authorizes, captures, and voids on the Finix bridge", async (
     checkId: "chk_usb_on",
     amountCents: 102,
     locationLive: false,
-    reader: { ...reader, link: "usb" },
+    reader: null,
     sellingEntityId: "ent_bar",
     alreadyCaptured: false,
     settingUp: false,
@@ -154,26 +204,45 @@ test("USB attached authorizes, captures, and voids on the Finix bridge", async (
     usbAttached: true,
     bridge,
   });
-  assert.equal(sale.ok, true);
-  if (!sale.ok) return;
-  assert.equal(sale.transferId, "TR_usb");
-  const captured = await runAndroidPaxCapture({
+  assert.equal(sale.ok, false);
+  if (sale.ok) return;
+  assert.equal(sale.message, CARD_READER_USB_NOT_CONNECTED);
+  const capturedDirect = await runAndroidPaxCapture({
     link: "usb",
     usbAttached: true,
-    transferId: sale.transferId,
+    transferId: "TR_usb",
     amountCents: 120,
     bridge,
   });
-  assert.equal(captured.ok, true);
-  const voided = await runAndroidPaxVoid({
+  assert.equal(capturedDirect.ok, true);
+  const voidedDirect = await runAndroidPaxVoid({
     link: "usb",
     usbAttached: true,
-    transferId: sale.transferId,
+    transferId: "TR_usb",
     amountCents: 102,
     bridge,
   });
-  assert.equal(voided.ok, true);
-  assert.equal(calls.n, 3);
+  assert.equal(voidedDirect.ok, true);
+  assert.equal(calls.n, 2);
+  const saleCalls = { n: 0 };
+  const saleBridgeOnly = saleBridge(saleCalls);
+  const ignored = await runAndroidPaxSale({
+    checkId: "chk_usb_ignored",
+    amountCents: 102,
+    locationLive: false,
+    reader: { ...reader, link: "usb" },
+    sellingEntityId: "ent_bar",
+    alreadyCaptured: false,
+    settingUp: false,
+    connected: false,
+    link: "usb",
+    usbAttached: false,
+    bridge: saleBridgeOnly,
+  });
+  assert.equal(ignored.ok, false);
+  if (ignored.ok) return;
+  assert.equal(ignored.message, PAX_MSG.notConnected);
+  assert.notEqual(ignored.message, CARD_READER_USB_NOT_CONNECTED);
   assert.equal(
     payReaderStatusText({ link: "usb", usbAttached: true, phase: "connected", message: "" }),
     PAX_MSG.ready,
@@ -254,9 +323,12 @@ test("the station USB path, pay screen, and guide name the cable", () => {
   assert.match(pay, /data-void-card/);
   assert.match(pay, /runAndroidPaxCapture/);
   assert.match(pay, /runAndroidPaxVoid/);
-  assert.match(devicesUi, /data-pax-connection/);
-  assert.match(guide, /Card reader not connected/);
-  assert.match(guide, /Bluetooth, Network, or USB/);
+  assert.match(devicesUi, /cardReaderConnectionChoices/);
+  assert.match(devicesUi, /data-printer-connection/);
+  assert.doesNotMatch(devicesUi, /data-pax-connection=""/);
+  assert.match(guide, /connects only by Bluetooth/);
+  assert.match(guide, /does not show a connection choice/);
+  assert.doesNotMatch(guide, /Connection on the card reader is Bluetooth, Network, or USB/);
   assert.match(filter, /vendor-id="12216"/);
   assert.match(filter, /vendor-id="1208"/);
   assert.match(filter, /vendor-id="1305"/);

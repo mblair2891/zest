@@ -106,9 +106,9 @@ test("assigned Bluetooth reader connects from a saved address, otherwise it scan
     paxAutoConnectPlan({ phase: "connecting", assigned: reader, rememberedAddress: "AA:BB:CC:DD:EE:FF" }),
     "skip",
   );
-  assert.equal(paxAutoConnectPlan({ phase: "idle", assigned: { ...reader, link: "usb" }, usbAttached: false }), "skip");
-  assert.equal(paxAutoConnectPlan({ phase: "idle", assigned: { ...reader, link: "usb" }, usbAttached: true }), "usb");
-  assert.equal(paxAutoConnectPlan({ phase: "idle", assigned: { ...reader, link: "network" } }), "skip");
+  assert.equal(paxAutoConnectPlan({ phase: "idle", assigned: { ...reader, link: "usb" }, usbAttached: false }), "scan");
+  assert.equal(paxAutoConnectPlan({ phase: "idle", assigned: { ...reader, link: "usb" }, usbAttached: true }), "scan");
+  assert.equal(paxAutoConnectPlan({ phase: "idle", assigned: { ...reader, link: "network" } }), "scan");
   assert.equal(paxAutoConnectPlan({ phase: "idle", assigned: null }), "skip");
 });
 

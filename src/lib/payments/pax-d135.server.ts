@@ -186,7 +186,7 @@ export async function renamePaxReaderRecord(
   return { ok: true, reader: renamed.reader };
 }
 
-/** Bluetooth, Network, or USB. Does not call Finix and does not change the serial. */
+/** Saves a connection when the model offers one. A D135 stays Bluetooth. Does not call Finix. */
 export async function setPaxReaderLinkRecord(
   userId: string,
   input: { locationId: string; id: string; link: PaxReaderLink },

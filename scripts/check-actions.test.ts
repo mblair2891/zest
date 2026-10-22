@@ -158,5 +158,5 @@ test("guide states the remove and void rule", () => {
   assert.match(types, /Order screen check left, menu right/);
   assert.match(orders, /cancel ticket to the kitchen or bar/);
   const payments = readFileSync("src/lib/guide/content/payments.ts", "utf8");
-  assert.match(payments, /A card reader connects by Bluetooth, Network, or USB/);
+  assert.match(payments, /A Finix D135 card reader connects only by Bluetooth/);
 });
