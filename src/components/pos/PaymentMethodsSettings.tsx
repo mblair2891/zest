@@ -86,7 +86,7 @@ export function PaymentMethodsSettings({ write }: { write: boolean }) {
         <span>
           Accept gift cards
           <span className="mt-0.5 block text-xs text-muted-foreground">
-            First-party in-person ledger. Off: no sell or redeem. Not sold online.
+            First-party in-person ledger. Off: no sell or redeem. Limits and who may sell or redeem are in Settings → Gift cards. Not sold online.
           </span>
         </span>
       </label>

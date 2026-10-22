@@ -105,6 +105,7 @@ import {
 import { useDeliverySession } from "../delivery/session";
 import { assignNewSectionToSolePrinters } from "../print/printer-assignment";
 import { methodEnabled, parsePaymentMethods, payConfigForProcessor } from "./payment-methods";
+import { giftActionError, giftEntityIdForCheck } from "./gift-policy";
 import { giftSellBlockedReason, parseGiftLimits } from "./gift-limits";
 import {
   cardRequiresConnection,
@@ -3632,9 +3633,13 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		let giftRedeemLed: any[] = [];
 		let giftRedeemTransfers: any[] = [];
 		if (method === "gift_card" && !serverGift) {
-			if (!parsePaymentMethods(get().settings.paymentMethods).giftCard) {
-				return { ok: false, error: "Gift cards are off. No sell or redeem." };
-			}
+			const denied = giftActionError({
+				settings: get().settings,
+				entityId: giftEntityIdForCheck(order?.lines, emp?.operatorId),
+				role: emp?.role,
+				action: "redeem",
+			});
+			if (denied) return { ok: false, error: denied };
 			if (!giftCardCode) return {
 				ok: false,
 				error: "Enter gift card code"
@@ -4145,9 +4150,14 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}, ...get().customers] });
 	},
 	issueGiftCard: ({ amountCents, code, issuedToName, issuerId, tender }) => {
-		if (!parsePaymentMethods(get().settings.paymentMethods).giftCard) {
-			return { ok: false, error: "Gift cards are off. No sell or redeem." };
-		}
+		const selling = get().getCurrentEmployee();
+		const deniedSell = giftActionError({
+			settings: get().settings,
+			entityId: selling?.operatorId || issuerId,
+			role: selling?.role,
+			action: "sell",
+		});
+		if (deniedSell) return { ok: false, error: deniedSell };
 		{
 			const limits = parseGiftLimits(get().settings);
 			const cap = giftSellBlockedReason(amountCents, 0, limits);
@@ -4376,15 +4386,27 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		return { ok: true, processed };
 	},
 	reloadGiftCard: (code, amountCents) => {
-		if (!parsePaymentMethods(get().settings.paymentMethods).giftCard) {
-			return { ok: false, error: "Gift cards are off. No sell or redeem." };
-		}
+		const reloading = get().getCurrentEmployee();
+		const deniedReload = giftActionError({
+			settings: get().settings,
+			entityId: reloading?.operatorId,
+			role: reloading?.role,
+			action: "sell",
+		});
+		if (deniedReload) return { ok: false, error: deniedReload };
 		const needle = (code || "").replace(/[\s-]/g, "").toUpperCase();
 		const gc = get().giftCards.find((g: any) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.active && g.status !== "closed");
 		if (!gc) return {
 			ok: false,
 			error: "Only issued or imported cards can be reloaded"
 		};
+		const issuerDenied = giftActionError({
+			settings: get().settings,
+			entityId: String(gc.issuerId || reloading?.operatorId || ""),
+			role: reloading?.role,
+			action: "sell",
+		});
+		if (issuerDenied) return { ok: false, error: issuerDenied };
 		if (gc.status === "frozen" || gc.status === "void" || gc.status === "closed") return { ok: false, error: "Card is not reloadable" };
 		const limits = parseGiftLimits(get().settings);
 		const cap = giftSellBlockedReason(amountCents, gc.balanceCents, limits);

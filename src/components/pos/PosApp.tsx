@@ -338,6 +338,12 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                     ? setup.cashRoundMode
                     : st.settings.cashRoundMode,
                 entityCashPricing: setup.entityCashPricing ?? st.settings.entityCashPricing,
+                giftEntitiesMaySell: setup.giftEntitiesMaySell ?? st.settings.giftEntitiesMaySell,
+                giftEntitiesMayRedeem:
+                  setup.giftEntitiesMayRedeem ?? st.settings.giftEntitiesMayRedeem,
+                giftSellRoles: setup.giftSellRoles ?? st.settings.giftSellRoles,
+                giftRedeemRoles: setup.giftRedeemRoles ?? st.settings.giftRedeemRoles,
+                entityGiftPolicy: setup.entityGiftPolicy ?? st.settings.entityGiftPolicy,
                 giftHouseIssuerEnabled:
                   setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled,
                 paymentMethods: parsePaymentMethods(

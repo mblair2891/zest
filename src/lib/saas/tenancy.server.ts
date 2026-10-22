@@ -26,6 +26,7 @@ import type {
 import { EMPTY_LOCATION_SETUP, MEMBERSHIP_ROLES, PLAN_SLUGS, VENUE_TYPES } from "./types";
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
 import { parseEntityCashPricing } from "@/lib/pos/cash-discount";
+import { parseEntityGiftMap, parseGiftRoleList } from "@/lib/pos/gift-policy";
 import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { seedDefaultPrinterAssignments } from "@/lib/print/printer-assignment";
 import { parseNetworkChecklist, parseNetworkReadyStatus } from "./network-readiness";
@@ -382,6 +383,11 @@ function parseSetup(raw: unknown): LocationSetup {
       typeof o.employmentState === "string" && o.employmentState.trim()
         ? o.employmentState.trim().slice(0, 16)
         : undefined,
+    giftEntitiesMaySell: "giftEntitiesMaySell" in o ? o.giftEntitiesMaySell !== false : undefined,
+    giftEntitiesMayRedeem: "giftEntitiesMayRedeem" in o ? o.giftEntitiesMayRedeem !== false : undefined,
+    giftSellRoles: "giftSellRoles" in o ? parseGiftRoleList(o.giftSellRoles) : undefined,
+    giftRedeemRoles: "giftRedeemRoles" in o ? parseGiftRoleList(o.giftRedeemRoles) : undefined,
+    entityGiftPolicy: parseEntityGiftMap(o.entityGiftPolicy),
   };
 }
 
@@ -945,6 +951,12 @@ export async function updateLocationSetupForUser(
   }
   if (input.setup.laborByEntity) {
     next.laborByEntity = { ...(prev.laborByEntity ?? {}), ...input.setup.laborByEntity };
+  }
+  if (input.setup.entityGiftPolicy) {
+    next.entityGiftPolicy = {
+      ...(prev.entityGiftPolicy ?? {}),
+      ...(parseEntityGiftMap(input.setup.entityGiftPolicy) ?? {}),
+    };
   }
   if (input.setup.revenueShare) {
     const share = parseRevenueShare(input.setup.revenueShare);

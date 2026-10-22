@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_339_gift_card_settings",
+    date: "2026-10-22",
+    title: "Gift card settings for venue and entities",
+    summary: "Venue Settings and each entity’s settings turn gift cards on, set who may sell, and set who may redeem.",
+    body: "Settings → Gift cards turns gift cards on for the venue, sets the limits, and chooses whether entities may sell or redeem and which roles may. Each entity’s settings turn gift cards on for that entity and choose who may sell and who may redeem. When the venue has gift cards off, the entity cannot turn them on. Sell and redeem stay off the floor, including a station with USB magstripe reader attached (gift cards).",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "gift-cards",
+    tags: ["gift"],
+  },
+  {
     id: "upd_2026_10_338_msr_checkbox",
     date: "2026-10-22",
     title: "MSR checkbox on the terminal",

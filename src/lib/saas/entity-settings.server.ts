@@ -11,6 +11,15 @@ import {
   parseTipPercents,
   readTipPercents,
 } from "@/lib/saas/entity-settings";
+import {
+  clampEntityGiftPolicy,
+  defaultEntityGiftPolicy,
+  parseEntityGiftPolicy,
+  venueGiftRules,
+  type EntityGiftPolicy,
+  type VenueGiftRules,
+} from "@/lib/pos/gift-policy";
+import { mergeEntityGiftIntoHouse } from "@/lib/saas/entity-gift-setup.server";
 
 export type EntitySettingsRecord = {
   operatorId: string;
@@ -19,6 +28,8 @@ export type EntitySettingsRecord = {
   menuDisplayName: string;
   tipPercents: number[];
   pinLength: 4 | 5 | 6 | null;
+  giftPolicy: EntityGiftPolicy;
+  venueGift: VenueGiftRules;
 };
 
 type MemRow = {
@@ -82,14 +93,30 @@ export async function userCanEditEntitySettings(
   });
 }
 
-function mapRow(r: {
+type OperatorSettingsRow = {
   id: string;
   legal_name: string | null;
   dba: string | null;
   menu_display_name: string | null;
   tip_percents: unknown;
   pin_length: number | null;
-}): EntitySettingsRecord {
+  gift_policy: unknown;
+};
+
+async function venueGiftForLocation(locationId: string): Promise<VenueGiftRules> {
+  const sql = await getSql();
+  const rows = await sql<{ setup: unknown }>`
+    select setup from locations where id = ${locationId} limit 1
+  `;
+  const setup = rows[0]?.setup;
+  return venueGiftRules(
+    setup && typeof setup === "object" && !Array.isArray(setup)
+      ? (setup as Parameters<typeof venueGiftRules>[0])
+      : {},
+  );
+}
+
+function mapRow(r: OperatorSettingsRow, venueGift: VenueGiftRules): EntitySettingsRecord {
   return {
     operatorId: r.id,
     legalName: String(r.legal_name ?? ""),
@@ -97,6 +124,8 @@ function mapRow(r: {
     menuDisplayName: String(r.menu_display_name ?? ""),
     tipPercents: readTipPercents(r.tip_percents),
     pinLength: parsePinLength(r.pin_length),
+    giftPolicy: r.gift_policy == null ? defaultEntityGiftPolicy() : parseEntityGiftPolicy(r.gift_policy),
+    venueGift,
   };
 }
 
@@ -107,15 +136,8 @@ export async function loadEntitySettingsForUser(
   const allowed = await userCanEditEntitySettings(userId, input.locationId, input.operatorId);
   if (!allowed) throw new ForbiddenError("The location contact or this entity edits these settings.");
   const sql = await getSql();
-  const rows = await sql<{
-    id: string;
-    legal_name: string | null;
-    dba: string | null;
-    menu_display_name: string | null;
-    tip_percents: unknown;
-    pin_length: number | null;
-  }>`
-    select id, legal_name, dba, menu_display_name, tip_percents, pin_length
+  const rows = await sql<OperatorSettingsRow>`
+    select id, legal_name, dba, menu_display_name, tip_percents, pin_length, gift_policy
     from operators
     where id = ${input.operatorId}
       and org_id = ${input.orgId}
@@ -124,7 +146,7 @@ export async function loadEntitySettingsForUser(
   `;
   const row = rows[0];
   if (!row) throw new ForbiddenError("Selling entity not found.");
-  return mapRow(row);
+  return mapRow(row, await venueGiftForLocation(input.locationId));
 }
 
 export async function saveEntitySettingsForUser(
@@ -138,6 +160,7 @@ export async function saveEntitySettingsForUser(
     menuDisplayName: string;
     tipPercents: unknown;
     pinLength: unknown;
+    giftPolicy?: unknown;
   },
 ): Promise<EntitySettingsRecord> {
   const allowed = await userCanEditEntitySettings(userId, input.locationId, input.operatorId);
@@ -151,27 +174,36 @@ export async function saveEntitySettingsForUser(
     throw new Error("Staff PIN length is 4, 5, or 6.");
   }
   const sql = await getSql();
+  const venueGift = await venueGiftForLocation(input.locationId);
+  const priorRows = await sql<{ gift_policy: unknown }>`
+    select gift_policy from operators
+    where id = ${input.operatorId}
+      and org_id = ${input.orgId}
+      and location_id = ${input.locationId}
+    limit 1
+  `;
+  const previous = priorRows[0]?.gift_policy == null ? null : parseEntityGiftPolicy(priorRows[0].gift_policy);
+  const giftPolicy =
+    input.giftPolicy == null ? previous ?? defaultEntityGiftPolicy() : clampEntityGiftPolicy(venueGift, input.giftPolicy, previous);
   const tipsJson = tipPercents.length ? JSON.stringify(tipPercents) : "null";
-  const rows = await sql<{
-    id: string;
-    legal_name: string | null;
-    dba: string | null;
-    menu_display_name: string | null;
-    tip_percents: unknown;
-    pin_length: number | null;
-  }>`
+  const giftJson = JSON.stringify(giftPolicy);
+  const rows = await sql<OperatorSettingsRow>`
     update operators
     set legal_name = ${legalName},
         dba = ${dba || null},
         menu_display_name = ${menuDisplayName || null},
         tip_percents = ${tipsJson}::jsonb,
-        pin_length = ${pinLength}
+        pin_length = ${pinLength},
+        gift_policy = ${giftJson}::jsonb
     where id = ${input.operatorId}
       and org_id = ${input.orgId}
       and location_id = ${input.locationId}
-    returning id, legal_name, dba, menu_display_name, tip_percents, pin_length
+    returning id, legal_name, dba, menu_display_name, tip_percents, pin_length, gift_policy
   `;
   const row = rows[0];
   if (!row) throw new ForbiddenError("Selling entity not found.");
-  return mapRow(row);
+  if (input.giftPolicy != null) {
+    await mergeEntityGiftIntoHouse(input.locationId, input.operatorId, giftPolicy);
+  }
+  return mapRow(row, venueGift);
 }

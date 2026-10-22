@@ -187,6 +187,7 @@ export const saveEntitySettingsFn = createServerFn({ method: "POST" })
     menuDisplayName: string;
     tipPercents: unknown;
     pinLength: unknown;
+    giftPolicy?: unknown;
   }) => ({
     orgId: String(d.orgId ?? "").trim(),
     locationId: loc(d.locationId),
@@ -196,6 +197,10 @@ export const saveEntitySettingsFn = createServerFn({ method: "POST" })
     menuDisplayName: String(d.menuDisplayName ?? "").slice(0, 80),
     tipPercents: Array.isArray(d.tipPercents) ? d.tipPercents.slice(0, 4) : [],
     pinLength: d.pinLength == null || String(d.pinLength).trim() === "" ? null : d.pinLength,
+    giftPolicy:
+      d.giftPolicy && typeof d.giftPolicy === "object" && !Array.isArray(d.giftPolicy)
+        ? d.giftPolicy
+        : null,
   }))
   .handler(async ({ context, data }) => {
     const { saveEntitySettingsForUser } = await import("@/lib/saas/entity-settings.server");
@@ -1163,6 +1168,14 @@ function publishSetupSlice(setup: LocationSetup) {
     combineRequiresManager: setup.combineRequiresManager,
     paxReaders: setup.paxReaders,
     cardProcessor: setup.cardProcessor,
+    giftEntitiesMaySell: setup.giftEntitiesMaySell,
+    giftEntitiesMayRedeem: setup.giftEntitiesMayRedeem,
+    giftSellRoles: setup.giftSellRoles,
+    giftRedeemRoles: setup.giftRedeemRoles,
+    entityGiftPolicy: setup.entityGiftPolicy,
+    giftMaxLoadCents: setup.giftMaxLoadCents,
+    giftMaxBalanceCents: setup.giftMaxBalanceCents,
+    giftMaxSellPerTxnCents: setup.giftMaxSellPerTxnCents,
   };
 }
 

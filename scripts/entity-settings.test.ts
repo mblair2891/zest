@@ -127,6 +127,9 @@ test("entity settings form is entity-owned and the save does not write the venue
   assert.match(panel, /placeholder=\{ENTITY_TIP_PLACEHOLDERS\[i\]\}/);
   assert.match(panel, /ENTITY_FIELD_PLACEHOLDERS\.pinLength/);
   assert.match(panel, /saveEntitySettingsFn/);
+  assert.match(panel, /data-entity-gift-enabled/);
+  assert.match(panel, /data-entity-gift-sell/);
+  assert.match(panel, /data-entity-gift-redeem/);
   assert.doesNotMatch(panel, /updateSettings/);
   assert.doesNotMatch(panel, /Quantum Payments|taxRate|cash discount|EIN|bank account/);
 

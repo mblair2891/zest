@@ -355,6 +355,16 @@ export interface RestaurantSettings {
   giftMaxBalanceCents?: number;
   /** Max sell in one transaction, cents. Default $500. */
   giftMaxSellPerTxnCents?: number;
+  /** When false, no entity at this venue may sell gift cards. Default on. */
+  giftEntitiesMaySell?: boolean;
+  /** When false, no entity at this venue may redeem gift cards. Default on. */
+  giftEntitiesMayRedeem?: boolean;
+  /** Roles that may sell. Empty uses the standard floor roles. */
+  giftSellRoles?: string[];
+  /** Roles that may redeem. Empty uses the standard floor roles. */
+  giftRedeemRoles?: string[];
+  /** Per selling entity. Missing means that entity follows the venue. */
+  entityGiftPolicy?: Record<string, import("./gift-policy").EntityGiftPolicy>;
   /** Cash-out of remainder. Off except where required by law. */
   giftCashOutRemainder?: boolean;
   /** High-value sell / rapid redeem needs manager PIN. */

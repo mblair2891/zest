@@ -109,6 +109,7 @@ import { parseStationClass } from "@/lib/pos/station-class";
 import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/api";
 import { defaultGiftIssuer, fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import { giftNeedsManagerPin, giftSellBlockedReason, parseGiftLimits } from "@/lib/pos/gift-limits";
+import { giftEntityIdForCheck, resolveGiftAccess, venueGiftRules } from "@/lib/pos/gift-policy";
 import { ManagerPinDialog } from "./ManagerPinDialog";
 import { UsbGiftMsrNote } from "./EloMsrStation";
 import {
@@ -196,7 +197,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     parsePaymentMethods(settings.paymentMethods),
     settings.cardProcessor,
   );
-  const giftOk = canPay && payCfg.giftCard;
+  const giftEntityId = giftEntityIdForCheck(order?.lines, emp?.operatorId);
+  const giftAccess = resolveGiftAccess({
+    venue: venueGiftRules(settings),
+    entity: giftEntityId ? settings.entityGiftPolicy?.[giftEntityId] ?? null : null,
+    hasEntity: Boolean(giftEntityId),
+    role: emp?.role,
+  });
+  const giftOk = canPay && giftAccess.visible;
+  const giftRedeemOk = canPay && giftAccess.redeem;
   const locationDevices = usePosStore((s) => s.locationDevices);
   const activeDeviceId = usePosStore((s) => s.activeDeviceId);
   const tables = usePosStore((s) => s.tables);
@@ -224,7 +233,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     }
   })();
   const odsBlocked = deviceRole === "ods";
-  const payMethods = enabledPayMethods(payCfg);
+  const payMethods = enabledPayMethods(payCfg).filter(
+    (item) => item !== "gift_card" || giftAccess.visible,
+  );
 
   const [method, setMethod] = useState<PaymentMethod>(() =>
     initialMethod && methodEnabled(payCfg, initialMethod)
@@ -764,7 +775,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
 
   useEffect(() => {
     if (!open || method !== "gift_card") return;
-    setPreferredMsrGiftAction("redeem");
+    setPreferredMsrGiftAction(giftAccess.redeem ? "redeem" : "load");
     const onSwipe = (ev: Event) => {
       const detail = (ev as CustomEvent<MsrSwipeEvent>).detail;
       if (!detail?.code) return;
@@ -779,7 +790,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       window.removeEventListener("summex-msr-swipe", onSwipe);
       if (preferredMsrGiftAction() === "redeem") setPreferredMsrGiftAction("balance");
     };
-  }, [open, method]);
+  }, [open, method, giftAccess.redeem]);
 
   useEffect(() => {
     if (!giftOk && method === "gift_card") {
@@ -2820,7 +2831,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                     First-party ledger. Sell and redeem on this paired station with a staff PIN.
                     No public website purchase. No shipping. No third-party gift networks.
                   </p>
-                  <UsbGiftMsrNote action="redeem" />
+                  <UsbGiftMsrNote action={giftAccess.redeem ? "redeem" : "load"} />
+                  {giftAccess.sell ? (
                   <div className="space-y-2 rounded-lg border border-border p-2" data-demo="gift-sell">
                     <p className="text-xs font-medium">Sell gift card</p>
                     <Input
@@ -2844,6 +2856,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       Sell gift card
                     </Button>
                   </div>
+                  ) : null}
+                  {giftAccess.redeem ? (
                   <div className="space-y-2" data-demo="gift-redeem">
                     <p className="text-xs font-medium">Redeem / balance check</p>
                     <Input
@@ -2855,6 +2869,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       Check balance
                     </Button>
                   </div>
+                  ) : null}
                   {giftNote && (
                     <p className="text-xs text-muted-foreground" role="status">
                       {giftNote}
@@ -2942,7 +2957,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 }
                 pay();
               }}
-              disabled={busy || (method === "card" && !cardHoldAuth && usbBlocksCard)}
+              disabled={busy || (method === "card" && !cardHoldAuth && usbBlocksCard) || (method === "gift_card" && !giftRedeemOk)}
             >
               {busy && "Present card on Quantum reader…"}
               {!busy && method === "card" && !cardHoldAuth && "Run card"}

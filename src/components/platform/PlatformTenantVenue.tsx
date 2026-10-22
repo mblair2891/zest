@@ -31,6 +31,7 @@ import type { SaasLocation, SaasOrganization } from "@/lib/pos/saas-types";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { cn } from "@/lib/utils";
 import { parseOdsPhases } from "@/lib/pos/ods-phases";
+import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseQrMode } from "@/lib/pos/qr-table";
 import {
@@ -472,6 +473,14 @@ export function PlatformTenantVenue({
               ? setup.cashRoundMode
               : st.settings.cashRoundMode,
           entityCashPricing: setup.entityCashPricing ?? st.settings.entityCashPricing,
+          paymentMethods: parsePaymentMethods(
+            setup.paymentMethods ?? st.settings.paymentMethods,
+          ),
+          giftEntitiesMaySell: setup.giftEntitiesMaySell ?? st.settings.giftEntitiesMaySell,
+          giftEntitiesMayRedeem: setup.giftEntitiesMayRedeem ?? st.settings.giftEntitiesMayRedeem,
+          giftSellRoles: setup.giftSellRoles ?? st.settings.giftSellRoles,
+          giftRedeemRoles: setup.giftRedeemRoles ?? st.settings.giftRedeemRoles,
+          entityGiftPolicy: setup.entityGiftPolicy ?? st.settings.entityGiftPolicy,
           giftHouseIssuerEnabled: peer
             ? false
             : (setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled),

@@ -8,6 +8,12 @@ import { parseTicketQrToken } from "@/lib/pos/qr-table";
 import { isEmptyTable } from "@/lib/pos/floor-status";
 import { openChecksOnTable } from "@/lib/pos/check-integrity";
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
+import {
+  giftEntityIdForCheck,
+  resolveGiftAccess,
+  venueGiftRules,
+  type GiftSettingsShape,
+} from "@/lib/pos/gift-policy";
 import { computeTotals, linePrintedCents, policyForLine, printedItemPriceCents, tipSuggestions } from "@/lib/pos/calculations";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import type { MenuItem, Order, OrderLine, Table } from "@/lib/pos/types";
@@ -28,6 +34,23 @@ import { omitWellBuildFromList } from "@/lib/pos/well-book";
 import { needsOpenAmount } from "@/lib/pos/open-items";
 
 type CartLine = { menuItemId: string; name: string; unitPriceCents: number; qty: number };
+
+function guestMayRedeemGift(
+  settings: GiftSettingsShape,
+  payAllow: string,
+  lines?: { entityId?: string | null; vendorId?: string | null }[] | null,
+): boolean {
+  const venuePay = parsePaymentMethods(settings.paymentMethods);
+  if (!venuePay.giftCard) return false;
+  if (!(payAllow === "gift" || payAllow === "both")) return false;
+  const entityId = giftEntityIdForCheck(lines, null);
+  return resolveGiftAccess({
+    venue: venueGiftRules(settings),
+    entity: entityId ? settings.entityGiftPolicy?.[entityId] ?? null : null,
+    hasEntity: Boolean(entityId),
+    role: null,
+  }).redeem;
+}
 
 export function GuestTablePage({
   label,
@@ -70,16 +93,6 @@ export function GuestTablePage({
   const guestSendOrder = usePosStore((s) => s.guestSendOrder);
   const guestPayOrder = usePosStore((s) => s.guestPayOrder);
   const policy = parseQrPolicy(settings.qrPolicy, settings.qrMode);
-
-  useEffect(() => {
-    const venuePay = parsePaymentMethods(settings.paymentMethods);
-    const giftOn =
-      venuePay.giftCard && (policy.payAllow === "gift" || policy.payAllow === "both");
-    const cardOn =
-      venuePay.card && (policy.payAllow === "card" || policy.payAllow === "both");
-    if (payMethod === "card" && !cardOn && giftOn) setPayMethod("gift_card");
-    if (payMethod === "gift_card" && !giftOn && cardOn) setPayMethod("card");
-  }, [settings.paymentMethods, policy.payAllow, payMethod]);
 
   useEffect(() => {
     let finished = false;
@@ -137,6 +150,14 @@ export function GuestTablePage({
       : undefined) ??
     openChecks[0];
   const totals = order ? computeTotals(order, settings, { tender: "card" }) : null;
+  const giftRedeemOn = guestMayRedeemGift(settings, policy.payAllow, order?.lines);
+  useEffect(() => {
+    const venuePay = parsePaymentMethods(settings.paymentMethods);
+    const cardOn =
+      venuePay.card && (policy.payAllow === "card" || policy.payAllow === "both");
+    if (payMethod === "gift_card" && !giftRedeemOn && cardOn) setPayMethod("card");
+    if (payMethod === "card" && !cardOn && giftRedeemOn) setPayMethod("gift_card");
+  }, [payMethod, giftRedeemOn, settings.paymentMethods, policy.payAllow]);
 
   const serverless = isServerlessFood(settings.serviceStyle);
   const items = useMemo(() => {
@@ -320,7 +341,7 @@ export function GuestTablePage({
       setMsg("Card is off at this venue. Ask staff or use gift if it is on.");
       return;
     }
-    if (payMethod === "gift_card" && !venuePay.giftCard) {
+    if (payMethod === "gift_card" && !guestMayRedeemGift(settings, policy.payAllow, order.lines)) {
       setMsg("Gift is off at this venue.");
       return;
     }
@@ -669,8 +690,7 @@ function PayPanel({
 }) {
   const settings = usePosStore((s) => s.settings);
   const venuePay = parsePaymentMethods(settings.paymentMethods);
-  const giftOn =
-    venuePay.giftCard && (policy.payAllow === "gift" || policy.payAllow === "both");
+  const giftOn = guestMayRedeemGift(settings, policy.payAllow, order.lines);
   const cardOn =
     !squareRail &&
     venuePay.card &&

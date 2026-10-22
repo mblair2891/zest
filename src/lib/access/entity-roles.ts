@@ -137,7 +137,7 @@ export const SETTINGS_PACK_LABEL: Record<SettingsPackId, string> = {
   kiosk_front: "Kiosk, waitlist, check-in",
   voice: "Voice control",
   floor_qr: "Floor statuses, flash & QR",
-  gift_cards: "Gift cards & residual",
+  gift_cards: "Gift cards",
   cash_handling: "Cash drawers, wells & banks",
   loss_prevention: "Loss prevention & exceptions",
   staffing: "Staffing recs",

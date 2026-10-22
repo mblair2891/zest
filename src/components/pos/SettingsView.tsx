@@ -54,7 +54,10 @@ import {
   VENUE_TIMEZONES,
   parseVenueTimezone,
 } from "@/lib/pos/venue-time";
+import { toast } from "sonner";
 import { PaymentMethodsSettings } from "./PaymentMethodsSettings";
+import { parsePaymentMethods, togglePaymentMethod } from "@/lib/pos/payment-methods";
+import { GIFT_ACTION_ROLES, parseGiftRoleList } from "@/lib/pos/gift-policy";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import type { VenueEntityId } from "@/lib/pos/types";
@@ -145,6 +148,44 @@ function Pack({
   );
 }
 
+function GiftRoleChecks({
+  label,
+  dataPrefix,
+  selected,
+  onChange,
+}: {
+  label: string;
+  dataPrefix: string;
+  selected: string[];
+  onChange: (roles: string[]) => void;
+}) {
+  return (
+    <fieldset className="space-y-1">
+      <legend className="text-sm text-muted-foreground">{label}</legend>
+      <div className="grid grid-cols-2 gap-1">
+        {GIFT_ACTION_ROLES.map((role) => (
+          <label key={role} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-border"
+              data-gift-role={dataPrefix}
+              data-gift-role-name={role}
+              checked={selected.includes(role)}
+              onChange={(e) => {
+                const next = e.target.checked
+                  ? Array.from(new Set([...selected, role]))
+                  : selected.filter((item) => item !== role);
+                onChange(next);
+              }}
+            />
+            {ROLE_LABEL[role]}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 function GiftCardSettingsPack({
   packs,
   write,
@@ -164,19 +205,90 @@ function GiftCardSettingsPack({
   };
   return (
     <Pack id="gift_cards" packs={packs}>
-      <div data-demo="gift-policy">
+      <div data-demo="gift-policy" data-gift-cards-section>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-medium">Gift cards · issuer & residual</p>
+          <p className="text-sm font-medium">Gift cards</p>
           <GuideLearnLink topicId="gift-cards" compact>
             Learn
           </GuideLearnLink>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Sale books issuer gift liability — not operating sales of the drawer that
-          collected cash. Redeem at any allowed operator; the fulfiller gets the
-          merchandise sale and the issuer remits in settlement.
+          Turn gift cards on for this venue, set the limits, and choose whether entities
+          may sell or redeem and which roles may do each. An entity cannot turn gift
+          cards on while this is off. Sale books issuer gift liability — not operating
+          sales of the drawer that collected cash.
         </p>
-        <fieldset disabled={!write} className="mt-3 space-y-3">
+        <label className="mt-3 flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            data-gift-cards-enabled
+            disabled={!write}
+            checked={parsePaymentMethods(settings.paymentMethods).giftCard}
+            onChange={(e) => {
+              const cfg = parsePaymentMethods(settings.paymentMethods);
+              const res = togglePaymentMethod(cfg, "giftCard", e.target.checked);
+              if (!res.ok) {
+                toast.error(res.error);
+                return;
+              }
+              save({ paymentMethods: res.cfg });
+            }}
+          />
+          <span>
+            Enable gift cards
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Off hides sell, redeem, and the station Gift cards job, including a station
+              with a USB magstripe reader attached.
+            </span>
+          </span>
+        </label>
+        <fieldset
+          disabled={!write || !parsePaymentMethods(settings.paymentMethods).giftCard}
+          className="mt-3 space-y-3"
+        >
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border"
+              data-gift-entities-may-sell
+              checked={settings.giftEntitiesMaySell !== false}
+              onChange={(e) => save({ giftEntitiesMaySell: e.target.checked })}
+            />
+            <span>
+              Entities may sell gift cards
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Off: no entity can sell, even if that entity’s own setting is on.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border"
+              data-gift-entities-may-redeem
+              checked={settings.giftEntitiesMayRedeem !== false}
+              onChange={(e) => save({ giftEntitiesMayRedeem: e.target.checked })}
+            />
+            <span>
+              Entities may redeem gift cards
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Off: no entity can redeem. Pay and the station job hide redeem.
+              </span>
+            </span>
+          </label>
+          <GiftRoleChecks
+            label="Who can sell"
+            dataPrefix="gift-sell-role"
+            selected={parseGiftRoleList(settings.giftSellRoles ?? GIFT_ACTION_ROLES)}
+            onChange={(roles) => save({ giftSellRoles: roles })}
+          />
+          <GiftRoleChecks
+            label="Who can redeem"
+            dataPrefix="gift-redeem-role"
+            selected={parseGiftRoleList(settings.giftRedeemRoles ?? GIFT_ACTION_ROLES)}
+            onChange={(roles) => save({ giftRedeemRoles: roles })}
+          />
           <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"
@@ -590,6 +702,11 @@ export function SettingsView() {
           giftCashOutRemainder: s.giftCashOutRemainder === true,
           giftHighValueManagerPin: s.giftHighValueManagerPin !== false,
           giftHighValueCents: s.giftHighValueCents ?? 20000,
+          giftEntitiesMaySell: s.giftEntitiesMaySell !== false,
+          giftEntitiesMayRedeem: s.giftEntitiesMayRedeem !== false,
+          giftSellRoles: parseGiftRoleList(s.giftSellRoles ?? GIFT_ACTION_ROLES),
+          giftRedeemRoles: parseGiftRoleList(s.giftRedeemRoles ?? GIFT_ACTION_ROLES),
+          entityGiftPolicy: s.entityGiftPolicy,
           entityKyc: s.entityKyc,
           aiReportSchedule: s.aiReportSchedule ?? "off",
           aiReportEmail: s.aiReportEmail ?? "",

@@ -20,6 +20,7 @@ import { parseBrandLogoMap } from "@/lib/brand/logos";
 import { parseRevenueShare } from "@/lib/pos/revenue-share";
 import { parsePaxReaders, type PaxReader } from "@/lib/payments/pax-d135";
 import { parseOdsPhases } from "@/lib/pos/ods-phases";
+import { parseEntityGiftMap, parseGiftRoleList, type EntityGiftPolicy } from "./gift-policy";
 
 export const STATION_PUBLISH_STATE_KEY = "summex-station-publish-state-v1";
 
@@ -40,6 +41,14 @@ export type StationPublishSetup = {
   cashRoundIncrement?: number;
   cashRoundMode?: string;
   entityCashPricing?: Record<string, { percent: number; increment: 0.25 | 0.5 | 0.99 | 1 }>;
+  giftEntitiesMaySell?: boolean;
+  giftEntitiesMayRedeem?: boolean;
+  giftSellRoles?: string[];
+  giftRedeemRoles?: string[];
+  entityGiftPolicy?: Record<string, EntityGiftPolicy>;
+  giftMaxLoadCents?: number;
+  giftMaxBalanceCents?: number;
+  giftMaxSellPerTxnCents?: number;
   hostMayOpenBarTabs?: boolean;
   serversAtHostStand?: boolean;
   orderMayOpenBarTabs?: boolean;
@@ -248,6 +257,31 @@ export function applyStationPublish(
     }
     if (setup.entityCashPricing) {
       settings.entityCashPricing = setup.entityCashPricing;
+    }
+    if ("giftEntitiesMaySell" in setup) {
+      settings.giftEntitiesMaySell = setup.giftEntitiesMaySell !== false;
+    }
+    if ("giftEntitiesMayRedeem" in setup) {
+      settings.giftEntitiesMayRedeem = setup.giftEntitiesMayRedeem !== false;
+    }
+    if (setup.giftSellRoles != null) {
+      settings.giftSellRoles = parseGiftRoleList(setup.giftSellRoles);
+    }
+    if (setup.giftRedeemRoles != null) {
+      settings.giftRedeemRoles = parseGiftRoleList(setup.giftRedeemRoles);
+    }
+    if (setup.entityGiftPolicy != null) {
+      const map = parseEntityGiftMap(setup.entityGiftPolicy);
+      if (map) settings.entityGiftPolicy = map;
+    }
+    if (typeof setup.giftMaxLoadCents === "number") {
+      settings.giftMaxLoadCents = setup.giftMaxLoadCents;
+    }
+    if (typeof setup.giftMaxBalanceCents === "number") {
+      settings.giftMaxBalanceCents = setup.giftMaxBalanceCents;
+    }
+    if (typeof setup.giftMaxSellPerTxnCents === "number") {
+      settings.giftMaxSellPerTxnCents = setup.giftMaxSellPerTxnCents;
     }
     if ("hostMayOpenBarTabs" in setup) {
       settings.hostMayOpenBarTabs = Boolean(setup.hostMayOpenBarTabs);

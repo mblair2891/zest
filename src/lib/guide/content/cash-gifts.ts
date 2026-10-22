@@ -369,7 +369,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "At term end, host processes residual: operator-issued remaining balance splits per location formula (default 50/50). House-issued remaining balance is retained by the house.",
       ),
       steps(
-        "Settings → Payment methods: check Accept gift cards. Off hides sell, redeem, and the station Gift cards job.",
+        "Settings → Gift cards: turn gift cards on, set the limits, and choose whether entities may sell or redeem and which roles may. Off hides sell, redeem, and the station Gift cards job, including a station with USB magstripe reader attached (gift cards). Each entity’s settings can turn gift cards off for that entity. An entity cannot turn them on while the venue has them off. Payment methods still has Accept gift cards, and that switch matches this one.",
         "Administer: venue console → Gift cards (next to Payments). Issue, lookup by code or last 4, freeze, void, audit, outstanding liability, limits (default $500 load / $500 sell). Payments has a Gift cards card that opens this tab. Peer venue: each card shows its issuer; House lists every card.",
         "Sell on a paired order or host station: after PIN, Gift cards → Sell gift card. Amount is face value — cash-discount markup does not apply to a gift load. Tender cash or card. The station shows the code to print or read back. Also Pay → Gift → Sell gift card.",
         "Redeem: station Gift cards → Redeem, or Pay → Gift. Scan or type the code. Applies to the open check and cannot exceed the card balance. Receipt shows gift tender. Example: Operator B issues $50 — liability is Operator B. Operator A sells food, redeem — Operator A merch, Operator B → Operator A remit.",

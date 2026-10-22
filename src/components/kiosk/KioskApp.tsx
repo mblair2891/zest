@@ -9,6 +9,7 @@ import { usePlatformStore } from "@/lib/pos/platform-store";
 import { printedItemPriceCents } from "@/lib/pos/calculations";
 import { formatCurrency } from "@/lib/utils";
 import { parsePaymentMethods, payConfigForProcessor } from "@/lib/pos/payment-methods";
+import { giftEntityIdForStation, resolveGiftAccess, venueGiftRules } from "@/lib/pos/gift-policy";
 import {
   bookReservationFn,
   checkInReservationFn,
@@ -361,11 +362,21 @@ function OrderPane() {
   const serverless = isServerlessFood(settings.serviceStyle);
   const payCfg = payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor);
   const squareRail = settings.cardProcessor === "square";
+  const giftEntityId = giftEntityIdForStation(
+    null,
+    vendors.filter((v) => v.active).map((v) => v.id),
+  );
+  const kioskGift = resolveGiftAccess({
+    venue: venueGiftRules(settings),
+    entity: giftEntityId ? settings.entityGiftPolicy?.[giftEntityId] ?? null : null,
+    hasEntity: Boolean(giftEntityId),
+    role: null,
+  });
   const kioskTenders = (
     [
       !squareRail && payCfg.card ? "card" : null,
       payCfg.cash ? "cash" : null,
-      payCfg.giftCard ? "gift_card" : null,
+      payCfg.giftCard && kioskGift.redeem ? "gift_card" : null,
     ] as const
   ).filter((m): m is "card" | "cash" | "gift_card" => Boolean(m));
   const [kioskMethod, setKioskMethod] = useState<"card" | "cash" | "gift_card">(

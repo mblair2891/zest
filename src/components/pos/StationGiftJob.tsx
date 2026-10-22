@@ -7,6 +7,12 @@ import { formatCurrency } from "@/lib/utils";
 import { computeTotals } from "@/lib/pos/calculations";
 import { defaultGiftIssuer, fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
+import {
+  giftEntityIdForCheck,
+  giftEntityIdForStation,
+  resolveGiftAccess,
+  venueGiftRules,
+} from "@/lib/pos/gift-policy";
 import { giftNeedsManagerPin, giftSellBlockedReason, parseGiftLimits } from "@/lib/pos/gift-limits";
 import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/api";
 import { setPreferredMsrGiftAction, type MsrSwipeEvent } from "@/lib/pos/elo-msr";
@@ -24,7 +30,21 @@ export function StationGiftJob() {
   const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const logGiftTxn = useMarketingStore((s) => s.logGiftTxn);
-  const giftOn = parsePaymentMethods(settings.paymentMethods).giftCard;
+  const vendors = usePosStore((s) => s.vendors);
+  const giftEntityId =
+    giftEntityIdForCheck(order?.lines, emp?.operatorId) ||
+    giftEntityIdForStation(
+      emp?.operatorId,
+      vendors.filter((v) => v.active).map((v) => v.id),
+    );
+  const giftAccess = resolveGiftAccess({
+    venue: venueGiftRules(settings),
+    entity: giftEntityId ? settings.entityGiftPolicy?.[giftEntityId] ?? null : null,
+    hasEntity: Boolean(giftEntityId),
+    role: emp?.role,
+  });
+  const giftOn = giftAccess.visible;
+  const venueGiftOn = parsePaymentMethods(settings.paymentMethods).giftCard;
   const limits = parseGiftLimits(settings);
 
   const [tab, setTab] = useState<"sell" | "redeem">("sell");
@@ -33,6 +53,11 @@ export function StationGiftJob() {
   const [code, setCode] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [mgrOpen, setMgrOpen] = useState(false);
+
+  useEffect(() => {
+    if (giftAccess.sell && !giftAccess.redeem) setTab("sell");
+    else if (!giftAccess.sell && giftAccess.redeem) setTab("redeem");
+  }, [giftAccess.sell, giftAccess.redeem]);
 
   useEffect(() => {
     setPreferredMsrGiftAction(tab === "sell" ? "load" : "redeem");
@@ -218,33 +243,42 @@ export function StationGiftJob() {
   };
 
   if (!giftOn) {
+    const offCopy = !venueGiftOn
+      ? "Gift cards are off in Settings → Gift cards."
+      : !giftAccess.entityEnabled
+        ? "Gift cards are off for this entity."
+        : "This role cannot sell or redeem gift cards.";
     return (
-      <p className="p-4 text-sm text-muted-foreground">
-        Gift cards are off in Settings → Payment methods.
+      <p className="p-4 text-sm text-muted-foreground" data-station-gift-off>
+        {offCopy}
       </p>
     );
   }
 
   return (
     <div className="mx-auto max-w-md space-y-4 p-4" data-demo="station-gift-job">
-      <UsbGiftMsrNote action={tab === "sell" ? "load" : "redeem"} />
+      <UsbGiftMsrNote action={tab === "sell" && giftAccess.sell ? "load" : "redeem"} />
       <div className="flex gap-2">
-        <Button
-          className="flex-1"
-          variant={tab === "sell" ? "default" : "outline"}
-          onClick={() => setTab("sell")}
-        >
-          Sell gift card
-        </Button>
-        <Button
-          className="flex-1"
-          variant={tab === "redeem" ? "default" : "outline"}
-          onClick={() => setTab("redeem")}
-        >
-          Redeem
-        </Button>
+        {giftAccess.sell ? (
+          <Button
+            className="flex-1"
+            variant={tab === "sell" ? "default" : "outline"}
+            onClick={() => setTab("sell")}
+          >
+            Sell gift card
+          </Button>
+        ) : null}
+        {giftAccess.redeem ? (
+          <Button
+            className="flex-1"
+            variant={tab === "redeem" ? "default" : "outline"}
+            onClick={() => setTab("redeem")}
+          >
+            Redeem
+          </Button>
+        ) : null}
       </div>
-      {tab === "sell" ? (
+      {tab === "sell" && giftAccess.sell ? (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
             Face value. Cash-discount markup does not apply to a gift load. Paired station + PIN

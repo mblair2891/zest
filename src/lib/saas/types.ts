@@ -168,6 +168,13 @@ export type LocationSetup = {
   giftMaxLoadCents?: number;
   giftMaxBalanceCents?: number;
   giftMaxSellPerTxnCents?: number;
+  /** When false, entities cannot sell gift cards. Default on. */
+  giftEntitiesMaySell?: boolean;
+  /** When false, entities cannot redeem gift cards. Default on. */
+  giftEntitiesMayRedeem?: boolean;
+  giftSellRoles?: string[];
+  giftRedeemRoles?: string[];
+  entityGiftPolicy?: Record<string, import("@/lib/pos/gift-policy").EntityGiftPolicy>;
   giftCashOutRemainder?: boolean;
   giftHighValueManagerPin?: boolean;
   giftHighValueCents?: number;

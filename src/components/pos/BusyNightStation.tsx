@@ -11,6 +11,7 @@ import { stationMenuItems } from "@/lib/pos/station-menu";
 import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { parseCashHandling } from "@/lib/pos/cash-handling";
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
+import { giftEntityIdForStation, stationGiftVisible } from "@/lib/pos/gift-policy";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { currentStationDeviceId, stationMayKickDrawer } from "@/lib/print/receipt-printer";
 import { computeDualTotals } from "@/lib/pos/calculations";
@@ -36,6 +37,7 @@ export function BusyNightStation({ hostStand = false }: { hostStand?: boolean })
   const orders = usePosStore((s) => s.orders);
   const tables = usePosStore((s) => s.tables);
   const settings = usePosStore((s) => s.settings);
+  const vendors = usePosStore((s) => s.vendors);
   const setActiveOrder = usePosStore((s) => s.setActiveOrder);
   const selectTable = usePosStore((s) => s.selectTable);
   const logout = usePosStore((s) => s.logout);
@@ -63,7 +65,14 @@ export function BusyNightStation({ hostStand = false }: { hostStand?: boolean })
     employeeOverride: emp ? cashCfg.custodyByEmployeeId[emp.id] ?? null : null,
     hasPossession,
     cashEnabled: parsePaymentMethods(settings.paymentMethods).cash,
-    giftEnabled: parsePaymentMethods(settings.paymentMethods).giftCard,
+    giftEnabled: stationGiftVisible(
+      settings,
+      emp?.role,
+      giftEntityIdForStation(
+        emp?.operatorId,
+        vendors.filter((v) => v.active).map((v) => v.id),
+      ),
+    ),
     canPayStation: stationMayKickDrawer(locationDevices, currentStationDeviceId()),
   }).filter((item) => !FLOOR_JOBS.has(item.id));
 
