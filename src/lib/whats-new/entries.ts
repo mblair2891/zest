@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_338_msr_checkbox",
+    date: "2026-10-22",
+    title: "MSR checkbox on the terminal",
+    summary: "A station checkbox marks the USB magstripe reader used for gift cards on that terminal.",
+    body: "Add or edit a station in Devices. Check USB magstripe reader attached (gift cards). Gift load and redeem on that station use the reader plugged into that terminal. A station left unchecked does not expect a reader. There is no separate reader to add, no network address, and no Bluetooth pairing. A bank card is not stored.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "usb-gift-msr",
+    tags: ["devices"],
+  },
+  {
     id: "upd_2026_10_337_usb_gift_msr",
     date: "2026-10-22",
     title: "USB gift card MSR",

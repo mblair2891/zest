@@ -133,5 +133,5 @@ test("contract provisioning and the public route send onboarding links", () => {
   assert.match(guide, /expires in 14 days/);
   assert.match(guide, /Summex merchant agreement/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /GUIDE_VERSION = "2026\.10\.337"/);
+  assert.match(types, /GUIDE_VERSION = "2026\.10\.338"/);
 });

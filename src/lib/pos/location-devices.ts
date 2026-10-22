@@ -26,6 +26,7 @@ import {
   eloMsrPresence,
   isStripeReaderType,
   msrConfigForDeviceType,
+  readStationUsbGiftMsr,
   type MsrConfig,
 } from "./elo-msr";
 
@@ -249,8 +250,10 @@ export type LocationDevice = {
   squareDeviceCode?: string;
   squareCodeId?: string;
   squarePairStatus?: "unpaired" | "paired";
-  /** Side-mounted Elo wedge, or a USB gift-card magstripe reader. */
+  /** Side-mounted Elo wedge, a legacy USB gift reader, or the station checkbox. */
   msr?: MsrConfig;
+  /** This terminal has a USB magstripe reader for gift cards. */
+  usbGiftMsr?: boolean;
   /** Owner asked the idle PIN pad to take the new role now. */
   applyRoleNow?: boolean;
   roleRevision?: number;
@@ -428,7 +431,11 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
         o.squarePairStatus === "paired" || o.squarePairStatus === "unpaired"
           ? o.squarePairStatus
           : undefined,
-      msr: msrConfigForDeviceType(type, o.msr),
+      ...(() => {
+        const attached = readStationUsbGiftMsr(type, id, o.usbGiftMsr, o.msr);
+        if (attached.usbGiftMsr) return attached;
+        return { msr: msrConfigForDeviceType(type, o.msr) };
+      })(),
       applyRoleNow: o.applyRoleNow === true,
       roleRevision: Number(o.roleRevision) > 0 ? Math.round(Number(o.roleRevision)) : undefined,
       claimExpiresAt:

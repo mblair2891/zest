@@ -6,6 +6,7 @@ import {
   preferredMsrGiftAction,
   pushWedgeKey,
   selectStationStripeReader,
+  stationHasUsbGiftMsr,
   type MsrGiftAction,
   type MsrSwipeEvent,
   type WedgeBuffer,
@@ -109,9 +110,11 @@ export function EloMsrStation() {
       const action = preferredMsrGiftAction();
       const reader = selectStationStripeReader(rows, sid, action);
       if (!reader) return;
+      const giftReader =
+        reader.type === "gift_msr" || stationHasUsbGiftMsr(reader) || reader.msr?.role === "gift";
       const applied = applyEloMsrSwipe(rows, reader.id, next.done, {
         handled: true,
-        giftAction: reader.type === "gift_msr" || reader.msr?.role === "gift" ? action : undefined,
+        giftAction: giftReader ? action : undefined,
       });
       if (!applied.event) return;
       usePosStore.setState({ locationDevices: applied.devices });
@@ -125,7 +128,7 @@ export function EloMsrStation() {
             locationId,
             deviceId: reader.id,
             raw: next.done,
-            giftAction: reader.type === "gift_msr" || reader.msr?.role === "gift" ? action : undefined,
+            giftAction: giftReader ? action : undefined,
             handled: true,
           },
         }).catch(() => undefined);
@@ -161,7 +164,7 @@ export function UsbGiftMsrNote({ action }: { action: MsrGiftAction }) {
     return loc ? readPairedDeviceId(loc) || "" : "";
   }, [activeDeviceId, tenantLocationId]);
   const reader = selectStationStripeReader(devices ?? [], stationId, action);
-  if (reader?.type !== "gift_msr") return null;
+  if (!reader || !(reader.type === "gift_msr" || stationHasUsbGiftMsr(reader))) return null;
   return (
     <p className="text-xs text-muted-foreground" data-usb-gift-msr>
       This station uses the USB magstripe reader for gift cards.

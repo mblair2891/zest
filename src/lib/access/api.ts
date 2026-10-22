@@ -27,7 +27,13 @@ import {
   type LocationDevice,
   type LocationDeviceType,
 } from "@/lib/pos/location-devices";
-import { eloMsrPresence, isStripeReaderType, msrForSavedDevice } from "@/lib/pos/elo-msr";
+import {
+  eloMsrPresence,
+  isStripeReaderType,
+  msrConfigForStation,
+  msrForSavedDevice,
+  stationAcceptsUsbGiftMsr,
+} from "@/lib/pos/elo-msr";
 import {
   STATION_PAIR_INVALID,
   claimExpired,
@@ -283,6 +289,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       cardReaderId?: string | null;
       cardReaderKind?: "mobile" | "counter" | null;
       msr?: unknown;
+      usbGiftMsr?: boolean;
     };
   }) => {
     const storedType = DEVICE_TYPES.includes(d.device?.type) ? d.device.type : "other";
@@ -329,6 +336,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
             ? d.device.cardReaderKind
             : null,
         msr: d.device?.msr,
+        usbGiftMsr: d.device?.usbGiftMsr === true,
       },
     };
   })
@@ -344,9 +352,13 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
     const existing = prev.find((x) => x.id === id);
     const printer = isPrinterType(data.device.type);
     const msrReader = isStripeReaderType(data.device.type);
+    const usbGiftMsr =
+      stationAcceptsUsbGiftMsr(data.device.type) && data.device.usbGiftMsr === true;
     const minted = printer || msrReader || existing?.claimCode ? null : mintClaim();
     const hasIp = Boolean(data.device.print?.target || data.device.print?.ip);
-    const msr = msrForSavedDevice(data.device.type, data.device.msr, existing?.msr);
+    const msr = usbGiftMsr
+      ? msrConfigForStation(data.device.type, id, true, existing?.msr)
+      : msrForSavedDevice(data.device.type, data.device.msr, existing?.msr);
     const nextDevice = canonicalizePrinterDevice({
       id,
       locationId: data.locationId,
@@ -397,6 +409,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       applyRoleNow: existing?.applyRoleNow,
       roleRevision: existing?.roleRevision,
       msr,
+      usbGiftMsr: usbGiftMsr || undefined,
     });
     if (!printer && nextDevice.cardReaderId) {
       const { parsePaxReaders, readerAssignmentBlock } = await import("@/lib/payments/pax-d135");

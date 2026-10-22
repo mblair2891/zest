@@ -1,13 +1,13 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.10.337";
+export const GUIDE_VERSION = "2026.10.338";
 export const GUIDE_EDITION = "Operators Guide · training week";
 export const GUIDE_TITLE = "Operators Guide";
 /** Short public revision line (date + what changed). Keep in lockstep with the white paper. */
 export const GUIDE_REVISION =
-  "22 Oct 2026 — USB gift card MSR";
-/** Prior batch: 2026.10.336 Floor legend and ticket check. 2026.10.335 D135 readers connect only by Bluetooth. 2026.10.334 Venue and entity onboarding links. 2026.10.297 Order screen check left, menu right. The venue sets the entity contact’s scope. Finix merchant onboarding starts with the location. Toast-style colors. Handheld layout. New tablet stays on pair. Reader follows the check. Card sale keeps its id. Floor map shows the whole room. Station setup stays readable. Clearer floor map. Table flash follows the status. Transfer idempotency. Online card test page. Table flash is the icon. Station PIN pad is Summex. Payment complete fits on the tablet. Online card uses the Finix form. Reader connects on its own. Full-screen check. Card sale idempotency on the station reader. The check keeps that id. */
+  "22 Oct 2026 — MSR checkbox on the terminal";
+/** Prior batch: 2026.10.337 USB gift card MSR. 2026.10.336 Floor legend and ticket check. 2026.10.335 D135 readers connect only by Bluetooth. 2026.10.334 Venue and entity onboarding links. 2026.10.297 Order screen check left, menu right. The venue sets the entity contact’s scope. Finix merchant onboarding starts with the location. Toast-style colors. Handheld layout. New tablet stays on pair. Reader follows the check. Card sale keeps its id. Floor map shows the whole room. Station setup stays readable. Clearer floor map. Table flash follows the status. Transfer idempotency. Online card test page. Table flash is the icon. Station PIN pad is Summex. Payment complete fits on the tablet. Online card uses the Finix form. Reader connects on its own. Full-screen check. Card sale idempotency on the station reader. The check keeps that id. */
 /**
  * Audience tabs in the guide. Distinct from POS PIN roles:
  * host_operator = food-hall / pod host (not the FOH host stand).

@@ -32,7 +32,7 @@ A SaaS-onboarded host can operate in **TRAINING** when these are true.
 - Gift ledger + settlement math as practice. Gift is first-party (not Quantum Payments).
 - Devices: This station (Server, Host stand, Kitchen/Bar Order Display, Kiosk, Cashier) + split screen.
 - Elo side-mounted MSR: Devices → Add device → Elo side-mounted MSR, link a tablet, and set Gift card, Loyalty, or General swipe. Gift swipes use the house ledger. No new key.
-- USB gift card MSR: Devices → Add device → Magstripe reader. Connection is USB. Assign the station the reader is plugged into. Gift load and redeem on that station use it. Other stations do not. No network address and no Bluetooth pairing.
+- USB gift card MSR: Devices → Add or edit the station → check USB magstripe reader attached (gift cards). Gift load and redeem on that station use the attached reader. A station without the checkbox does not expect one. Other stations do not. No network address and no Bluetooth pairing.
 - Go live is explicit (now or schedule) with keep/erase. Always keep menus, recipes, floor, staff, SKUs, settings.
 - Tenant operator may stay in training while the host is live.
 - Platform Tenants list shows **training | scheduled live | live**.

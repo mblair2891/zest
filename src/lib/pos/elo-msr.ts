@@ -76,6 +76,8 @@ type SwipeDevice = {
   status?: "online" | "offline" | "pending" | "inactive";
   lastSeenAt?: number;
   msr?: MsrConfig;
+  /** Slot reader plugged into this terminal. Gift cards only. */
+  usbGiftMsr?: boolean;
 };
 
 const STATION_TYPES = new Set(["tablet_pos", "host_stand", "kds", "kiosk"]);
@@ -91,6 +93,16 @@ export function isStripeReaderType(type: string): boolean {
 
 export function isUsbGiftMsrType(type: string): boolean {
   return type === "gift_msr";
+}
+
+/** Order tablet, host, kiosk, order display, or a hardware terminal. */
+export function stationAcceptsUsbGiftMsr(type: string): boolean {
+  return isMsrStationType(type) || type === "terminal";
+}
+
+/** The terminal itself has the gift-card USB reader checked. */
+export function stationHasUsbGiftMsr(d: { type: string; usbGiftMsr?: boolean }): boolean {
+  return stationAcceptsUsbGiftMsr(d.type) && d.usbGiftMsr === true;
 }
 
 export function defaultMsrConfig(): MsrConfig {
@@ -210,6 +222,51 @@ export function msrConfigForDeviceType(type: string, raw: unknown): MsrConfig | 
   };
 }
 
+/**
+ * Checkbox save on a station. The reader is this terminal.
+ * Off drops the config. A separate gift_msr row is unchanged.
+ */
+export function msrConfigForStation(
+  type: string,
+  stationId: string,
+  enabled: boolean,
+  existing?: MsrConfig,
+): MsrConfig | undefined {
+  if (!enabled || !stationAcceptsUsbGiftMsr(type)) return undefined;
+  const id = String(stationId ?? "").trim().slice(0, 80);
+  return {
+    mount: "slot",
+    role: "gift",
+    connection: "usb",
+    stationId: id || null,
+    ...keptSwipe(existing),
+  };
+}
+
+/** Read path for a station checkbox. Forces USB and gift. */
+export function readStationUsbGiftMsr(
+  type: string,
+  stationId: string,
+  flag: unknown,
+  raw: unknown,
+): { usbGiftMsr?: true; msr?: MsrConfig } {
+  if (!stationAcceptsUsbGiftMsr(type) || flag !== true) return {};
+  const parsed = parseMsrConfig(raw);
+  return {
+    usbGiftMsr: true,
+    msr: {
+      mount: "slot",
+      role: "gift",
+      connection: "usb",
+      stationId: String(stationId ?? "").trim().slice(0, 80) || null,
+      lastSwipeAt: parsed?.lastSwipeAt,
+      lastSwipeKind: parsed?.lastSwipeKind,
+      lastSwipeSummary: parsed?.lastSwipeSummary,
+      pending: parsed?.pending ?? null,
+    },
+  };
+}
+
 /** Form save keeps the last swipe. A non-reader drops the config. */
 export function msrForSavedDevice(
   type: string,
@@ -241,7 +298,7 @@ export function msrForSavedDevice(
 
 /**
  * Reader a gift load or redeem on this station should use.
- * A USB gift reader assigned here wins for load and redeem.
+ * The station checkbox wins for load and redeem. A legacy USB reader is next.
  * Another station does not see it.
  */
 export function selectStationStripeReader<T extends SwipeDevice>(
@@ -251,9 +308,11 @@ export function selectStationStripeReader<T extends SwipeDevice>(
 ): T | undefined {
   const sid = String(stationId ?? "").trim();
   if (!sid) return undefined;
-  const usb = devices.find(
+  const self = devices.find((d) => d.id === sid && stationHasUsbGiftMsr(d));
+  const legacy = devices.find(
     (d) => d.type === "gift_msr" && d.msr?.connection === "usb" && d.msr.stationId === sid,
   );
+  const usb = self ?? legacy;
   const elo = devices.find((d) => d.type === "elo_msr" && d.msr?.stationId === sid);
   if (usb && (giftAction === "load" || giftAction === "redeem" || !elo)) return usb;
   return elo;
@@ -310,21 +369,27 @@ export function applyEloMsrSwipe<T extends SwipeDevice>(
   const id = String(deviceId ?? "").trim();
   const index = devices.findIndex((d) => d.id === id);
   const device = index >= 0 ? devices[index] : undefined;
-  if (!device || !isStripeReaderType(device.type)) {
+  const attached = !!device && stationHasUsbGiftMsr(device);
+  if (!device || (!isStripeReaderType(device.type) && !attached)) {
+    if (device && stationAcceptsUsbGiftMsr(device.type)) {
+      return { devices, event: null, error: "This station has no USB magstripe reader." };
+    }
     return { devices, event: null, error: "Elo reader not found" };
   }
-  const usb = device.type === "gift_msr";
-  const stationId = device.msr?.stationId ?? null;
-  if (!stationId) {
-    return {
-      devices,
-      event: null,
-      error: usb ? "Assign this reader to a station first." : "Link this reader to a tablet first.",
-    };
-  }
-  const station = devices.find((d) => d.id === stationId && isMsrStationType(d.type));
-  if (!station) {
-    return { devices, event: null, error: "That tablet is not on this location." };
+  const usb = device.type === "gift_msr" || attached;
+  const stationId = attached ? device.id : (device.msr?.stationId ?? "");
+  if (!attached) {
+    if (!stationId) {
+      return {
+        devices,
+        event: null,
+        error: usb ? "Assign this reader to a station first." : "Link this reader to a tablet first.",
+      };
+    }
+    const station = devices.find((d) => d.id === stationId && isMsrStationType(d.type));
+    if (!station) {
+      return { devices, event: null, error: "That tablet is not on this location." };
+    }
   }
   const now = opts?.now ?? Date.now();
   const role = usb ? "gift" : (device.msr?.role ?? "gift");
@@ -380,15 +445,20 @@ export function takeEloMsrSwipe<T extends SwipeDevice>(
 ): { devices: T[]; event: MsrSwipeEvent | null } {
   const station = String(stationId ?? "").trim();
   if (!station) return { devices, event: null };
+  const selfIndex = devices.findIndex(
+    (d) => d.id === station && stationHasUsbGiftMsr(d) && d.msr?.pending?.stationId === station,
+  );
   const usbIndex = devices.findIndex(
     (d) => d.type === "gift_msr" && d.msr?.pending && d.msr.pending.stationId === station,
   );
   const index =
-    usbIndex >= 0
-      ? usbIndex
-      : devices.findIndex(
-          (d) => d.type === "elo_msr" && d.msr?.pending && d.msr.pending.stationId === station,
-        );
+    selfIndex >= 0
+      ? selfIndex
+      : usbIndex >= 0
+        ? usbIndex
+        : devices.findIndex(
+            (d) => d.type === "elo_msr" && d.msr?.pending && d.msr.pending.stationId === station,
+          );
   if (index < 0) return { devices, event: null };
   const device = devices[index]!;
   const event = device.msr?.pending ?? null;

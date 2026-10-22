@@ -7,11 +7,14 @@ import {
   giftLedgerIntent,
   looksLikeBankPan,
   msrConfigForDeviceType,
+  msrConfigForStation,
   msrForSavedDevice,
   parseMsrConfig,
   parseMsrWedge,
   pushWedgeKey,
+  readStationUsbGiftMsr,
   selectStationStripeReader,
+  stationHasUsbGiftMsr,
   takeEloMsrSwipe,
 } from "../src/lib/pos/elo-msr.ts";
 
@@ -216,19 +219,100 @@ test("gift load prefers the USB reader when a side reader is also on that statio
   assert.equal(parsed?.connection, undefined);
 });
 
-test("Devices offers a USB gift card magstripe reader", () => {
+test("a station checkbox marks the USB gift reader for that terminal only", () => {
+  const saved = msrConfigForStation("tablet_pos", "dev_tablet", true);
+  assert.equal(saved?.connection, "usb");
+  assert.equal(saved?.role, "gift");
+  assert.equal(saved?.mount, "slot");
+  assert.equal(saved?.stationId, "dev_tablet");
+  assert.equal(msrConfigForStation("tablet_pos", "dev_tablet", false, saved), undefined);
+  assert.equal(msrConfigForStation("receipt_printer", "dev_tablet", true), undefined);
+  const readBack = readStationUsbGiftMsr("tablet_pos", "dev_tablet", true, {
+    role: "loyalty",
+    connection: "bluetooth",
+    ip: "10.0.0.8",
+  });
+  assert.equal(readBack.usbGiftMsr, true);
+  assert.equal(readBack.msr?.connection, "usb");
+  assert.equal(readBack.msr?.role, "gift");
+  assert.equal(JSON.stringify(readBack).includes("10.0.0.8"), false);
+  assert.equal(JSON.stringify(readBack).includes("bluetooth"), false);
+  assert.deepEqual(readStationUsbGiftMsr("tablet_pos", "dev_tablet", false, saved), {});
+
+  const marked = {
+    ...tablet(),
+    usbGiftMsr: true as const,
+    msr: saved,
+  };
+  const other = {
+    id: "dev_other",
+    type: "host_stand",
+    label: "Host",
+    status: "online" as const,
+    lastSeenAt: NOW,
+  };
+  assert.equal(stationHasUsbGiftMsr(marked), true);
+  assert.equal(stationHasUsbGiftMsr(other), false);
+  assert.equal(stationHasUsbGiftMsr(tablet()), false);
+  const devices = [marked, other];
+  assert.equal(selectStationStripeReader(devices, "dev_tablet", "load")?.id, "dev_tablet");
+  assert.equal(selectStationStripeReader(devices, "dev_tablet", "redeem")?.id, "dev_tablet");
+  assert.equal(selectStationStripeReader(devices, "dev_other", "load"), undefined);
+  assert.equal(selectStationStripeReader(devices, "dev_other", "redeem"), undefined);
+
+  const loaded = applyEloMsrSwipe(devices, "dev_tablet", TEST_MSR_TRACK, {
+    now: NOW,
+    giftAction: "load",
+    eventId: "box_load",
+  });
+  assert.equal(loaded.error, undefined);
+  assert.equal(loaded.event?.stationId, "dev_tablet");
+  assert.equal(loaded.event?.kind, "gift_load");
+  assert.equal(loaded.devices.find((d) => d.id === "dev_tablet")?.usbGiftMsr, true);
+  assert.equal(loaded.devices.find((d) => d.id === "dev_tablet")?.msr?.connection, "usb");
+  assert.deepEqual(giftLedgerIntent(loaded.event!), { op: "issue", code: "SUMMEXMSR11001" });
+  assert.equal(takeEloMsrSwipe(loaded.devices, "dev_other").event, null);
+  assert.equal(takeEloMsrSwipe(loaded.devices, "dev_tablet").event?.id, "box_load");
+
+  const redeemed = applyEloMsrSwipe(devices, "dev_tablet", TEST_MSR_TRACK, {
+    now: NOW,
+    giftAction: "redeem",
+    eventId: "box_redeem",
+  });
+  assert.deepEqual(giftLedgerIntent(redeemed.event!), { op: "redeem", code: "SUMMEXMSR11001" });
+
+  const off = applyEloMsrSwipe([tablet(), other], "dev_tablet", TEST_MSR_TRACK, {
+    now: NOW,
+    giftAction: "load",
+  });
+  assert.match(off.error ?? "", /no USB magstripe reader/);
+  assert.equal(off.event, null);
+
+  const untouched = applyEloMsrSwipe(devices, "dev_other", TEST_MSR_TRACK, {
+    now: NOW,
+    giftAction: "redeem",
+  });
+  assert.match(untouched.error ?? "", /no USB magstripe reader/);
+  assert.equal(untouched.devices.find((d) => d.id === "dev_tablet")?.msr?.lastSwipeAt, undefined);
+
+  const withSide = [marked, reader()];
+  assert.equal(selectStationStripeReader(withSide, "dev_tablet", "load")?.id, "dev_tablet");
+  assert.equal(selectStationStripeReader(withSide, "dev_tablet", "redeem")?.id, "dev_tablet");
+  assert.equal(selectStationStripeReader(withSide, "dev_tablet", "balance")?.type, "elo_msr");
+});
+
+test("the station form has a USB gift card MSR checkbox", () => {
   const form = readFileSync(
     new URL("../src/components/pos/LocationDeviceRegistry.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(form, /Magstripe reader · Gift card MSR/);
-  assert.match(form, /data-gift-msr-form/);
-  assert.match(form, /data-msr-connection/);
-  assert.match(form, /<option value="usb">USB<\/option>/);
+  assert.match(form, /USB magstripe reader attached \(gift cards\)/);
+  assert.match(form, /data-usb-gift-msr-attached/);
+  assert.match(form, /data-usb-gift-msr-field/);
   assert.match(form, /No network address and no Bluetooth pairing/);
   const guide = readFileSync(new URL("../src/lib/guide/content/devices.ts", import.meta.url), "utf8");
   assert.match(guide, /id: "usb-gift-msr"/);
-  assert.match(guide, /Connection is USB/);
+  assert.match(guide, /USB magstripe reader attached \(gift cards\)/);
 });
 
 test("a wedge assembles a track and drops a slow key", () => {

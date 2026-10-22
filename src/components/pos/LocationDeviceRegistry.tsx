@@ -162,8 +162,8 @@ type Mode = "stations" | "hardware";
 const HARDWARE_FUNCTIONS: DeviceFunction[] = ["cashier", "expo", "floor_pos"];
 
 function typeOptions(mode: Mode): LocationDeviceType[] {
-  if (mode === "hardware") return HARDWARE_DEVICE_TYPES;
-  return [...STATION_DEVICE_TYPES, ...PRINTER_UI_TYPES, "elo_msr", "gift_msr"];
+  if (mode === "hardware") return HARDWARE_DEVICE_TYPES.filter((t) => t !== "gift_msr");
+  return [...STATION_DEVICE_TYPES, ...PRINTER_UI_TYPES, "elo_msr"];
 }
 
 function functionOptions(mode: Mode): DeviceFunction[] {
@@ -172,6 +172,7 @@ function functionOptions(mode: Mode): DeviceFunction[] {
 
 function inMode(d: LocationDevice, mode: Mode): boolean {
   if (isPrinterDevice(d)) return true;
+  if (d.type === "gift_msr") return true;
   const types = typeOptions(mode);
   return types.includes(d.type);
 }
@@ -314,6 +315,7 @@ export function LocationDeviceRegistry({
   const [orderPrinterIds, setOrderPrinterIds] = useState<string[]>([]);
   const [msrRole, setMsrRole] = useState<MsrRole>("gift");
   const [msrStationId, setMsrStationId] = useState("");
+  const [usbGiftMsr, setUsbGiftMsr] = useState(false);
   const [msrTestAction, setMsrTestAction] = useState<MsrGiftAction>("balance");
   const [msrNote, setMsrNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -661,6 +663,7 @@ export function LocationDeviceRegistry({
     );
     setMsrRole(preset?.msr?.role ?? "gift");
     setMsrStationId(preset?.msr?.stationId ?? "");
+    setUsbGiftMsr(preset?.usbGiftMsr === true);
     const cats = usePosStore.getState().categories;
     setFoodGroupIds(
       preset?.id ? cats.filter((c) => c.printerId === preset.id).map((c) => c.id) : [],
@@ -852,6 +855,12 @@ export function LocationDeviceRegistry({
             stationClass: printer || isStripeReaderType(stationType) ? null : stationClass,
             cardReaderId: printer || isStripeReaderType(stationType) ? null : cardReaderId || null,
             cardReaderKind: printer || isStripeReaderType(stationType) ? null : cardReaderKind,
+            usbGiftMsr:
+              !printer &&
+              !isStripeReaderType(stationType) &&
+              (mode === "hardware" ? stationType === "terminal" : stationRole !== "ods")
+                ? usbGiftMsr
+                : false,
             msr:
               stationType === "elo_msr"
                 ? { mount: "side" as const, role: msrRole, stationId: msrStationId || null }
@@ -921,7 +930,7 @@ export function LocationDeviceRegistry({
           orgId: resolvedOrgId,
           locationId: resolvedLocId,
           deviceId: d.id,
-          giftAction: d.msr?.role === "gift" ? msrTestAction : undefined,
+          giftAction: d.usbGiftMsr || d.msr?.role === "gift" ? msrTestAction : undefined,
         },
       });
       if (!res.ok) {
@@ -1222,7 +1231,7 @@ export function LocationDeviceRegistry({
   const help =
     mode === "hardware"
       ? "Register Quantum readers and hospitality printers (Star, Epson, Citizen, Bixolon, generic ESC/POS). Ethernet uses a static IP (port 9100). USB uses the station’s USB port. Test print sends raw bytes — never the OS dialog."
-      : "Add a tablet, a printer, an Elo side-mounted MSR, or a USB magstripe reader from the same button. Tablets: pick Order / Host / ODS / Kiosk, then type the one-time code on the glass. Printers: Receipt printer or Order printer. The Elo reader links to a tablet already on this list. A gift card MSR uses USB on one station. Gift swipes use the house gift ledger.";
+      : "Add a tablet, a printer, or an Elo side-mounted MSR from the same button. Tablets: pick Order / Host / ODS / Kiosk, then type the one-time code on the glass. On the station, check USB magstripe reader attached (gift cards) when a slot reader is plugged into that terminal. Printers: Receipt printer or Order printer. The Elo reader links to a tablet already on this list. Gift swipes use the house gift ledger.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
@@ -2066,9 +2075,12 @@ export function LocationDeviceRegistry({
                   .filter((t) => t !== "printer" && t !== "other")
                   .map((t) => (
                     <option key={t} value={t}>
-                      {t === "gift_msr" ? "Magstripe reader · Gift card MSR" : DEVICE_TYPE_LABEL[t]}
+                      {DEVICE_TYPE_LABEL[t]}
                     </option>
                   ))}
+                {type === "gift_msr" ? (
+                  <option value="gift_msr">Magstripe reader · Gift card MSR</option>
+                ) : null}
               </select>
             </label>
             <label className="text-xs text-muted-foreground">
@@ -2184,6 +2196,27 @@ export function LocationDeviceRegistry({
               </p>
             </div>
           )}
+          {!isPrinterType(type) &&
+          !isStripeReaderType(type) &&
+          (mode === "hardware" ? type === "terminal" : stationRole !== "ods") ? (
+            <label className="flex items-start gap-2 text-sm" data-usb-gift-msr-field>
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-border"
+                data-usb-gift-msr-attached
+                checked={usbGiftMsr}
+                onChange={(e) => setUsbGiftMsr(e.target.checked)}
+              />
+              <span>
+                USB magstripe reader attached (gift cards)
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  Gift card load and redeem on this station use the reader plugged into this
+                  terminal. No network address and no Bluetooth pairing. Leave this off when the
+                  station has no reader. A bank card is not stored.
+                </span>
+              </span>
+            </label>
+          ) : null}
           {isPrinterType(type) && (
             <div className="space-y-3">
               <div className="grid gap-2 sm:grid-cols-2">
@@ -2821,9 +2854,9 @@ export function LocationDeviceRegistry({
                         ? `${DEVICE_TYPE_LABEL[d.type]} · Gift card MSR · USB · ${
                             devices.find((row) => row.id === d.msr?.stationId)?.label || "No station"
                           }`
-                      : `${DEVICE_TYPE_LABEL[d.type]} · ${entityName(d.assignment.operatorId)} · ${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}`}
+                      : `${DEVICE_TYPE_LABEL[d.type]} · ${entityName(d.assignment.operatorId)} · ${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}${d.usbGiftMsr ? " · USB gift MSR" : ""}`}
                 </p>
-                {isStripeReaderType(d.type) ? (
+                {isStripeReaderType(d.type) || d.usbGiftMsr ? (
                   <p className="mt-1 text-[11px] text-muted-foreground" data-msr-status>
                     {d.msr?.lastSwipeAt
                       ? `Last swipe · ${d.msr.lastSwipeSummary || "Swipe"} · ${formatTime(d.msr.lastSwipeAt)}`
@@ -2896,9 +2929,9 @@ export function LocationDeviceRegistry({
                   </>
                 )}
                 <DevicePresenceBits d={d} devices={devices} />
-                {isStripeReaderType(d.type) && (
+                {(isStripeReaderType(d.type) || d.usbGiftMsr) && (
                   <>
-                    {d.msr?.role === "gift" || isUsbGiftMsrType(d.type) ? (
+                    {d.msr?.role === "gift" || isUsbGiftMsrType(d.type) || d.usbGiftMsr ? (
                       <label className="text-[11px] text-muted-foreground">
                         Test
                         <select

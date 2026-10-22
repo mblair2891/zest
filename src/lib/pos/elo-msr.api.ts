@@ -5,6 +5,7 @@ import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import { parseLocationDevices, type LocationDevice } from "@/lib/pos/location-devices";
 import {
   applyEloMsrSwipe,
+  stationHasUsbGiftMsr,
   takeEloMsrSwipe,
   TEST_MSR_TRACK,
   type MsrGiftAction,
@@ -26,7 +27,9 @@ async function writeDevices(userId: string, orgId: string, locationId: string, s
   const { getSql } = await import("@/lib/db");
   const sql = await getSql();
   for (const device of devices) {
-    if (device.type !== "elo_msr" && device.type !== "gift_msr") continue;
+    if (device.type !== "elo_msr" && device.type !== "gift_msr" && !stationHasUsbGiftMsr(device)) {
+      continue;
+    }
     try {
       await sql`
         insert into location_devices (
@@ -81,7 +84,7 @@ export const recordEloMsrSwipeFn = createServerFn({ method: "POST" })
     const ctx = await loadEntityWriteContext(context.userId, orgId, data.locationId);
     const prev = parseLocationDevices(ctx.setup.locationDevices);
     const existing = prev.find((d) => d.id === data.deviceId);
-    if (!existing || (existing.type !== "elo_msr" && existing.type !== "gift_msr")) {
+    if (!existing) {
       return { ok: false as const, error: "Elo reader not found" };
     }
     assertHostOrManageDevices(ctx, existing.assignment.operatorId || "host");
